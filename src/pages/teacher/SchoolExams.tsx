@@ -149,7 +149,7 @@ export default function SchoolExams() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="exam" tick={{ fontSize: 12 }} />
                 <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(v: number, name: string) => [`${v}%`, name]} />
+                <Tooltip formatter={(v: any, name: string) => [`${v}%`, name]} />
                 <Legend />
                 {subjects.map((sub, i) => (
                   <Line

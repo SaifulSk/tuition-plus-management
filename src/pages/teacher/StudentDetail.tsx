@@ -198,7 +198,7 @@ export default function StudentDetail() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="exam" />
                   <YAxis domain={[0,100]} tickFormatter={v => v+'%'} />
-                  <Tooltip formatter={(v: number) => `${v}%`} />
+                  <Tooltip formatter={(v: any) => `${v}%`} />
                   <Legend />
                   {subjects.map((sub, i) => (
                     <Line key={sub} type="monotone" dataKey={sub} stroke={COLORS[i % COLORS.length]} strokeWidth={2} dot={{ r: 5 }} />

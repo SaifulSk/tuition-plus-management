@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CalendarDays, Wallet, BookOpen,
   ClipboardList, BarChart3, PartyPopper, LogOut, GraduationCap,
-  Menu, X, ChevronRight
+  Menu, ChevronRight
 } from 'lucide-react';
 import { signOut } from '../../firebase/auth';
 import { useAuth } from '../../contexts/AuthContext';
