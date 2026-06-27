@@ -27,7 +27,7 @@ import StudentEvents from './pages/student/Events';
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename="/tuition-plus-management">
         <Toaster
           position="top-right"
           toastOptions={{
