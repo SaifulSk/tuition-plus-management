@@ -83,7 +83,6 @@ export default function Fees() {
 
   const handleDueCellClick = (studentId: string, monthStr: string) => {
     setSelectedStudent(studentId);
-    setViewMode('student');
     setEditingPaymentId(null);
     setTransactions([{
       id: Date.now().toString(),
@@ -169,6 +168,7 @@ export default function Fees() {
       
       closeModal();
       loadPayments(selectedStudent);
+      if (viewMode === 'master') loadMasterData();
     } finally { setSaving(false); }
   };
 
@@ -636,7 +636,7 @@ export default function Fees() {
                 </div>
               )}
               <div className="modal-footer" style={{ marginTop: '24px', display: 'flex', justifyContent: dueMonthsList.length > 2 && student?.parentPhone ? 'space-between' : 'flex-end' }}>
-                 {dueMonthsList.length > 2 && student?.parentPhone && (
+                 {dueMonthsList.length >= 2 && student?.parentPhone && (
                    <a 
                      href={`https://wa.me/${student.parentPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Dear Parent,\n\nThis is a gentle reminder that the tuition fees for ${student.name} are pending for the following months:\n${dueMonthsList.map(formatMonthLabel).join(', ')}.\n\nPlease clear the dues at your earliest convenience.\n\nThank you.`)}`} 
                      target="_blank" 
