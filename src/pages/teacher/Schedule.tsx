@@ -346,7 +346,7 @@ export default function Schedule() {
       {/* Add Slot Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ overflow: 'visible' }}>
             <div className="modal-header">
               <h2>{editingSlotId ? 'Edit Schedule Slot' : 'Add Schedule Slot'}</h2>
               <button className="modal-close" onClick={closeModal}><X size={20}/></button>
