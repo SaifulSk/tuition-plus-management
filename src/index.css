@@ -104,7 +104,8 @@ img { max-width: 100%; }
   background: var(--sidebar-bg);
   position: fixed;
   top: 0; left: 0;
-  height: 100vh;
+  height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
   display: flex;
   flex-direction: column;
   z-index: 100;

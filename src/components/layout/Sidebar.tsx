@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { signOut, changeUserPassword } from '../../firebase/auth';
 import { useAuth } from '../../contexts/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import logo from '../../assets/logo.png';
 
@@ -45,6 +45,16 @@ export default function Sidebar({ role }: SidebarProps) {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const links = role === 'teacher' ? teacherLinks : studentLinks;
 
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileOpen]);
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
