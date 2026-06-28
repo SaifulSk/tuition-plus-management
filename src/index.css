@@ -1168,3 +1168,5 @@ img { max-width: 100%; }
   .main-content { margin-left: 0; }
   body { background: white; }
 }
+
+.sidebar-action { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; background: none; border: none; color: var(--sidebar-text); border-radius: 8px; font-weight: 500; cursor: pointer; text-align: left; transition: all 0.2s; } .sidebar-action:hover { background: rgba(255,255,255,0.1); color: #fff; } .sidebar-action.collapsed { justify-content: center; padding: 10px; }

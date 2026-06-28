@@ -2,11 +2,12 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CalendarDays, Wallet, BookOpen,
   ClipboardList, BarChart3, PartyPopper, LogOut, GraduationCap,
-  Menu, ChevronRight, Building, FileText
+  Menu, ChevronRight, Building, FileText, Key, X
 } from 'lucide-react';
-import { signOut } from '../../firebase/auth';
+import { signOut, changeUserPassword } from '../../firebase/auth';
 import { useAuth } from '../../contexts/AuthContext';
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import logo from '../../assets/logo.png';
 
 const teacherLinks = [
@@ -39,11 +40,37 @@ export default function Sidebar({ role }: SidebarProps) {
   const { appUser } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const links = role === 'teacher' ? teacherLinks : studentLinks;
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      await changeUserPassword(newPassword);
+      toast.success('Password updated successfully');
+      setShowPasswordModal(false);
+      setNewPassword('');
+    } catch (error: any) {
+      if (error.code === 'auth/requires-recent-login') {
+        toast.error('Please sign out and sign in again to change your password');
+      } else {
+        toast.error(error.message);
+      }
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const closeMobile = () => setMobileOpen(false);
@@ -125,6 +152,15 @@ export default function Sidebar({ role }: SidebarProps) {
             </div>
           )}
           <button
+            className={`sidebar-action ${(collapsed && !mobileOpen) ? 'collapsed' : ''}`}
+            onClick={() => setShowPasswordModal(true)}
+            title="Change Password"
+            style={{ marginBottom: '8px' }}
+          >
+            <Key size={18} />
+            {(!collapsed || mobileOpen) && <span>Change Password</span>}
+          </button>
+          <button
             className={`sidebar-signout ${(collapsed && !mobileOpen) ? 'collapsed' : ''}`}
             onClick={handleSignOut}
             title="Sign Out"
@@ -134,6 +170,52 @@ export default function Sidebar({ role }: SidebarProps) {
           </button>
         </div>
       </aside>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Change Password</h2>
+              <button className="modal-close" onClick={() => setShowPasswordModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={handlePasswordChange}>
+                <div className="form-group">
+                  <label>New Password</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="form-input"
+                    placeholder="Enter new password (min 6 chars)"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setShowPasswordModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={isChangingPassword}
+                  >
+                    {isChangingPassword ? 'Updating...' : 'Update Password'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

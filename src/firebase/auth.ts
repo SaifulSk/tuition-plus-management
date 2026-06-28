@@ -3,6 +3,7 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   updateProfile,
+  updatePassword,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './config';
@@ -40,4 +41,9 @@ export async function getUserRole(uid: string): Promise<'teacher' | 'student' | 
   const snap = await getDoc(doc(db, 'users', uid));
   if (!snap.exists()) return null;
   return snap.data().role as 'teacher' | 'student';
+}
+
+export async function changeUserPassword(newPassword: string) {
+  if (!auth.currentUser) throw new Error('No user logged in');
+  await updatePassword(auth.currentUser, newPassword);
 }

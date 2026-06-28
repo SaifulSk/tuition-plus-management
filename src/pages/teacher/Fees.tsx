@@ -270,7 +270,7 @@ export default function Fees() {
                       <table className="data-table">
                         <thead>
                           <tr>
-                            <th style={{ minWidth: 150, background: 'var(--surface-2)', color: 'var(--text)', padding: '12px 16px', borderBottom: '1px solid var(--border)', textAlign: 'left' }}>Students</th>
+                            <th style={{ minWidth: 110, background: 'var(--surface-2)', color: 'var(--text)', padding: '12px 16px', borderBottom: '1px solid var(--border)', textAlign: 'left', position: 'sticky', left: 0, zIndex: 10, borderRight: '1px solid var(--border-light)' }}>Students</th>
                             {Array.from({length: 12}).map((_, i) => {
                               const d = new Date(masterYear, 2 + i);
                               return <th key={i} style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '12px 8px', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: '13px' }}>{d.toLocaleString('en-US', {month:'short'})}</th>;
@@ -280,7 +280,16 @@ export default function Fees() {
                         <tbody>
                           {studentsByClass[cls].map(s => (
                             <tr key={s.id}>
-                              <td style={{ background: 'var(--surface)', color: 'var(--text)', fontWeight: 600, padding: '12px 16px', borderBottom: '1px solid var(--border-light)' }}>{s.name}</td>
+                              <td 
+                                style={{ background: 'var(--surface)', color: 'var(--text)', fontWeight: 600, padding: '12px 16px', borderBottom: '1px solid var(--border-light)', position: 'sticky', left: 0, zIndex: 5, borderRight: '1px solid var(--border-light)', cursor: 'pointer', transition: 'background 0.2s' }}
+                                onClick={() => { setSelectedStudent(s.id); setViewMode('student'); }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-2)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {s.name}
+                                </div>
+                              </td>
                               {Array.from({length: 12}).map((_, i) => {
                                 const cellDate = new Date(masterYear, 2 + i);
                                 const cellYear = cellDate.getFullYear();
@@ -312,7 +321,7 @@ export default function Fees() {
                                 }
 
                                 return (
-                                  <td key={i} style={{ background: bgColor, color, textAlign: 'center', padding: '8px 4px', borderBottom: '1px solid var(--border-light)' }}>
+                                  <td key={i} style={{ background: bgColor, color, textAlign: 'center', padding: '8px 6px', borderBottom: '1px solid var(--border-light)', minWidth: '70px', whiteSpace: 'nowrap' }}>
                                     {text && <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: subText ? '2px' : '0' }}>{text}</div>}
                                     {subText && <div style={{ fontSize: '10px', opacity: 0.9, background: 'rgba(0,0,0,0.2)', display: 'inline-block', padding: '2px 6px', borderRadius: '12px' }}>{subText}</div>}
                                   </td>
