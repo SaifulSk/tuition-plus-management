@@ -221,7 +221,7 @@ export default function Fees() {
           <p className="page-sub">Track payments and generate receipts</p>
         </div>
         {viewMode === 'student' && selectedStudent && (
-          <button className="btn-primary" onClick={() => { setEditingPaymentId(null); setForm({ mode:'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] }); setShowModal(true); }}>
+          <button className="btn-primary" onClick={() => { setEditingPaymentId(null); setTransactions([{ id: Date.now().toString(), mode:'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] }]); setShowModal(true); }}>
             <Plus size={18}/> Record Payment
           </button>
         )}
