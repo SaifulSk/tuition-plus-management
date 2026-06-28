@@ -6,7 +6,7 @@ import {
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../../firebase/config';
 import { setDoc } from 'firebase/firestore';
-import { Search, Plus, Trash2, Eye, EyeOff, X, UserPlus, ChevronDown, ChevronRight, Pencil } from 'lucide-react';
+import { Search, Plus, Trash2, Eye, EyeOff, X, UserPlus, ChevronDown, ChevronRight, Pencil, Copy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import type { Student } from '../../types';
@@ -37,8 +37,12 @@ export default function Students() {
   const [saving, setSaving] = useState(false);
 
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
-  const [showFees, setShowFees] = useState(false);
+  const [showFees, setShowFees] = useState<Record<string, boolean>>({});
+  const [showArchived, setShowArchived] = useState(false);
+
+  const toggleFee = (id: string) => {
+    setShowFees(p => ({ ...p, [id]: !p[id] }));
+  };
 
   const loadStudents = async () => {
     setLoading(true);
@@ -63,17 +67,13 @@ export default function Students() {
   }, []);
 
   useEffect(() => {
-    let list = students;
+    let list = students.filter(s => showArchived ? !s.active : s.active !== false);
     if (search) list = list.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
     setFiltered(list);
-  }, [search, students]);
+  }, [search, students, showArchived]);
 
   const toggleClass = (cls: string) => {
     setExpandedClasses(p => ({ ...p, [cls]: !p[cls] }));
-  };
-
-  const toggleSection = (secKey: string) => {
-    setExpandedSections(p => ({ ...p, [secKey]: !p[secKey] }));
   };
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -92,6 +92,25 @@ export default function Students() {
       joiningDate: s.joiningDate ? format(s.joiningDate.toDate(), 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
       notes: s.notes || '',
       email: s.email || '',
+      tempPassword: '',
+    });
+    setSubjects(s.subjects || []);
+    setShowModal(true);
+  };
+
+  const duplicateStudent = (s: Student) => {
+    setEditingStudentId(null);
+    setForm({
+      name: `${s.name} (Copy)`,
+      class: s.class || '',
+      section: s.section || '',
+      school: s.school || '',
+      phone: s.phone || '',
+      parentPhone: s.parentPhone || '',
+      confirmedFee: s.confirmedFee?.toString() || '',
+      joiningDate: s.joiningDate ? format(s.joiningDate.toDate(), 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
+      notes: s.notes || '',
+      email: '',
       tempPassword: '',
     });
     setSubjects(s.subjects || []);
@@ -188,12 +207,10 @@ export default function Students() {
   };
 
   const groupedByClass = filtered.reduce((acc, s) => {
-    if (!acc[s.class]) acc[s.class] = {};
-    const sec = s.section || 'No Section';
-    if (!acc[s.class][sec]) acc[s.class][sec] = [];
-    acc[s.class][sec].push(s);
+    if (!acc[s.class]) acc[s.class] = [];
+    acc[s.class].push(s);
     return acc;
-  }, {} as Record<string, Record<string, Student[]>>);
+  }, {} as Record<string, Student[]>);
 
   const sortedClasses = Object.keys(groupedByClass).sort((a,b) => parseInt(a) - parseInt(b));
 
@@ -202,7 +219,7 @@ export default function Students() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Students</h1>
-          <p className="page-sub">{students.length} students enrolled</p>
+          <p className="page-sub">{students.filter(s => s.active !== false).length} active, {students.filter(s => !s.active).length} archived</p>
         </div>
         <button id="add-student-btn" className="btn-primary" onClick={() => { setEditingStudentId(null); setForm(EMPTY_FORM); setSubjects([]); setShowModal(true); }}>
           <UserPlus size={18} /> Add Student
@@ -210,8 +227,8 @@ export default function Students() {
       </div>
 
       {/* Filters */}
-      <div className="filter-bar">
-        <div className="search-box">
+      <div className="filter-bar" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+        <div className="search-box" style={{ flex: 1 }}>
           <Search size={16} />
           <input
             id="student-search"
@@ -219,6 +236,14 @@ export default function Students() {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+        </div>
+        <div className="tabs" style={{ marginBottom: 0 }}>
+          <button className={`tab-btn ${!showArchived ? 'active' : ''}`} onClick={() => setShowArchived(false)}>
+            Active
+          </button>
+          <button className={`tab-btn ${showArchived ? 'active' : ''}`} onClick={() => setShowArchived(true)}>
+            Archived
+          </button>
         </div>
       </div>
 
@@ -243,98 +268,86 @@ export default function Students() {
                   {expandedClasses[cls] ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                   <span style={{ marginLeft: 8 }}>Class {cls}</span>
                   <span className="badge badge-gray ml-auto">
-                    {Object.values(groupedByClass[cls]).flat().length} students
+                    {groupedByClass[cls].length} students
                   </span>
                 </div>
                 
                 {expandedClasses[cls] && (
                   <div className="accordion-class-content" style={{ padding: '0' }}>
-                    {Object.keys(groupedByClass[cls]).sort().map(sec => {
-                      const secKey = `${cls}-${sec}`;
-                      const secStudents = groupedByClass[cls][sec];
-                      return (
-                        <div key={secKey} className="accordion-section-group">
-                          <div 
-                            className="accordion-section-header" 
-                            onClick={() => toggleSection(secKey)}
-                            style={{ display: 'flex', alignItems: 'center', padding: '12px 24px 12px 48px', cursor: 'pointer', borderBottom: '1px solid var(--border-light)', background: 'var(--surface)', fontWeight: 600, fontSize: '14px' }}
-                          >
-                            {expandedSections[secKey] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                            <span style={{ marginLeft: 8 }}>{sec === 'No Section' ? 'No Section' : `Section ${sec}`}</span>
-                            <span className="badge badge-gray ml-auto" style={{ fontSize: '11px' }}>
-                              {secStudents.length} students
-                            </span>
-                          </div>
-                          
-                          {expandedSections[secKey] && (
-                            <div className="table-wrap" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                              <table className="data-table">
-                                <thead>
-                                  <tr>
-                                    <th style={{ paddingLeft: '72px' }}>Name</th>
-                                    <th>Subjects</th>
-                                    <th>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        Fee (₹/mo)
-                                        <button onClick={() => setShowFees(!showFees)} style={{ background:'none', border:'none', cursor:'pointer', color: 'var(--text-muted)' }}>
-                                          {showFees ? <EyeOff size={14}/> : <Eye size={14}/>}
-                                        </button>
-                                      </div>
-                                    </th>
-                                    <th>Joined</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {secStudents.map(s => (
-                                    <tr key={s.id}>
-                                      <td style={{ paddingLeft: '72px' }}>
-                                        <div className="table-student">
-                                          <div className="student-avatar sm">{s.name.charAt(0)}</div>
-                                          <div>
-                                            <div className="fw-600">{s.name}</div>
-                                            <div className="text-muted text-sm">{s.school}</div>
-                                          </div>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <div className="subject-chips">
-                                          {s.subjects?.slice(0,3).map(sub => (
-                                            <span key={sub} className="chip">{sub}</span>
-                                          ))}
-                                          {s.subjects?.length > 3 && <span className="chip muted">+{s.subjects.length-3}</span>}
-                                        </div>
-                                      </td>
-                                      <td>{showFees ? `₹${s.confirmedFee?.toLocaleString()}` : '₹ ****'}</td>
-                                      <td>{s.joiningDate ? format(s.joiningDate.toDate(), 'dd MMM yyyy') : '—'}</td>
-                                      <td>
-                                        <span
-                                          className={`badge cursor-pointer ${s.active ? 'badge-green' : 'badge-red'}`}
-                                          onClick={() => toggleActive(s)}
-                                        >
-                                          {s.active ? 'Active' : 'Inactive'}
-                                        </span>
-                                      </td>
-                                      <td>
-                                        <div className="action-btns">
-                                          <button className="icon-btn" onClick={() => openEditModal(s)} title="Edit">
-                                            <Pencil size={16} />
-                                          </button>
-                                          <Link to={`/teacher/students/${s.id}`} className="icon-btn" title="View">
-                                            <Eye size={16} />
-                                          </Link>
-                                        </div>
-                                      </td>
-                                    </tr>
+                    <div className="table-wrap" style={{ borderBottom: '1px solid var(--border-light)' }}>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th style={{ paddingLeft: '24px' }}>Name</th>
+                            <th>Section</th>
+                            <th>Subjects</th>
+                            <th>Fee (₹/mo)</th>
+                            <th>Joined</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {groupedByClass[cls].map(s => (
+                            <tr key={s.id}>
+                              <td style={{ paddingLeft: '24px' }}>
+                                <div className="table-student">
+                                  <div className="student-avatar sm">{s.name.charAt(0)}</div>
+                                  <div>
+                                    <div className="fw-600">{s.name}</div>
+                                    <div className="text-muted text-sm">{s.school}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>{s.section || '—'}</td>
+                              <td>
+                                <div className="subject-chips">
+                                  {s.subjects?.slice(0,3).map(sub => (
+                                    <span key={sub} className="chip">{sub}</span>
                                   ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                                  {s.subjects?.length > 3 && <span className="chip muted">+{s.subjects.length-3}</span>}
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {showFees[s.id] ? `₹${s.confirmedFee?.toLocaleString()}` : '₹ ****'}
+                                  <button onClick={() => toggleFee(s.id)} style={{ background:'none', border:'none', cursor:'pointer', color: 'var(--text-muted)', display: 'flex' }}>
+                                    {showFees[s.id] ? <EyeOff size={14}/> : <Eye size={14}/>}
+                                  </button>
+                                </div>
+                              </td>
+                              <td>{s.joiningDate ? format(s.joiningDate.toDate(), 'dd MMM yyyy') : '—'}</td>
+                              <td>
+                                <span
+                                  className={`badge cursor-pointer ${s.active ? 'badge-green' : 'badge-gray'}`}
+                                  onClick={() => {
+                                    if (window.confirm(`Are you sure you want to ${s.active ? 'archive' : 'unarchive'} this student?`)) {
+                                      toggleActive(s);
+                                    }
+                                  }}
+                                  title="Click to toggle status"
+                                >
+                                  {s.active ? 'Active' : 'Archived'}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="action-btns">
+                                  <button className="icon-btn" onClick={() => openEditModal(s)} title="Edit">
+                                    <Pencil size={16} />
+                                  </button>
+                                  <button className="icon-btn" onClick={() => duplicateStudent(s)} title="Duplicate">
+                                    <Copy size={16} />
+                                  </button>
+                                  <Link to={`/teacher/students/${s.id}`} className="icon-btn" title="View">
+                                    <Eye size={16} />
+                                  </Link>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
