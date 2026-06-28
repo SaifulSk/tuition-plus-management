@@ -36,6 +36,7 @@ export default function Sidebar({ role }: SidebarProps) {
   const navigate = useNavigate();
   const { appUser } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const links = role === 'teacher' ? teacherLinks : studentLinks;
 
   const handleSignOut = async () => {
@@ -43,15 +44,28 @@ export default function Sidebar({ role }: SidebarProps) {
     navigate('/login');
   };
 
+  const closeMobile = () => setMobileOpen(false);
+
   return (
     <>
-      {/* Mobile overlay */}
-      {!collapsed && <div className="sidebar-overlay" onClick={() => setCollapsed(true)} />}
+      {/* Mobile Header */}
+      <div className="mobile-header">
+        <div className="mobile-brand">
+          <img src={logo} alt="Tuition Plus" className="sidebar-logo" />
+          <span className="brand-name">TUITION PLUS</span>
+        </div>
+        <button className="mobile-menu-btn" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+          <Menu size={24} />
+        </button>
+      </div>
 
-      <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+      {/* Mobile overlay */}
+      {mobileOpen && <div className="sidebar-overlay" onClick={closeMobile} style={{ display: 'block' }} />}
+
+      <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
         {/* Header */}
         <div className="sidebar-header">
-          {!collapsed && (
+          {(!collapsed || mobileOpen) && (
             <div className="sidebar-brand">
               <img src={logo} alt="Tuition Plus" className="sidebar-logo" />
               <div className="sidebar-brand-text">
@@ -70,7 +84,7 @@ export default function Sidebar({ role }: SidebarProps) {
         </div>
 
         {/* Role badge */}
-        {!collapsed && (
+        {(!collapsed || mobileOpen) && (
           <div className="sidebar-role-badge">
             <GraduationCap size={14} />
             <span>{role === 'teacher' ? 'Teacher Portal' : 'Student Portal'}</span>
@@ -84,19 +98,20 @@ export default function Sidebar({ role }: SidebarProps) {
               key={to}
               to={to}
               end={end}
+              onClick={closeMobile}
               className={({ isActive }) =>
-                `sidebar-link ${isActive ? 'active' : ''} ${collapsed ? 'collapsed' : ''}`
+                `sidebar-link ${isActive ? 'active' : ''} ${collapsed && !mobileOpen ? 'collapsed' : ''}`
               }
             >
               <Icon size={20} className="sidebar-icon" />
-              {!collapsed && <span>{label}</span>}
+              {(!collapsed || mobileOpen) && <span>{label}</span>}
             </NavLink>
           ))}
         </nav>
 
         {/* Footer */}
         <div className="sidebar-footer">
-          {!collapsed && appUser && (
+          {(!collapsed || mobileOpen) && appUser && (
             <div className="sidebar-user">
               <div className="sidebar-user-avatar">
                 {appUser.name.charAt(0).toUpperCase()}
@@ -108,12 +123,12 @@ export default function Sidebar({ role }: SidebarProps) {
             </div>
           )}
           <button
-            className={`sidebar-signout ${collapsed ? 'collapsed' : ''}`}
+            className={`sidebar-signout ${(collapsed && !mobileOpen) ? 'collapsed' : ''}`}
             onClick={handleSignOut}
             title="Sign Out"
           >
             <LogOut size={18} />
-            {!collapsed && <span>Sign Out</span>}
+            {(!collapsed || mobileOpen) && <span>Sign Out</span>}
           </button>
         </div>
       </aside>

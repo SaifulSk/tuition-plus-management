@@ -1097,6 +1097,8 @@ img { max-width: 100%; }
 .ml-auto { margin-left: auto; }
 .ml-8 { margin-left: 8px; }
 
+.mobile-header { display: none; }
+
 /* ═══════════════════════════════════════════════════
    RESPONSIVE
 ═══════════════════════════════════════════════════ */
@@ -1106,12 +1108,37 @@ img { max-width: 100%; }
   .schedule-grid { grid-template-columns: repeat(4, 1fr); }
 }
 @media (max-width: 900px) {
-  .sidebar { width: var(--sidebar-collapsed); }
-  .main-content { margin-left: var(--sidebar-collapsed); }
-  .sidebar-brand-text, .sidebar-role-badge span, .sidebar-link span,
-  .sidebar-user-info, .sidebar-signout span { display: none; }
-  .sidebar-link { justify-content: center; padding: 11px; }
-  .sidebar-signout { justify-content: center; padding: 10px; }
+  .app-layout { flex-direction: column; }
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--sidebar-bg);
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .mobile-brand { display: flex; align-items: center; gap: 10px; }
+  .mobile-brand .sidebar-logo { width: 32px; height: 32px; object-fit: contain; }
+  .mobile-brand .brand-name { color: #fff; font-size: 15px; font-weight: 800; letter-spacing: 1px; }
+  .mobile-menu-btn {
+    background: rgba(255,255,255,0.08);
+    border: none; color: var(--sidebar-text);
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sidebar {
+    transform: translateX(-100%);
+    width: var(--sidebar-width) !important;
+  }
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+  .sidebar-toggle { display: none; }
+  .main-content { margin-left: 0 !important; min-height: auto; width: 100%; }
+  
   .login-brand-panel { display: none; }
   .login-container { max-width: 480px; }
   .form-grid-2 { grid-template-columns: 1fr; }
