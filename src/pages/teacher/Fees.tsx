@@ -81,6 +81,20 @@ export default function Fees() {
     else setPayments([]);
   }, [selectedStudent]);
 
+  const handleDueCellClick = (studentId: string, monthStr: string) => {
+    setSelectedStudent(studentId);
+    setViewMode('student');
+    setEditingPaymentId(null);
+    setTransactions([{
+      id: Date.now().toString(),
+      mode: 'Cash',
+      datePaid: new Date().toISOString().split('T')[0],
+      monthInput: monthStr,
+      monthsPaid: [monthStr]
+    }]);
+    setShowModal(true);
+  };
+
   const addMonth = (txId: string) => {
     setTransactions(txs => txs.map(t => {
       if (t.id !== txId) return t;
@@ -318,6 +332,7 @@ export default function Fees() {
                                 let text = '';
                                 let subText = '';
                                 let color = 'transparent';
+                                let isDue = false;
 
                                 if (!isBeforeJoining) {
                                   if (matchingPayment) {
@@ -328,15 +343,21 @@ export default function Fees() {
                                   } else {
                                     bgColor = '#ef4444'; // Red-500 (Due)
                                     color = '#ffffff';
+                                    isDue = true;
                                     if (new Date() < new Date(cellYear, cellMonth - 1, 1)) {
                                       bgColor = '#bae6fd'; // Sky-200 (Upcoming)
                                       color = '#0f172a';
+                                      isDue = false;
                                     }
                                   }
                                 }
 
                                 return (
-                                  <td key={i} style={{ background: bgColor, color, textAlign: 'center', padding: '8px 6px', borderBottom: '1px solid var(--border-light)', minWidth: '70px', whiteSpace: 'nowrap' }}>
+                                  <td 
+                                    key={i} 
+                                    onClick={isDue ? () => handleDueCellClick(s.id, monthStr) : undefined}
+                                    style={{ background: bgColor, color, textAlign: 'center', padding: '8px 6px', borderBottom: '1px solid var(--border-light)', minWidth: '70px', whiteSpace: 'nowrap', cursor: isDue ? 'pointer' : 'default' }}
+                                  >
                                     {text && <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: subText ? '2px' : '0' }}>{text}</div>}
                                     {subText && <div style={{ fontSize: '10px', opacity: 0.9, background: 'rgba(0,0,0,0.2)', display: 'inline-block', padding: '2px 6px', borderRadius: '12px' }}>{subText}</div>}
                                   </td>
