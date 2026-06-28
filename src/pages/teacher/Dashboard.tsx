@@ -46,7 +46,12 @@ export default function TeacherDashboard() {
           const fSnap = await getDocs(collection(db, 'fees', s.id, 'payments'));
           fSnap.docs.forEach(d => {
             const p = d.data() as FeePayment;
-            if (p.monthsPaid?.includes(thisMonth)) feesThisMonth += p.amount || 0;
+            if (p.datePaid) {
+              const pd = p.datePaid.toDate();
+              if (pd.getFullYear() === now.getFullYear() && pd.getMonth() === now.getMonth()) {
+                feesThisMonth += p.amount || 0;
+              }
+            }
           });
         }
 
