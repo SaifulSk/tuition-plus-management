@@ -27,12 +27,13 @@ export default function Fees() {
   const [search, setSearch] = useState('');
   const receiptRef = useRef<HTMLDivElement>(null);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
-  const [form, setForm] = useState({
+  const [transactions, setTransactions] = useState([{
+    id: Date.now().toString(),
     mode: 'Cash' as PaymentMode,
     datePaid: new Date().toISOString().split('T')[0],
     monthInput: new Date().toISOString().slice(0,7),
     monthsPaid: [] as string[],
-  });
+  }]);
   const [saving, setSaving] = useState(false);
   const [showConfirmed, setShowConfirmed] = useState(false);
   const [showTableFees, setShowTableFees] = useState(false);
@@ -80,66 +81,80 @@ export default function Fees() {
     else setPayments([]);
   }, [selectedStudent]);
 
-  const addMonth = () => {
-    const m = form.monthInput;
-    if (!m || form.monthsPaid.includes(m)) return;
-    setForm(f => ({ ...f, monthsPaid: [...f.monthsPaid, m] }));
+  const addMonth = (txId: string) => {
+    setTransactions(txs => txs.map(t => {
+      if (t.id !== txId) return t;
+      const m = t.monthInput;
+      if (!m || t.monthsPaid.includes(m)) return t;
+      return { ...t, monthsPaid: [...t.monthsPaid, m] };
+    }));
   };
 
   const openEditModal = (p: FeePayment) => {
     setEditingPaymentId(p.id);
-    setForm({
+    setTransactions([{
+      id: p.id,
       mode: p.mode || 'Cash',
       datePaid: p.datePaid ? new Date(p.datePaid.toDate().getTime() - p.datePaid.toDate().getTimezoneOffset() * 60000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       monthInput: new Date().toISOString().slice(0,7),
       monthsPaid: p.monthsPaid || [],
-    });
+    }]);
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingPaymentId(null);
-    setForm({ mode:'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] });
+    setTransactions([{ id: Date.now().toString(), mode:'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] }]);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudent || form.monthsPaid.length === 0) {
-      toast.error('Fill all fields and add at least one month'); return;
+    if (!selectedStudent || transactions.some(t => t.monthsPaid.length === 0)) {
+      toast.error('Fill all fields and add at least one month for each transaction'); return;
     }
     setSaving(true);
     const student = students.find(s => s.id === selectedStudent)!;
     try {
-      const payment: Omit<FeePayment,'id'> = {
-        studentId: selectedStudent,
-        studentName: student.name,
-        studentClass: student.class,
-        amount: (student.confirmedFee || 0) * form.monthsPaid.length,
-        mode: form.mode,
-        monthsPaid: form.monthsPaid,
-        datePaid: Timestamp.fromDate(new Date(form.datePaid)),
-      };
-      
-      let refId = '';
       if (editingPaymentId) {
-        // Need to updateDoc instead of addDoc
-        import('firebase/firestore').then(({ updateDoc, doc }) => {
-           updateDoc(doc(db, 'fees', selectedStudent, 'payments', editingPaymentId), payment);
-        });
+        const t = transactions[0];
+        const payment: Omit<FeePayment,'id'> = {
+          studentId: selectedStudent,
+          studentName: student.name,
+          studentClass: student.class,
+          amount: (student.confirmedFee || 0) * t.monthsPaid.length,
+          mode: t.mode,
+          monthsPaid: t.monthsPaid,
+          datePaid: Timestamp.fromDate(new Date(t.datePaid)),
+        };
+        const { updateDoc, doc } = await import('firebase/firestore');
+        await updateDoc(doc(db, 'fees', selectedStudent, 'payments', editingPaymentId), payment);
         toast.success('Payment updated!');
-        refId = editingPaymentId;
       } else {
-        const ref = await addDoc(collection(db,'fees',selectedStudent,'payments'), payment);
-        toast.success('Payment recorded!');
-        refId = ref.id;
+        const addedPayments = await Promise.all(transactions.map(async (t) => {
+          const payment: Omit<FeePayment,'id'> = {
+            studentId: selectedStudent,
+            studentName: student.name,
+            studentClass: student.class,
+            amount: (student.confirmedFee || 0) * t.monthsPaid.length,
+            mode: t.mode,
+            monthsPaid: t.monthsPaid,
+            datePaid: Timestamp.fromDate(new Date(t.datePaid)),
+          };
+          const ref = await addDoc(collection(db,'fees',selectedStudent,'payments'), payment);
+          return { id: ref.id, ...payment };
+        }));
+        
+        toast.success(transactions.length === 1 ? 'Payment recorded!' : `${transactions.length} payments recorded!`);
+        
+        if (transactions.length === 1) {
+          setCurrentReceipt(addedPayments[0]);
+          setShowReceipt(true);
+        }
       }
       
       closeModal();
       loadPayments(selectedStudent);
-      // Auto show receipt
-      setCurrentReceipt({ id: refId, ...payment });
-      setShowReceipt(true);
     } finally { setSaving(false); }
   };
 
@@ -465,40 +480,64 @@ export default function Fees() {
               <button className="modal-close" onClick={closeModal}><X size={20}/></button>
             </div>
             <form onSubmit={handleSave} className="modal-body">
-              <div className="form-grid-2">
-                <div className="form-group">
-                  <label>Date Paid *</label>
-                  <input type="date" value={form.datePaid} onChange={e => setForm(f=>({...f,datePaid:e.target.value}))} required />
-                </div>
-                <div className="form-group">
-                  <label>Payment Mode *</label>
-                  <select value={form.mode} onChange={e => setForm(f=>({...f,mode:e.target.value as PaymentMode}))}>
-                    {PAYMENT_MODES.map(m => <option key={m}>{m}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Months Paid For *</label>
-                <div className="month-picker-row">
-                  <input type="month" value={form.monthInput} onChange={e => setForm(f=>({...f,monthInput:e.target.value}))} />
-                  <button type="button" className="btn-secondary" onClick={addMonth}><Plus size={16}/> Add Month</button>
-                </div>
-                <div className="subject-chips mt-8">
-                  {form.monthsPaid.map(m => (
-                    <span key={m} className="chip removable">
-                      {formatMonthLabel(m)}
-                      <button type="button" onClick={() => setForm(f=>({...f,monthsPaid:f.monthsPaid.filter(x=>x!==m)}))}>
-                        <X size={12}/>
+              {transactions.map((t, idx) => (
+                <div key={t.id} style={{ marginBottom: transactions.length > 1 ? 24 : 0, paddingBottom: transactions.length > 1 ? 24 : 0, borderBottom: transactions.length > 1 && idx < transactions.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+                  {transactions.length > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                      <h4 style={{ margin: 0, color: 'var(--navy)' }}>Transaction {idx + 1}</h4>
+                      <button type="button" className="icon-btn danger" style={{ height: 'auto', padding: 4 }} onClick={() => setTransactions(txs => txs.filter(x => x.id !== t.id))}>
+                        <X size={16}/>
                       </button>
-                    </span>
-                  ))}
+                    </div>
+                  )}
+                  <div className="form-grid-2">
+                    <div className="form-group">
+                      <label>Date Paid *</label>
+                      <input type="date" value={t.datePaid} onChange={e => setTransactions(txs => txs.map(x => x.id === t.id ? {...x,datePaid:e.target.value} : x))} required />
+                    </div>
+                    <div className="form-group">
+                      <label>Payment Mode *</label>
+                      <select value={t.mode} onChange={e => setTransactions(txs => txs.map(x => x.id === t.id ? {...x,mode:e.target.value as PaymentMode} : x))}>
+                        {PAYMENT_MODES.map(m => <option key={m}>{m}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Months Paid For *</label>
+                    <div className="month-picker-row">
+                      <input type="month" value={t.monthInput} onChange={e => setTransactions(txs => txs.map(x => x.id === t.id ? {...x,monthInput:e.target.value} : x))} />
+                      <button type="button" className="btn-secondary" onClick={() => addMonth(t.id)}><Plus size={16}/> Add Month</button>
+                    </div>
+                    <div className="subject-chips mt-8">
+                      {t.monthsPaid.map(m => (
+                        <span key={m} className="chip removable">
+                          {formatMonthLabel(m)}
+                          <button type="button" onClick={() => setTransactions(txs => txs.map(x => x.id === t.id ? {...x,monthsPaid:x.monthsPaid.filter(y=>y!==m)} : x))}>
+                            <X size={12}/>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
+
+              {!editingPaymentId && (
+                <button 
+                  type="button" 
+                  className="btn-ghost" 
+                  style={{ width: '100%', marginBottom: 16, color: 'var(--primary)', border: '1px dashed var(--border)' }} 
+                  onClick={() => setTransactions(txs => [...txs, { id: Date.now().toString(), mode: 'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] }])}
+                >
+                  <Plus size={16}/> Add another transaction
+                </button>
+              )}
+
               <div className="modal-footer">
                 <button type="button" className="btn-ghost" onClick={closeModal}>Cancel</button>
                 <button type="submit" className="btn-primary" disabled={saving}>
                   {saving ? <span className="btn-spinner"/> : null}
-                  {saving ? 'Saving…' : (editingPaymentId ? 'Update Payment' : 'Record & Generate Receipt')}
+                  {saving ? 'Saving…' : (editingPaymentId ? 'Update Payment' : (transactions.length === 1 ? 'Record & Generate Receipt' : 'Record Payments'))}
                 </button>
               </div>
             </form>
