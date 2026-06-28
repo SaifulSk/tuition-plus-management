@@ -39,7 +39,7 @@ export default function Fees() {
   const [showTableFees, setShowTableFees] = useState(false);
   const [showDueModal, setShowDueModal] = useState(false);
 
-  const [viewMode, setViewMode] = useState<'student' | 'master'>('student');
+  const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
   const [masterYear, setMasterYear] = useState<number>(new Date().getFullYear());
   const [allPayments, setAllPayments] = useState<Record<string, FeePayment[]>>({});
   const [loadingMaster, setLoadingMaster] = useState(false);
@@ -247,7 +247,7 @@ export default function Fees() {
             Master View
           </button>
           <button className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`} onClick={() => setViewMode('student')}>
-            Individual Student
+            Student View
           </button>
         </div>
       </div>
