@@ -194,8 +194,17 @@ export default function Schedule() {
                 </div>
                 
                 {groupedMaster[day].length === 0 ? (
-                  <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px', background: 'var(--surface-2)', borderRadius: '8px', border: '1px dashed var(--border)' }}>
+                  <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px', background: 'var(--surface-2)', borderRadius: '8px', border: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                     No slots
+                    <button className="btn-ghost btn-sm" style={{ padding: '4px 8px', fontSize: '12px', color: 'var(--primary)' }} onClick={() => {
+                      setEditingSlotId(null);
+                      setModalStudentId('');
+                      setForm({ day: day as DayOfWeek, startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' });
+                      setSubjects([]);
+                      setShowModal(true);
+                    }}>
+                      <Plus size={14} /> Add Slot
+                    </button>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
