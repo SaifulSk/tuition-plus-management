@@ -198,7 +198,7 @@ export default function Fees() {
 
   return (
     <div className="page">
-      <div className="page-header" style={{ marginBottom: 0 }}>
+      <div className="page-header">
         <div>
           <h1 className="page-title">
             Fee Management

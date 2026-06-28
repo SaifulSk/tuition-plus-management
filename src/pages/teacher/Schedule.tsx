@@ -180,77 +180,65 @@ export default function Schedule() {
       </div>
 
       {viewMode === 'master' && (
-        <div className="accordion-container mt-16">
-          <div className="legend mb-16">
+        <div className="card mt-16" style={{ overflowX: 'auto', background: 'var(--surface)' }}>
+          <div className="legend mb-16" style={{ padding: '0 8px' }}>
             <span className="legend-item"><span className="legend-dot tuition"/>My Teaching Slot</span>
             <span className="legend-item"><span className="legend-dot other"/>Other Tuition</span>
           </div>
-          {DAYS.map(day => (
-            <div key={day} className="accordion-class-group">
-              <div 
-                className="accordion-header" 
-                onClick={() => toggleDay(day)}
-                style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', cursor: 'pointer', borderBottom: '1px solid var(--border-light)', background: 'var(--surface-2)', fontWeight: 700 }}
-              >
-                {expandedDays[day] ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                <span style={{ marginLeft: 8 }}>{day}</span>
-                <span className="badge badge-gray ml-auto">
-                  {groupedMaster[day].length} unique slots
-                </span>
-              </div>
-              {expandedDays[day] && (
-                 <div className="accordion-class-content" style={{ padding: '16px 24px' }}>
-                    {groupedMaster[day].length === 0 ? (
-                      <p className="text-muted">No slots for {day}</p>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        {groupedMaster[day].map((slotInfo, i) => (
-                          <div key={i} className={`card slot-card ${slotInfo.type === 'tuition' ? 'tuition-border' : 'other-border'}`} style={{ padding: 16 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                              <div className="fw-600">
-                                {formatTime12h(slotInfo.startTime)} – {formatTime12h(slotInfo.endTime)}
-                                <span className={`badge ml-8 ${slotInfo.type === 'tuition' ? 'badge-blue' : 'badge-orange'}`}>
-                                  {slotInfo.type === 'tuition' ? 'My Slot' : 'Other Tuition'}
-                                </span>
-                              </div>
-                              <button className="btn-ghost btn-sm" onClick={() => {
-                                setEditingSlotId(null);
-                                setModalStudentId('');
-                                setForm({ day: day as DayOfWeek, startTime: slotInfo.startTime, endTime: slotInfo.endTime, type: slotInfo.type, notes: '' });
-                                setSubjects([]);
-                                setShowModal(true);
-                              }}>
-                                <Plus size={14} /> Add Student
+          
+          <div style={{ display: 'flex', gap: '16px', minWidth: '900px', padding: '8px' }}>
+            {DAYS.map(day => (
+              <div key={day} style={{ flex: 1, minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ padding: '12px', background: 'var(--surface-2)', borderRadius: '8px', borderTop: '4px solid var(--primary)', fontWeight: 700, textAlign: 'center', boxShadow: 'var(--shadow-sm)' }}>
+                  {day}
+                </div>
+                
+                {groupedMaster[day].length === 0 ? (
+                  <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px', background: 'var(--surface-2)', borderRadius: '8px', border: '1px dashed var(--border)' }}>
+                    No slots
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {groupedMaster[day].map((slotInfo, i) => (
+                      <div key={i} className={`card slot-card ${slotInfo.type === 'tuition' ? 'tuition-border' : 'other-border'}`} style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', margin: 0, boxShadow: 'var(--shadow-sm)' }}>
+                        <div className="fw-700" style={{ fontSize: '13px', color: 'var(--text)' }}>
+                          {formatTime12h(slotInfo.startTime)} – {formatTime12h(slotInfo.endTime)}
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {slotInfo.students.map((st: any) => (
+                            <div key={st.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', width: '100%', border: '1px solid var(--border-light)' }}>
+                              <span 
+                                className="fw-500 hover-primary" 
+                                style={{ cursor: 'pointer', transition: 'color 0.2s' }}
+                                title={st.subjects.join(', ')}
+                                onClick={() => { setSelectedStudent(st.id); setViewMode('student'); }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
+                              >
+                                {st.name}
+                              </span>
+                              <button className="icon-btn danger" style={{ padding: '2px', height: 'auto', width: 'auto' }} onClick={() => deleteSlot(st.slotId, st.id)} title="Remove">
+                                <Trash2 size={14} />
                               </button>
                             </div>
-                            <div className="table-wrap">
-                              <table className="data-table">
-                                <thead><tr><th>Student</th><th>Subjects</th><th style={{width: 80}}>Actions</th></tr></thead>
-                                <tbody>
-                                  {slotInfo.students.map((st: any) => (
-                                    <tr key={st.id}>
-                                      <td className="fw-500">{st.name}</td>
-                                      <td>{st.subjects.join(', ')}</td>
-                                      <td>
-                                        <div className="action-btns">
-                                          <button className="icon-btn danger" onClick={() => deleteSlot(st.slotId, st.id)} title="Remove">
-                                            <Trash2 size={15} />
-                                          </button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                        <button className="btn-ghost btn-sm" style={{ alignSelf: 'flex-start', marginTop: '4px', padding: '4px 8px', fontSize: '12px', color: 'var(--primary)' }} onClick={() => {
+                          setEditingSlotId(null);
+                          setModalStudentId('');
+                          setForm({ day: day as DayOfWeek, startTime: slotInfo.startTime, endTime: slotInfo.endTime, type: slotInfo.type, notes: '' });
+                          setSubjects([]);
+                          setShowModal(true);
+                        }}>
+                          <Plus size={14} /> Add Student
+                        </button>
                       </div>
-                    )}
-                 </div>
-              )}
-            </div>
-          ))}
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
