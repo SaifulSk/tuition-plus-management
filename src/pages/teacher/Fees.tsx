@@ -4,7 +4,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, FeePayment, PaymentMode } from '../../types';
-import { Plus, X, Printer, Share2, Receipt, Search, Pencil } from 'lucide-react';
+import { Plus, X, Printer, Share2, Receipt, Search, Pencil, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import html2canvas from 'html2canvas';
@@ -35,6 +35,7 @@ export default function Fees() {
     monthsPaid: [] as string[],
   });
   const [saving, setSaving] = useState(false);
+  const [showFees, setShowFees] = useState(false);
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
@@ -140,7 +141,12 @@ export default function Fees() {
     <div className="page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Fee Management</h1>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            Fee Management
+            <button onClick={() => setShowFees(!showFees)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}>
+              {showFees ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </h1>
           <p className="page-sub">Track payments and generate receipts</p>
         </div>
         {selectedStudent && (
@@ -170,14 +176,14 @@ export default function Fees() {
             <div className="stat-card stat-blue">
               <div className="stat-icon"><Receipt size={20}/></div>
               <div className="stat-body">
-                <div className="stat-value">₹{student?.confirmedFee?.toLocaleString()}/mo</div>
+                <div className="stat-value">{showFees ? `₹${student?.confirmedFee?.toLocaleString()}/mo` : '₹****'}</div>
                 <div className="stat-label">Confirmed Fee</div>
               </div>
             </div>
             <div className="stat-card stat-green">
               <div className="stat-icon"><Receipt size={20}/></div>
               <div className="stat-body">
-                <div className="stat-value">₹{totalPaid.toLocaleString()}</div>
+                <div className="stat-value">{showFees ? `₹${totalPaid.toLocaleString()}` : '₹****'}</div>
                 <div className="stat-label">Total Collected</div>
               </div>
             </div>
@@ -203,7 +209,7 @@ export default function Fees() {
                     {payments.map(p => (
                       <tr key={p.id}>
                         <td>{p.datePaid ? format(p.datePaid.toDate(),'dd MMM yyyy') : '—'}</td>
-                        <td className="fw-600">₹{p.amount?.toLocaleString()}</td>
+                        <td className="fw-600">{showFees ? `₹${p.amount?.toLocaleString()}` : '₹****'}</td>
                         <td>
                           <div className="subject-chips">
                             {p.monthsPaid?.map(m => <span key={m} className="chip">{formatMonthLabel(m)}</span>)}

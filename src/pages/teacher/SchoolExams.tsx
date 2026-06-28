@@ -9,6 +9,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend
 } from 'recharts';
+import MultiSelect from '../../components/common/MultiSelect';
 
 const EXAM_NAMES = ['Unit Test 1', 'Unit Test 2', 'Midterm', 'SA1', 'SA2', 'Final Exam'];
 const COLORS = ['#1E3A5F','#C1121F','#10b981','#f59e0b','#8b5cf6','#06b6d4','#ec4899'];
@@ -20,9 +21,10 @@ export default function SchoolExams() {
   const [showModal, setShowModal] = useState(false);
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
   const [form, setForm] = useState({
-    examName: '', subject: '', maxMarks: '', marksObtained: '',
+    examName: '', maxMarks: '', marksObtained: '',
     date: new Date().toISOString().split('T')[0],
   });
+  const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
 
@@ -43,14 +45,14 @@ export default function SchoolExams() {
   useEffect(() => { if (selectedStudent) loadExams(selectedStudent); else setExams([]); }, [selectedStudent]);
 
   const student = students.find(s => s.id === selectedStudent);
-  const subjects = [...new Set(exams.map(e => e.subject))];
+  const distinctSubjects = [...new Set(exams.flatMap(e => e.subjects || []))];
   const examNames = [...new Set(exams.map(e => e.examName))];
 
   // Build chart data: x = examName, y = percentage per subject
   const chartData = examNames.map(en => {
     const row: Record<string, string | number> = { exam: en };
-    subjects.forEach(sub => {
-      const found = exams.find(e => e.examName === en && e.subject === sub);
+    distinctSubjects.forEach(sub => {
+      const found = exams.find(e => e.examName === en && e.subjects?.includes(sub));
       if (found) row[sub] = Math.round((found.marksObtained / found.maxMarks) * 100);
     });
     return row;
@@ -60,29 +62,30 @@ export default function SchoolExams() {
     setEditingExamId(ex.id);
     setForm({
       examName: ex.examName || '',
-      subject: ex.subject || '',
       maxMarks: ex.maxMarks?.toString() || '',
       marksObtained: ex.marksObtained?.toString() || '',
       date: ex.date ? new Date(ex.date.toDate().getTime() - ex.date.toDate().getTimezoneOffset() * 60000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     });
+    setSubjects(ex.subjects || []);
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingExamId(null);
-    setForm({ examName:'', subject:'', maxMarks:'', marksObtained:'', date: new Date().toISOString().split('T')[0] });
+    setForm({ examName:'', maxMarks:'', marksObtained:'', date: new Date().toISOString().split('T')[0] });
+    setSubjects([]);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudent || !form.examName || !form.subject) { toast.error('Fill required fields'); return; }
+    if (!selectedStudent || !form.examName || subjects.length === 0) { toast.error('Fill required fields'); return; }
     setSaving(true);
     try {
       const payload = {
         studentId: selectedStudent,
         examName: form.examName,
-        subject: form.subject,
+        subjects,
         maxMarks: Number(form.maxMarks),
         marksObtained: Number(form.marksObtained),
         date: Timestamp.fromDate(new Date(form.date)),
@@ -119,7 +122,7 @@ export default function SchoolExams() {
           <p className="page-sub">Track and visualize school exam performance</p>
         </div>
         {selectedStudent && (
-          <button className="btn-primary" onClick={() => { setEditingExamId(null); setForm({ examName:'', subject:'', maxMarks:'', marksObtained:'', date: new Date().toISOString().split('T')[0] }); setShowModal(true); }}>
+          <button className="btn-primary" onClick={() => { setEditingExamId(null); setForm({ examName:'', maxMarks:'', marksObtained:'', date: new Date().toISOString().split('T')[0] }); setSubjects([]); setShowModal(true); }}>
             <Plus size={18}/> Add Result
           </button>
         )}
@@ -151,7 +154,7 @@ export default function SchoolExams() {
                 <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 12 }} />
                 <Tooltip formatter={(v: any, name: string) => [`${v}%`, name]} />
                 <Legend />
-                {subjects.map((sub, i) => (
+                {distinctSubjects.map((sub, i) => (
                   <Line
                     key={sub}
                     type="monotone"
@@ -168,8 +171,8 @@ export default function SchoolExams() {
 
           {/* Per-subject summary */}
           <div className="stats-grid-sm mb-16">
-            {subjects.map((sub, i) => {
-              const subExams = exams.filter(e => e.subject === sub);
+            {distinctSubjects.map((sub, i) => {
+              const subExams = exams.filter(e => e.subjects?.includes(sub));
               const avg = subExams.length
                 ? Math.round(subExams.reduce((a,e) => a + (e.marksObtained/e.maxMarks)*100, 0) / subExams.length)
                 : 0;
@@ -191,7 +194,7 @@ export default function SchoolExams() {
             <div className="table-wrap">
               <table className="data-table">
                 <thead>
-                  <tr><th>Exam</th><th>Subject</th><th>Date</th><th>Marks</th><th>Max</th><th>%</th><th></th></tr>
+                  <tr><th>Exam</th><th>Subjects</th><th>Date</th><th>Marks</th><th>Max</th><th>%</th><th></th></tr>
                 </thead>
                 <tbody>
                   {exams.map(ex => {
@@ -199,7 +202,7 @@ export default function SchoolExams() {
                     return (
                       <tr key={ex.id}>
                         <td className="fw-600">{ex.examName}</td>
-                        <td>{ex.subject}</td>
+                        <td>{ex.subjects?.join(', ')}</td>
                         <td>{ex.date ? format(ex.date.toDate(),'dd MMM yyyy') : '—'}</td>
                         <td>{ex.marksObtained}</td>
                         <td>{ex.maxMarks}</td>
@@ -239,11 +242,14 @@ export default function SchoolExams() {
                   <datalist id="exam-names">{EXAM_NAMES.map(n => <option key={n} value={n}/>)}</datalist>
                 </div>
                 <div className="form-group">
-                  <label>Subject *</label>
-                  <select value={form.subject} onChange={e => setForm(f=>({...f,subject:e.target.value}))} required>
-                    <option value="">Select a subject</option>
-                    {Array.from(new Set([...(student?.subjects || []), ...masterSubjects])).map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  <label>Subjects *</label>
+                  <MultiSelect 
+                    options={Array.from(new Set([...(student?.subjects || []), ...masterSubjects]))}
+                    selected={subjects}
+                    onChange={setSubjects}
+                    placeholder="Select subjects"
+                    required
+                  />
                 </div>
                 <div className="form-group">
                   <label>Max Marks *</label>

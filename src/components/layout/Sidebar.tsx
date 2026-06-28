@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CalendarDays, Wallet, BookOpen,
   ClipboardList, BarChart3, PartyPopper, LogOut, GraduationCap,
-  Menu, ChevronRight
+  Menu, ChevronRight, Building, FileText
 } from 'lucide-react';
 import { signOut } from '../../firebase/auth';
 import { useAuth } from '../../contexts/AuthContext';
@@ -16,8 +16,10 @@ const teacherLinks = [
   { to: '/teacher/fees', label: 'Fees', icon: Wallet },
   { to: '/teacher/syllabus', label: 'Syllabus', icon: BookOpen },
   { to: '/teacher/tests', label: 'Tuition Tests', icon: ClipboardList },
+  { to: '/teacher/exams', label: 'School Exams', icon: FileText },
   { to: '/teacher/events', label: 'Events', icon: PartyPopper },
   { to: '/teacher/subjects', label: 'Subjects Master', icon: BookOpen },
+  { to: '/teacher/schools', label: 'Schools Master', icon: Building },
 ];
 
 const studentLinks = [

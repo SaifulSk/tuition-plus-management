@@ -36,7 +36,7 @@ export interface ScheduleSlot {
   day: DayOfWeek;
   startTime: string;  // "HH:mm"
   endTime: string;
-  subject: string;
+  subjects: string[];
   type: SlotType;
   notes?: string;
 }
@@ -61,7 +61,7 @@ export type SyllabusStatus = 'not_started' | 'in_progress' | 'completed';
 export interface SyllabusTopic {
   id: string;
   studentId: string;
-  subject: string;
+  subjects: string[];
   chapter: string;
   topic: string;
   status: SyllabusStatus;
@@ -72,7 +72,7 @@ export interface SyllabusTopic {
 export interface TuitionTest {
   id: string;
   title: string;
-  subject: string;
+  subjects: string[];
   date: Timestamp;
   maxMarks: number;
   studentMarks: Record<string, number>;  // { [studentId]: marks }
@@ -83,7 +83,7 @@ export interface SchoolExam {
   id: string;
   studentId: string;
   examName: string;       // SA1, SA2, Unit Test 1…
-  subject: string;
+  subjects: string[];
   maxMarks: number;
   marksObtained: number;
   date: Timestamp;

@@ -5,6 +5,7 @@ import type { Student, TuitionTest } from '../../types';
 import { Plus, X, ClipboardList, Trash2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
+import MultiSelect from '../../components/common/MultiSelect';
 
 export default function Tests() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -12,9 +13,10 @@ export default function Tests() {
   const [showModal, setShowModal] = useState(false);
   const [editingTestId, setEditingTestId] = useState<string | null>(null);
   const [form, setForm] = useState({
-    title: '', subject: '', date: new Date().toISOString().split('T')[0],
+    title: '', date: new Date().toISOString().split('T')[0],
     maxMarks: '', marks: {} as Record<string, string>,
   });
+  const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
 
@@ -48,23 +50,24 @@ export default function Tests() {
     }
     setForm({
       title: t.title || '',
-      subject: t.subject || '',
       date: t.date ? new Date(t.date.toDate().getTime() - t.date.toDate().getTimezoneOffset() * 60000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       maxMarks: t.maxMarks?.toString() || '',
       marks: marksStr,
     });
+    setSubjects(t.subjects || []);
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingTestId(null);
-    setForm(f => ({ ...f, title:'', subject:'', maxMarks:'', marks: Object.fromEntries(students.map(s=>[s.id,''])) }));
+    setForm(f => ({ ...f, title:'', maxMarks:'', marks: Object.fromEntries(students.map(s=>[s.id,''])) }));
+    setSubjects([]);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || !form.subject || !form.maxMarks) { toast.error('Fill required fields'); return; }
+    if (!form.title || subjects.length === 0 || !form.maxMarks) { toast.error('Fill required fields'); return; }
     setSaving(true);
     const studentMarks: Record<string,number> = {};
     Object.entries(form.marks).forEach(([id,v]) => {
@@ -73,7 +76,7 @@ export default function Tests() {
     try {
       const payload = {
         title: form.title,
-        subject: form.subject,
+        subjects,
         date: Timestamp.fromDate(new Date(form.date)),
         maxMarks: Number(form.maxMarks),
         studentMarks,
@@ -108,7 +111,7 @@ export default function Tests() {
           <h1 className="page-title">Tuition Tests</h1>
           <p className="page-sub">Log tests and manage student marks</p>
         </div>
-        <button className="btn-primary" onClick={() => { setEditingTestId(null); setForm(f => ({ ...f, title:'', subject:'', maxMarks:'', marks: Object.fromEntries(students.map(s=>[s.id,''])) })); setShowModal(true); }}>
+        <button className="btn-primary" onClick={() => { setEditingTestId(null); setForm(f => ({ ...f, title:'', maxMarks:'', marks: Object.fromEntries(students.map(s=>[s.id,''])) })); setSubjects([]); setShowModal(true); }}>
           <Plus size={18}/> Log Test
         </button>
       </div>
@@ -122,7 +125,7 @@ export default function Tests() {
               <thead>
                 <tr>
                   <th>Title</th>
-                  <th>Subject</th>
+                  <th>Subjects</th>
                   <th>Date</th>
                   <th>Max Marks</th>
                   <th>Students Marked</th>
@@ -137,7 +140,7 @@ export default function Tests() {
                   return (
                     <tr key={t.id}>
                       <td className="fw-600">{t.title}</td>
-                      <td>{t.subject}</td>
+                      <td>{t.subjects?.join(', ')}</td>
                       <td>{t.date ? format(t.date.toDate(),'dd MMM yyyy') : '—'}</td>
                       <td>{t.maxMarks}</td>
                       <td>{marked.length} / {students.length}</td>
@@ -166,7 +169,7 @@ export default function Tests() {
       {/* Test detail cards */}
       {tests.map(t => (
         <div key={t.id} className="card mt-16">
-          <h3 className="section-title">{t.title} — {t.subject} ({t.date ? format(t.date.toDate(),'dd MMM yyyy') : ''})</h3>
+          <h3 className="section-title">{t.title} — {t.subjects?.join(', ')} ({t.date ? format(t.date.toDate(),'dd MMM yyyy') : ''})</h3>
           <div className="marks-grid">
             {students.map(s => {
               const mark = t.studentMarks?.[s.id];
@@ -204,11 +207,14 @@ export default function Tests() {
                   <input type="text" placeholder="e.g. Chapter 3 Test" value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} required />
                 </div>
                 <div className="form-group">
-                  <label>Subject *</label>
-                  <select value={form.subject} onChange={e => setForm(f=>({...f,subject:e.target.value}))} required>
-                    <option value="">Select a subject</option>
-                    {masterSubjects.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  <label>Subjects *</label>
+                  <MultiSelect 
+                    options={masterSubjects}
+                    selected={subjects}
+                    onChange={setSubjects}
+                    placeholder="Select subjects"
+                    required
+                  />
                 </div>
                 <div className="form-group">
                   <label>Date *</label>

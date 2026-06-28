@@ -1,17 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   collection, query, getDocs, addDoc, updateDoc, deleteDoc,
-  doc, serverTimestamp, orderBy
+  doc, orderBy
 } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../../firebase/config';
 import { setDoc } from 'firebase/firestore';
-import { Search, Plus, Trash2, Eye, X, UserPlus, ChevronDown, Pencil } from 'lucide-react';
+import { Search, Plus, Trash2, Eye, EyeOff, X, UserPlus, ChevronDown, ChevronRight, Pencil } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import type { Student } from '../../types';
 import { format } from 'date-fns';
 import { Timestamp } from 'firebase/firestore';
+import MultiSelect from '../../components/common/MultiSelect';
 
 const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 
@@ -20,21 +21,24 @@ const EMPTY_FORM = {
   phone: '', parentPhone: '', confirmedFee: '',
   joiningDate: new Date().toISOString().split('T')[0],
   notes: '', email: '', tempPassword: '',
-  subjectInput: '',
 };
 
 export default function Students() {
   const [students, setStudents] = useState<Student[]>([]);
   const [filtered, setFiltered] = useState<Student[]>([]);
   const [search, setSearch] = useState('');
-  const [classFilter, setClassFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
+  const [masterSchools, setMasterSchools] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+
+  const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [showFees, setShowFees] = useState(false);
 
   const loadStudents = async () => {
     setLoading(true);
@@ -53,24 +57,27 @@ export default function Students() {
     getDocs(collection(db, 'subjects')).then(snap => {
       setMasterSubjects(snap.docs.map(d => d.data().name));
     });
+    getDocs(collection(db, 'schools')).then(snap => {
+      setMasterSchools(snap.docs.map(d => d.data().name));
+    });
   }, []);
 
   useEffect(() => {
     let list = students;
     if (search) list = list.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
-    if (classFilter) list = list.filter(s => s.class === classFilter);
     setFiltered(list);
-  }, [search, classFilter, students]);
+  }, [search, students]);
+
+  const toggleClass = (cls: string) => {
+    setExpandedClasses(p => ({ ...p, [cls]: !p[cls] }));
+  };
+
+  const toggleSection = (secKey: string) => {
+    setExpandedSections(p => ({ ...p, [secKey]: !p[secKey] }));
+  };
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
-
-  const addSubject = () => {
-    const s = form.subjectInput.trim();
-    if (!s || subjects.includes(s)) return;
-    setSubjects(p => [...p, s]);
-    setForm(f => ({ ...f, subjectInput: '' }));
-  };
 
   const openEditModal = (s: Student) => {
     setEditingStudentId(s.id);
@@ -86,7 +93,6 @@ export default function Students() {
       notes: s.notes || '',
       email: s.email || '',
       tempPassword: '',
-      subjectInput: '',
     });
     setSubjects(s.subjects || []);
     setShowModal(true);
@@ -101,8 +107,8 @@ export default function Students() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.class) {
-      toast.error('Name and Class are required'); return;
+    if (!form.name || !form.class || !form.school) {
+      toast.error('Name, Class, and School are required'); return;
     }
     
     setSaving(true);
@@ -127,7 +133,6 @@ export default function Students() {
         }
         toast.success(`${form.name} updated successfully!`);
       } else {
-        // If one of email/password is filled but not the other, warn
         if ((form.email && !form.tempPassword) || (!form.email && form.tempPassword)) {
           toast.error('Provide both email and password to enable student login, or leave both blank'); return;
         }
@@ -136,12 +141,10 @@ export default function Students() {
         }
 
         let uid = '';
-        // Only create Firebase Auth account if email + password are both provided
         if (form.email && form.tempPassword) {
           const cred = await createUserWithEmailAndPassword(auth, form.email, form.tempPassword);
           uid = cred.user.uid;
         }
-        // Save student doc
         const studentRef = await addDoc(collection(db, 'students'), {
           name: form.name,
           class: form.class,
@@ -157,7 +160,6 @@ export default function Students() {
           uid,
           active: true,
         });
-        // Create user profile only if login credentials were provided
         if (uid) {
           await setDoc(doc(db, 'users', uid), {
             role: 'student',
@@ -185,6 +187,16 @@ export default function Students() {
     toast.success(`${s.name} marked ${!s.active ? 'active' : 'inactive'}`);
   };
 
+  const groupedByClass = filtered.reduce((acc, s) => {
+    if (!acc[s.class]) acc[s.class] = {};
+    const sec = s.section || 'No Section';
+    if (!acc[s.class][sec]) acc[s.class][sec] = [];
+    acc[s.class][sec].push(s);
+    return acc;
+  }, {} as Record<string, Record<string, Student[]>>);
+
+  const sortedClasses = Object.keys(groupedByClass).sort((a,b) => parseInt(a) - parseInt(b));
+
   return (
     <div className="page">
       <div className="page-header">
@@ -208,86 +220,125 @@ export default function Students() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <select
-          id="class-filter"
-          className="select-filter"
-          value={classFilter}
-          onChange={e => setClassFilter(e.target.value)}
-        >
-          <option value="">All Classes</option>
-          {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
-        </select>
       </div>
 
-      {/* Table */}
-      <div className="card">
+      {/* Accordion List */}
+      <div className="card" style={{ padding: '0' }}>
         {loading ? (
-          <div className="skeleton-list">{[1,2,3,4,5].map(i=><div key={i} className="skeleton-row tall"/>)}</div>
+          <div className="skeleton-list" style={{ padding: 24 }}>{[1,2,3,4,5].map(i=><div key={i} className="skeleton-row tall"/>)}</div>
         ) : filtered.length === 0 ? (
-          <div className="empty-state">
+          <div className="empty-state" style={{ padding: 48 }}>
             <UserPlus size={40} />
             <p>No students found</p>
           </div>
         ) : (
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Class</th>
-                  <th>Subjects</th>
-                  <th>Fee (₹/mo)</th>
-                  <th>Joined</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(s => (
-                  <tr key={s.id}>
-                    <td>
-                      <div className="table-student">
-                        <div className="student-avatar sm">{s.name.charAt(0)}</div>
-                        <div>
-                          <div className="fw-600">{s.name}</div>
-                          <div className="text-muted text-sm">{s.school}</div>
+          <div className="accordion-container">
+            {sortedClasses.map(cls => (
+              <div key={cls} className="accordion-class-group">
+                <div 
+                  className="accordion-header" 
+                  onClick={() => toggleClass(cls)}
+                  style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', cursor: 'pointer', borderBottom: '1px solid var(--border-light)', background: 'var(--surface-2)', fontWeight: 700 }}
+                >
+                  {expandedClasses[cls] ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                  <span style={{ marginLeft: 8 }}>Class {cls}</span>
+                  <span className="badge badge-gray ml-auto">
+                    {Object.values(groupedByClass[cls]).flat().length} students
+                  </span>
+                </div>
+                
+                {expandedClasses[cls] && (
+                  <div className="accordion-class-content" style={{ padding: '0' }}>
+                    {Object.keys(groupedByClass[cls]).sort().map(sec => {
+                      const secKey = `${cls}-${sec}`;
+                      const secStudents = groupedByClass[cls][sec];
+                      return (
+                        <div key={secKey} className="accordion-section-group">
+                          <div 
+                            className="accordion-section-header" 
+                            onClick={() => toggleSection(secKey)}
+                            style={{ display: 'flex', alignItems: 'center', padding: '12px 24px 12px 48px', cursor: 'pointer', borderBottom: '1px solid var(--border-light)', background: 'var(--surface)', fontWeight: 600, fontSize: '14px' }}
+                          >
+                            {expandedSections[secKey] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                            <span style={{ marginLeft: 8 }}>{sec === 'No Section' ? 'No Section' : `Section ${sec}`}</span>
+                            <span className="badge badge-gray ml-auto" style={{ fontSize: '11px' }}>
+                              {secStudents.length} students
+                            </span>
+                          </div>
+                          
+                          {expandedSections[secKey] && (
+                            <div className="table-wrap" style={{ borderBottom: '1px solid var(--border-light)' }}>
+                              <table className="data-table">
+                                <thead>
+                                  <tr>
+                                    <th style={{ paddingLeft: '72px' }}>Name</th>
+                                    <th>Subjects</th>
+                                    <th>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        Fee (₹/mo)
+                                        <button onClick={() => setShowFees(!showFees)} style={{ background:'none', border:'none', cursor:'pointer', color: 'var(--text-muted)' }}>
+                                          {showFees ? <EyeOff size={14}/> : <Eye size={14}/>}
+                                        </button>
+                                      </div>
+                                    </th>
+                                    <th>Joined</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {secStudents.map(s => (
+                                    <tr key={s.id}>
+                                      <td style={{ paddingLeft: '72px' }}>
+                                        <div className="table-student">
+                                          <div className="student-avatar sm">{s.name.charAt(0)}</div>
+                                          <div>
+                                            <div className="fw-600">{s.name}</div>
+                                            <div className="text-muted text-sm">{s.school}</div>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td>
+                                        <div className="subject-chips">
+                                          {s.subjects?.slice(0,3).map(sub => (
+                                            <span key={sub} className="chip">{sub}</span>
+                                          ))}
+                                          {s.subjects?.length > 3 && <span className="chip muted">+{s.subjects.length-3}</span>}
+                                        </div>
+                                      </td>
+                                      <td>{showFees ? `₹${s.confirmedFee?.toLocaleString()}` : '₹ ****'}</td>
+                                      <td>{s.joiningDate ? format(s.joiningDate.toDate(), 'dd MMM yyyy') : '—'}</td>
+                                      <td>
+                                        <span
+                                          className={`badge cursor-pointer ${s.active ? 'badge-green' : 'badge-red'}`}
+                                          onClick={() => toggleActive(s)}
+                                        >
+                                          {s.active ? 'Active' : 'Inactive'}
+                                        </span>
+                                      </td>
+                                      <td>
+                                        <div className="action-btns">
+                                          <button className="icon-btn" onClick={() => openEditModal(s)} title="Edit">
+                                            <Pencil size={16} />
+                                          </button>
+                                          <Link to={`/teacher/students/${s.id}`} className="icon-btn" title="View">
+                                            <Eye size={16} />
+                                          </Link>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </td>
-                    <td>Class {s.class}{s.section && ` - ${s.section}`}</td>
-                    <td>
-                      <div className="subject-chips">
-                        {s.subjects?.slice(0,3).map(sub => (
-                          <span key={sub} className="chip">{sub}</span>
-                        ))}
-                        {s.subjects?.length > 3 && <span className="chip muted">+{s.subjects.length-3}</span>}
-                      </div>
-                    </td>
-                    <td>₹{s.confirmedFee?.toLocaleString()}</td>
-                    <td>{s.joiningDate ? format(s.joiningDate.toDate(), 'dd MMM yyyy') : '—'}</td>
-                    <td>
-                      <span
-                        className={`badge cursor-pointer ${s.active ? 'badge-green' : 'badge-red'}`}
-                        onClick={() => toggleActive(s)}
-                        title="Click to toggle"
-                      >
-                        {s.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="action-btns">
-                        <button className="icon-btn" onClick={() => openEditModal(s)} title="Edit">
-                          <Pencil size={16} />
-                        </button>
-                        <Link to={`/teacher/students/${s.id}`} className="icon-btn" title="View">
-                          <Eye size={16} />
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -318,8 +369,11 @@ export default function Students() {
                   <input type="text" placeholder="A / B / C" value={form.section} onChange={set('section')} />
                 </div>
                 <div className="form-group">
-                  <label>School</label>
-                  <input type="text" placeholder="School name" value={form.school} onChange={set('school')} />
+                  <label>School *</label>
+                  <select value={form.school} onChange={set('school')} required>
+                    <option value="">Select school</option>
+                    {masterSchools.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Student Phone</label>
@@ -354,26 +408,12 @@ export default function Students() {
               {/* Subjects */}
               <div className="form-group">
                 <label>Subjects</label>
-                <div className="subject-input-row">
-                  <select
-                    value={form.subjectInput}
-                    onChange={set('subjectInput')}
-                  >
-                    <option value="">Select a subject</option>
-                    {masterSubjects.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  <button type="button" className="btn-secondary" onClick={addSubject} disabled={!form.subjectInput}>
-                    <Plus size={16} /> Add
-                  </button>
-                </div>
-                <div className="subject-chips mt-8">
-                  {subjects.map(s => (
-                    <span key={s} className="chip removable">
-                      {s}
-                      <button type="button" onClick={() => setSubjects(p => p.filter(x => x !== s))}><X size={12} /></button>
-                    </span>
-                  ))}
-                </div>
+                <MultiSelect 
+                  options={masterSubjects}
+                  selected={subjects}
+                  onChange={setSubjects}
+                  placeholder="Select subjects"
+                />
               </div>
 
               {/* Notes */}

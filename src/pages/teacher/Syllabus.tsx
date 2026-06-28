@@ -5,6 +5,7 @@ import type { Student, SyllabusTopic, SyllabusStatus } from '../../types';
 import { Plus, X, BookOpen, ChevronRight, Trash2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Timestamp } from 'firebase/firestore';
+import MultiSelect from '../../components/common/MultiSelect';
 
 const STATUS_OPTIONS: { value: SyllabusStatus; label: string; color: string }[] = [
   { value: 'not_started', label: 'Not Started', color: 'badge-gray' },
@@ -18,7 +19,8 @@ export default function Syllabus() {
   const [topics, setTopics] = useState<SyllabusTopic[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
-  const [form, setForm] = useState({ subject: '', chapter: '', topic: '', status: 'not_started' as SyllabusStatus });
+  const [form, setForm] = useState({ chapter: '', topic: '', status: 'not_started' as SyllabusStatus });
+  const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [subjectFilter, setSubjectFilter] = useState('');
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
@@ -40,35 +42,36 @@ export default function Syllabus() {
   useEffect(() => { if (selectedStudent) loadTopics(selectedStudent); else setTopics([]); }, [selectedStudent]);
 
   const student = students.find(s => s.id === selectedStudent);
-  const subjects = student?.subjects || [...new Set(topics.map(t => t.subject))];
-  const filtered = subjectFilter ? topics.filter(t => t.subject === subjectFilter) : topics;
+  const distinctSubjects = student?.subjects || [...new Set(topics.flatMap(t => t.subjects || []))];
+  const filtered = subjectFilter ? topics.filter(t => t.subjects?.includes(subjectFilter)) : topics;
   const completed = topics.filter(t => t.status === 'completed').length;
   const progress = topics.length ? Math.round((completed / topics.length) * 100) : 0;
 
   const openEditModal = (t: SyllabusTopic) => {
     setEditingTopicId(t.id);
     setForm({
-      subject: t.subject || '',
       chapter: t.chapter || '',
       topic: t.topic || '',
       status: t.status || 'not_started',
     });
+    setSubjects(t.subjects || []);
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingTopicId(null);
-    setForm({ subject:'', chapter:'', topic:'', status:'not_started' });
+    setForm({ chapter:'', topic:'', status:'not_started' });
+    setSubjects([]);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudent || !form.subject || !form.topic) { toast.error('Fill required fields'); return; }
+    if (!selectedStudent || subjects.length === 0 || !form.topic) { toast.error('Fill required fields'); return; }
     setSaving(true);
     try {
       const payload: any = {
-        ...form, studentId: selectedStudent,
+        ...form, subjects, studentId: selectedStudent,
       };
       if (form.status === 'completed') {
         payload.completedDate = Timestamp.now();
@@ -113,7 +116,7 @@ export default function Syllabus() {
           <p className="page-sub">Track chapter and topic completion per student</p>
         </div>
         {selectedStudent && (
-          <button className="btn-primary" onClick={() => { setEditingTopicId(null); setForm({ subject:'', chapter:'', topic:'', status:'not_started' }); setShowModal(true); }}>
+          <button className="btn-primary" onClick={() => { setEditingTopicId(null); setForm({ chapter:'', topic:'', status:'not_started' }); setSubjects([]); setShowModal(true); }}>
             <Plus size={18}/> Add Topic
           </button>
         )}
@@ -152,7 +155,7 @@ export default function Syllabus() {
           {/* Subject filter tabs */}
           <div className="tabs mb-16">
             <button className={`tab-btn ${!subjectFilter?'active':''}`} onClick={()=>setSubjectFilter('')}>All</button>
-            {subjects.map(s => (
+            {distinctSubjects.map(s => (
               <button key={s} className={`tab-btn ${subjectFilter===s?'active':''}`} onClick={()=>setSubjectFilter(s)}>{s}</button>
             ))}
           </div>
@@ -167,7 +170,7 @@ export default function Syllabus() {
                   <div key={t.id} className={`syllabus-item status-${t.status}`}>
                     <div className="syllabus-item-info">
                       <div className="fw-600">{t.topic}</div>
-                      <div className="text-muted text-sm">{t.subject}{t.chapter && ` — ${t.chapter}`}</div>
+                      <div className="text-muted text-sm">{t.subjects?.join(', ')}{t.chapter && ` — ${t.chapter}`}</div>
                     </div>
                     <div className="syllabus-item-actions">
                       <select
@@ -197,11 +200,14 @@ export default function Syllabus() {
             </div>
             <form onSubmit={handleSave} className="modal-body">
               <div className="form-group">
-                <label>Subject *</label>
-                <select value={form.subject} onChange={e => setForm(f=>({...f,subject:e.target.value}))} required>
-                  <option value="">Select a subject</option>
-                  {Array.from(new Set([...subjects, ...masterSubjects])).map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <label>Subjects *</label>
+                <MultiSelect 
+                  options={Array.from(new Set([...distinctSubjects, ...masterSubjects]))}
+                  selected={subjects}
+                  onChange={setSubjects}
+                  placeholder="Select subjects"
+                  required
+                />
               </div>
               <div className="form-group">
                 <label>Chapter</label>

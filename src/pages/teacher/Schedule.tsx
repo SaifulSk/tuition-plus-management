@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, ScheduleSlot, DayOfWeek } from '../../types';
 import { Plus, X, Clock, Trash2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
+import MultiSelect from '../../components/common/MultiSelect';
 
 const DAYS: DayOfWeek[] = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-const HOURS = Array.from({length: 16}, (_,i) => `${String(i+6).padStart(2,'0')}:00`);
 
 const COLOR_MAP = {
   tuition: 'slot-tuition',
@@ -24,10 +24,10 @@ export default function Schedule() {
     day: 'Monday' as DayOfWeek,
     startTime: '16:00',
     endTime: '17:00',
-    subject: '',
     type: 'tuition' as 'tuition' | 'other_tuition',
     notes: '',
   });
+  const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
 
@@ -64,25 +64,26 @@ export default function Schedule() {
       day: s.day || 'Monday',
       startTime: s.startTime || '16:00',
       endTime: s.endTime || '17:00',
-      subject: s.subject || '',
       type: s.type || 'tuition',
       notes: s.notes || '',
     });
+    setSubjects(s.subjects || []);
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingSlotId(null);
-    setForm({ day: 'Monday', startTime: '16:00', endTime: '17:00', subject: '', type: 'tuition', notes: '' });
+    setForm({ day: 'Monday', startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' });
+    setSubjects([]);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudent || !form.subject) { toast.error('Fill all fields'); return; }
+    if (!selectedStudent || subjects.length === 0) { toast.error('Fill all fields'); return; }
     setSaving(true);
     try {
-      const payload = { ...form, studentId: selectedStudent };
+      const payload = { ...form, subjects, studentId: selectedStudent };
       if (editingSlotId) {
         import('firebase/firestore').then(({ updateDoc, doc }) => {
            updateDoc(doc(db, 'schedules', selectedStudent, 'slots', editingSlotId), payload);
@@ -114,7 +115,7 @@ export default function Schedule() {
           <p className="page-sub">Manage teaching slots per student</p>
         </div>
         {selectedStudent && (
-          <button className="btn-primary" onClick={() => { setEditingSlotId(null); setForm({ day: 'Monday', startTime: '16:00', endTime: '17:00', subject: '', type: 'tuition', notes: '' }); setShowModal(true); }}>
+          <button className="btn-primary" onClick={() => { setEditingSlotId(null); setForm({ day: 'Monday', startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' }); setSubjects([]); setShowModal(true); }}>
             <Plus size={18} /> Add Slot
           </button>
         )}
@@ -161,7 +162,7 @@ export default function Schedule() {
                     {daySlots.map(slot => (
                       <div key={slot.id} className={`schedule-slot ${COLOR_MAP[slot.type]}`}>
                         <div className="slot-time">{slot.startTime} – {slot.endTime}</div>
-                        <div className="slot-subject">{slot.subject}</div>
+                        <div className="slot-subject">{slot.subjects?.join(', ')}</div>
                         {slot.type === 'other_tuition' && <div className="slot-label">Other Tuition</div>}
                         <div className="slot-actions" style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 4 }}>
                           <button className="slot-delete" style={{background:'white', color:'var(--text)', border:'none', borderRadius:4, padding:2, cursor:'pointer'}} onClick={() => openEditModal(slot)}><Pencil size={12}/></button>
@@ -184,13 +185,13 @@ export default function Schedule() {
             ) : (
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Day</th><th>Time</th><th>Subject</th><th>Type</th><th></th></tr></thead>
+                  <thead><tr><th>Day</th><th>Time</th><th>Subjects</th><th>Type</th><th></th></tr></thead>
                   <tbody>
                     {slots.map(s => (
                       <tr key={s.id}>
                         <td>{s.day}</td>
                         <td>{s.startTime} – {s.endTime}</td>
-                        <td>{s.subject}</td>
+                        <td>{s.subjects?.join(', ')}</td>
                         <td><span className={`badge ${s.type === 'tuition' ? 'badge-blue' : 'badge-orange'}`}>{s.type === 'tuition' ? 'My Slot' : 'Other Tuition'}</span></td>
                         <td>
                           <div className="action-btns">
@@ -241,11 +242,14 @@ export default function Schedule() {
                 </div>
               </div>
               <div className="form-group">
-                <label>Subject</label>
-                <select value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} required>
-                  <option value="">Select a subject</option>
-                  {masterSubjects.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <label>Subjects</label>
+                <MultiSelect 
+                  options={masterSubjects}
+                  selected={subjects}
+                  onChange={setSubjects}
+                  placeholder="Select subjects"
+                  required
+                />
               </div>
               <div className="form-group">
                 <label>Notes</label>

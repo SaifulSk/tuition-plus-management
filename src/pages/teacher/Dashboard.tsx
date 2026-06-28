@@ -4,7 +4,7 @@ import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   Users, Wallet, ClipboardList, PartyPopper,
-  TrendingUp, BookOpen, CalendarCheck, ArrowRight
+  TrendingUp, BookOpen, CalendarCheck, ArrowRight, Eye, EyeOff
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Student, FeePayment, TuitionTest, CenterEvent } from '../../types';
@@ -28,6 +28,7 @@ export default function TeacherDashboard() {
   });
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showFees, setShowFees] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -103,7 +104,12 @@ export default function TeacherDashboard() {
         <div className="stat-card stat-green">
           <div className="stat-icon"><Wallet size={24} /></div>
           <div className="stat-body">
-            <div className="stat-value">₹{loading ? '—' : stats.feesThisMonth.toLocaleString()}</div>
+            <div className="stat-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {loading ? '₹—' : (showFees ? `₹${stats.feesThisMonth.toLocaleString()}` : '₹****')}
+              <button onClick={() => setShowFees(!showFees)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                {showFees ? <EyeOff size={16} color="var(--text-muted)" /> : <Eye size={16} color="var(--text-muted)" />}
+              </button>
+            </div>
             <div className="stat-label">Fees Collected</div>
             <div className="stat-sub">This month</div>
           </div>
