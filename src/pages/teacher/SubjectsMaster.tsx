@@ -3,6 +3,7 @@ import { collection, getDocs, addDoc, deleteDoc, updateDoc, doc, query, orderBy 
 import { db } from '../../firebase/config';
 import { Plus, X, Trash2, Pencil, Book } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useConfirm } from '../../hooks/useConfirm';
 
 interface SubjectMaster {
   id: string;
@@ -15,6 +16,7 @@ export default function SubjectsMaster() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '' });
   const [saving, setSaving] = useState(false);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   useEffect(() => {
     loadSubjects();
@@ -60,11 +62,12 @@ export default function SubjectsMaster() {
     } finally { setSaving(false); }
   };
 
-  const deleteSubject = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this subject from the master list?')) return;
-    await deleteDoc(doc(db, 'subjects', id));
-    toast.success('Subject deleted');
-    loadSubjects();
+  const deleteSubject = (id: string) => {
+    confirm('Are you sure you want to delete this subject from the master list?', async () => {
+      await deleteDoc(doc(db, 'subjects', id));
+      toast.success('Subject deleted');
+      loadSubjects();
+    });
   };
 
   return (
@@ -127,6 +130,7 @@ export default function SubjectsMaster() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }

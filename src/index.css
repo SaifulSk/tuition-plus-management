@@ -614,6 +614,13 @@ img { max-width: 100%; }
 .badge-orange { background: #ffedd5; color: #9a3412; }
 .badge-purple { background: #ede9fe; color: #5b21b6; }
 .badge-gray { background: #f1f5f9; color: #475569; }
+
+/* Excel Conditional Formatting Badges */
+.badge-excel-dark-green { background: #00B050; color: #ffffff; }
+.badge-excel-light-green { background: #C6EFCE; color: #006100; }
+.badge-excel-yellow { background: #FFEB9C; color: #9C5700; }
+.badge-excel-pink { background: #FFC7CE; color: #9C0006; }
+.badge-excel-red { background: #FF5050; color: #000000; }
 .cursor-pointer { cursor: pointer; }
 
 /* ═══════════════════════════════════════════════════

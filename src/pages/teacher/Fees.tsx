@@ -4,7 +4,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, FeePayment, PaymentMode } from '../../types';
-import { Plus, X, Printer, Share2, Receipt, Search, Pencil, Eye, EyeOff } from 'lucide-react';
+import { Plus, X, Printer, Share2, Receipt, Search, Pencil, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import html2canvas from 'html2canvas';
@@ -28,14 +28,41 @@ export default function Fees() {
   const receiptRef = useRef<HTMLDivElement>(null);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [form, setForm] = useState({
-    amount: '',
     mode: 'Cash' as PaymentMode,
     datePaid: new Date().toISOString().split('T')[0],
     monthInput: new Date().toISOString().slice(0,7),
     monthsPaid: [] as string[],
   });
   const [saving, setSaving] = useState(false);
-  const [showFees, setShowFees] = useState(false);
+  const [showConfirmed, setShowConfirmed] = useState(false);
+  const [showTableFees, setShowTableFees] = useState(false);
+  const [showDueModal, setShowDueModal] = useState(false);
+
+  const [viewMode, setViewMode] = useState<'student' | 'master'>('student');
+  const [masterYear, setMasterYear] = useState<number>(new Date().getFullYear());
+  const [allPayments, setAllPayments] = useState<Record<string, FeePayment[]>>({});
+  const [loadingMaster, setLoadingMaster] = useState(false);
+  const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
+
+  const loadMasterData = async () => {
+    setLoadingMaster(true);
+    try {
+      const all: Record<string, FeePayment[]> = {};
+      await Promise.all(students.map(async s => {
+        const snap = await getDocs(query(collection(db,'fees',s.id,'payments')));
+        all[s.id] = snap.docs.map(d => ({ id: d.id, ...d.data() }) as FeePayment);
+      }));
+      setAllPayments(all);
+    } finally {
+      setLoadingMaster(false);
+    }
+  };
+
+  useEffect(() => {
+    if (viewMode === 'master' && students.length > 0) {
+      loadMasterData();
+    }
+  }, [viewMode, students]);
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
@@ -62,7 +89,6 @@ export default function Fees() {
   const openEditModal = (p: FeePayment) => {
     setEditingPaymentId(p.id);
     setForm({
-      amount: p.amount?.toString() || '',
       mode: p.mode || 'Cash',
       datePaid: p.datePaid ? new Date(p.datePaid.toDate().getTime() - p.datePaid.toDate().getTimezoneOffset() * 60000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       monthInput: new Date().toISOString().slice(0,7),
@@ -74,12 +100,12 @@ export default function Fees() {
   const closeModal = () => {
     setShowModal(false);
     setEditingPaymentId(null);
-    setForm({ amount:'', mode:'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] });
+    setForm({ mode:'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] });
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudent || !form.amount || form.monthsPaid.length === 0) {
+    if (!selectedStudent || form.monthsPaid.length === 0) {
       toast.error('Fill all fields and add at least one month'); return;
     }
     setSaving(true);
@@ -89,7 +115,7 @@ export default function Fees() {
         studentId: selectedStudent,
         studentName: student.name,
         studentClass: student.class,
-        amount: Number(form.amount),
+        amount: (student.confirmedFee || 0) * form.monthsPaid.length,
         mode: form.mode,
         monthsPaid: form.monthsPaid,
         datePaid: Timestamp.fromDate(new Date(form.datePaid)),
@@ -135,26 +161,180 @@ export default function Fees() {
   };
 
   const student = students.find(s => s.id === selectedStudent);
-  const totalPaid = payments.reduce((sum, p) => sum + (p.amount||0), 0);
+  
+  let monthsDueCount = 0;
+  const dueMonthsList: string[] = [];
+  
+  if (student && student.joiningDate) {
+    const joinDate = student.joiningDate.toDate();
+    const currentDate = new Date();
+    
+    const uniquePaidMonths = new Set<string>();
+    payments.forEach(p => {
+      p.monthsPaid?.forEach(m => uniquePaidMonths.add(m));
+    });
+    
+    // Calculate actual months due
+    const startYear = joinDate.getFullYear();
+    const startMonth = joinDate.getMonth();
+    const endYear = currentDate.getFullYear();
+    const endMonth = currentDate.getMonth();
+
+    let y = startYear;
+    let m = startMonth;
+    while (y < endYear || (y === endYear && m <= endMonth)) {
+      const monthStr = `${y}-${String(m + 1).padStart(2, '0')}`;
+      if (!uniquePaidMonths.has(monthStr)) {
+        dueMonthsList.push(monthStr);
+      }
+      m++;
+      if (m > 11) {
+        m = 0;
+        y++;
+      }
+    }
+    monthsDueCount = dueMonthsList.length;
+  }
 
   return (
     <div className="page">
-      <div className="page-header">
+      <div className="page-header" style={{ marginBottom: 0 }}>
         <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h1 className="page-title">
             Fee Management
-            <button onClick={() => setShowFees(!showFees)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}>
-              {showFees ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
           </h1>
           <p className="page-sub">Track payments and generate receipts</p>
         </div>
-        {selectedStudent && (
-          <button className="btn-primary" onClick={() => { setEditingPaymentId(null); setForm({ amount:'', mode:'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] }); setShowModal(true); }}>
+        {viewMode === 'student' && selectedStudent && (
+          <button className="btn-primary" onClick={() => { setEditingPaymentId(null); setForm({ mode:'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] }); setShowModal(true); }}>
             <Plus size={18}/> Record Payment
           </button>
         )}
       </div>
+
+      <div className="filter-bar" style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: 16 }}>
+        <div className="tabs" style={{ marginBottom: 0 }}>
+          <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>
+            Master View
+          </button>
+          <button className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`} onClick={() => setViewMode('student')}>
+            Individual Student
+          </button>
+        </div>
+      </div>
+
+      {viewMode === 'master' && (
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 className="section-title" style={{ margin: 0 }}>Master Fee View</h2>
+            <div className="form-group" style={{ margin: 0, minWidth: '120px' }}>
+              <select value={masterYear} onChange={e => setMasterYear(Number(e.target.value))}>
+                {[2026].map(y => (
+                  <option key={y} value={y}>{y}-{y+1}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          {loadingMaster ? (
+            <div style={{ padding: '40px', textAlign: 'center' }}><span className="btn-spinner" style={{ borderColor: 'var(--navy)', borderTopColor: 'transparent', width: 24, height: 24 }}/></div>
+          ) : (
+            <div>
+              {(() => {
+                const studentsByClass = students.reduce((acc, s) => {
+                  const c = s.class || 'Other';
+                  if (!acc[c]) acc[c] = [];
+                  acc[c].push(s);
+                  return acc;
+                }, {} as Record<string, typeof students>);
+                
+                const classKeys = Object.keys(studentsByClass).sort((a, b) => {
+                  if (a === 'Other') return 1;
+                  if (b === 'Other') return -1;
+                  return Number(a) - Number(b);
+                });
+
+                return classKeys.map(cls => {
+                  const isExpanded = expandedClasses[cls] !== false;
+                  return (
+                  <div key={cls} style={{ marginBottom: '32px' }}>
+                    <h3 
+                      onClick={() => setExpandedClasses(prev => ({...prev, [cls]: !isExpanded}))}
+                      style={{ margin: '0 0 12px 0', color: 'var(--navy)', borderBottom: '2px solid var(--border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                    >
+                      {isExpanded ? <ChevronDown size={20}/> : <ChevronRight size={20}/>}
+                      Class {cls}
+                    </h3>
+                    {isExpanded && (
+                    <div className="table-wrap">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th style={{ minWidth: 150, background: 'var(--surface-2)', color: 'var(--text)', padding: '12px 16px', borderBottom: '1px solid var(--border)', textAlign: 'left' }}>Students</th>
+                            {Array.from({length: 12}).map((_, i) => {
+                              const d = new Date(masterYear, 2 + i);
+                              return <th key={i} style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '12px 8px', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: '13px' }}>{d.toLocaleString('en-US', {month:'short'})}</th>;
+                            })}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {studentsByClass[cls].map(s => (
+                            <tr key={s.id}>
+                              <td style={{ background: 'var(--surface)', color: 'var(--text)', fontWeight: 600, padding: '12px 16px', borderBottom: '1px solid var(--border-light)' }}>{s.name}</td>
+                              {Array.from({length: 12}).map((_, i) => {
+                                const cellDate = new Date(masterYear, 2 + i);
+                                const cellYear = cellDate.getFullYear();
+                                const cellMonth = cellDate.getMonth() + 1;
+                                const monthStr = `${cellYear}-${String(cellMonth).padStart(2, '0')}`;
+                                const isBeforeJoining = s.joiningDate && s.joiningDate.toDate() > new Date(cellYear, cellMonth, 0); // End of month
+                                const paymentsForStudent = allPayments[s.id] || [];
+                                const matchingPayment = paymentsForStudent.find(p => p.monthsPaid?.includes(monthStr));
+                                
+                                let bgColor = '#e2e8f0'; // Slate-200 (before joining)
+                                let text = '';
+                                let subText = '';
+                                let color = 'transparent';
+
+                                if (!isBeforeJoining) {
+                                  if (matchingPayment) {
+                                    text = matchingPayment.datePaid ? format(matchingPayment.datePaid.toDate(), 'dd-MMM') : 'Paid';
+                                    subText = matchingPayment.mode;
+                                    bgColor = matchingPayment.mode === 'Cash' ? '#10b981' : '#6366f1'; // Emerald-500 / Indigo-500
+                                    color = '#ffffff';
+                                  } else {
+                                    bgColor = '#ef4444'; // Red-500 (Due)
+                                    color = '#ffffff';
+                                    if (new Date() < new Date(cellYear, cellMonth - 1, 1)) {
+                                      bgColor = '#bae6fd'; // Sky-200 (Upcoming)
+                                      color = '#0f172a';
+                                    }
+                                  }
+                                }
+
+                                return (
+                                  <td key={i} style={{ background: bgColor, color, textAlign: 'center', padding: '8px 4px', borderBottom: '1px solid var(--border-light)' }}>
+                                    {text && <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: subText ? '2px' : '0' }}>{text}</div>}
+                                    {subText && <div style={{ fontSize: '10px', opacity: 0.9, background: 'rgba(0,0,0,0.2)', display: 'inline-block', padding: '2px 6px', borderRadius: '12px' }}>{subText}</div>}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    )}
+                  </div>
+                  );
+                });
+              })()}
+            </div>
+          )}
+        </div>
+      )}
+
+      {viewMode === 'student' && (
+        <>
 
       {/* Student selector */}
       <div className="card mb-16">
@@ -176,15 +356,20 @@ export default function Fees() {
             <div className="stat-card stat-blue">
               <div className="stat-icon"><Receipt size={20}/></div>
               <div className="stat-body">
-                <div className="stat-value">{showFees ? `₹${student?.confirmedFee?.toLocaleString()}/mo` : '₹****'}</div>
+                <div className="stat-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {showConfirmed ? `₹${student?.confirmedFee?.toLocaleString()}/mo` : '₹****'}
+                  <button onClick={() => setShowConfirmed(!showConfirmed)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}>
+                    {showConfirmed ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
                 <div className="stat-label">Confirmed Fee</div>
               </div>
             </div>
-            <div className="stat-card stat-green">
+            <div className="stat-card stat-red" onClick={() => setShowDueModal(true)} style={{ cursor: 'pointer' }}>
               <div className="stat-icon"><Receipt size={20}/></div>
               <div className="stat-body">
-                <div className="stat-value">{showFees ? `₹${totalPaid.toLocaleString()}` : '₹****'}</div>
-                <div className="stat-label">Total Collected</div>
+                <div className="stat-value">{monthsDueCount}</div>
+                <div className="stat-label">Months Due</div>
               </div>
             </div>
             <div className="stat-card stat-purple">
@@ -204,12 +389,27 @@ export default function Fees() {
             ) : (
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Date</th><th>Amount</th><th>Months Paid</th><th>Mode</th><th>Receipt</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          Amount
+                          <button onClick={() => setShowTableFees(!showTableFees)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}>
+                            {showTableFees ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </div>
+                      </th>
+                      <th>Months Paid</th>
+                      <th>Mode</th>
+                      <th>Receipt</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {payments.map(p => (
                       <tr key={p.id}>
                         <td>{p.datePaid ? format(p.datePaid.toDate(),'dd MMM yyyy') : '—'}</td>
-                        <td className="fw-600">{showFees ? `₹${p.amount?.toLocaleString()}` : '₹****'}</td>
+                        <td className="fw-600">{showTableFees ? `₹${p.amount?.toLocaleString()}` : '₹****'}</td>
                         <td>
                           <div className="subject-chips">
                             {p.monthsPaid?.map(m => <span key={m} className="chip">{formatMonthLabel(m)}</span>)}
@@ -243,6 +443,9 @@ export default function Fees() {
           </div>
         </>
       )}
+      
+        </>
+      )}
 
       {/* Add Payment Modal */}
       {showModal && (
@@ -254,10 +457,6 @@ export default function Fees() {
             </div>
             <form onSubmit={handleSave} className="modal-body">
               <div className="form-grid-2">
-                <div className="form-group">
-                  <label>Amount (₹) *</label>
-                  <input type="number" placeholder="e.g. 1500" value={form.amount} onChange={e => setForm(f=>({...f,amount:e.target.value}))} required />
-                </div>
                 <div className="form-group">
                   <label>Date Paid *</label>
                   <input type="date" value={form.datePaid} onChange={e => setForm(f=>({...f,datePaid:e.target.value}))} required />
@@ -318,7 +517,6 @@ export default function Fees() {
                     <tr><td className="receipt-label">Class</td><td>{currentReceipt.studentClass || student?.class}</td></tr>
                     <tr><td className="receipt-label">Date Paid On</td><td>{currentReceipt.datePaid ? format(currentReceipt.datePaid.toDate(),'d MMMM yyyy') : '—'}</td></tr>
                     <tr><td className="receipt-label">Month Paid For</td><td>{currentReceipt.monthsPaid?.map(formatMonthLabel).join(', ')}</td></tr>
-                    <tr><td className="receipt-label">Amount</td><td className="fw-600">₹{currentReceipt.amount?.toLocaleString()}</td></tr>
                     <tr><td className="receipt-label">Mode Of Payment</td><td>{currentReceipt.mode}</td></tr>
                   </tbody>
                 </table>
@@ -344,6 +542,32 @@ export default function Fees() {
                 <button className="btn-ghost" onClick={() => window.print()}>
                   <Printer size={18}/> Print
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Due Months Modal */}
+      {showDueModal && (
+        <div className="modal-overlay" onClick={() => setShowDueModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Months Due</h2>
+              <button className="modal-close" onClick={() => setShowDueModal(false)}><X size={20}/></button>
+            </div>
+            <div className="modal-body" style={{ padding: '24px 20px' }}>
+              {dueMonthsList.length === 0 ? (
+                <p className="text-muted" style={{ margin: 0 }}>No months are currently due.</p>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {dueMonthsList.map(m => (
+                    <span key={m} className="badge badge-red" style={{ padding: '6px 12px', fontSize: '14px', borderRadius: '16px' }}>{formatMonthLabel(m)}</span>
+                  ))}
+                </div>
+              )}
+              <div className="modal-footer" style={{ marginTop: '24px' }}>
+                 <button className="btn-ghost" onClick={() => setShowDueModal(false)}>Close</button>
               </div>
             </div>
           </div>

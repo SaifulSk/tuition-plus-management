@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, ScheduleSlot, DayOfWeek } from '../../types';
-import { Plus, X, Clock, Trash2, Pencil } from 'lucide-react';
+import { Plus, X, Clock, Trash2, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MultiSelect from '../../components/common/MultiSelect';
+import { useConfirm } from '../../hooks/useConfirm';
 
 const DAYS: DayOfWeek[] = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
@@ -13,9 +14,21 @@ const COLOR_MAP = {
   other_tuition: 'slot-other',
 };
 
+const formatTime12h = (time24: string) => {
+  if (!time24) return '';
+  const [h, m] = time24.split(':');
+  const hours = parseInt(h, 10);
+  const suffix = hours >= 12 ? 'PM' : 'AM';
+  const h12 = hours % 12 || 12;
+  return `${h12}:${m} ${suffix}`;
+};
+
 export default function Schedule() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState('');
+  const [modalStudentId, setModalStudentId] = useState('');
+  const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
+  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
   const [slots, setSlots] = useState<ScheduleSlot[]>([]);
   const [allSlots, setAllSlots] = useState<ScheduleSlot[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -30,6 +43,7 @@ export default function Schedule() {
   const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
@@ -40,17 +54,23 @@ export default function Schedule() {
     });
   }, []);
 
+  const loadAllSlots = async () => {
+    const allDocs: ScheduleSlot[] = [];
+    for (const s of students) {
+      const sSnap = await getDocs(collection(db,'schedules',s.id,'slots'));
+      sSnap.docs.forEach(d => allDocs.push({ id: d.id, ...d.data(), studentId: s.id } as ScheduleSlot));
+    }
+    setAllSlots(allDocs);
+  };
+
+  useEffect(() => {
+    if (students.length > 0) loadAllSlots();
+  }, [students]);
+
   const loadSlots = async (studentId: string) => {
     const snap = await getDocs(collection(db,'schedules',studentId,'slots'));
     const data = snap.docs.map(d => ({ id: d.id, ...d.data() }) as ScheduleSlot);
     setSlots(data);
-    // Also load all slots for conflict detection
-    const allDocs: ScheduleSlot[] = [];
-    for (const s of students) {
-      const sSnap = await getDocs(collection(db,'schedules',s.id,'slots'));
-      sSnap.docs.forEach(d => allDocs.push({ id: d.id, ...d.data() } as ScheduleSlot));
-    }
-    setAllSlots(allDocs);
   };
 
   useEffect(() => {
@@ -58,8 +78,9 @@ export default function Schedule() {
     else setSlots([]);
   }, [selectedStudent, students]);
 
-  const openEditModal = (s: ScheduleSlot) => {
+  const openEditModal = (s: ScheduleSlot, studentId: string) => {
     setEditingSlotId(s.id);
+    setModalStudentId(studentId);
     setForm({
       day: s.day || 'Monday',
       startTime: s.startTime || '16:00',
@@ -74,36 +95,62 @@ export default function Schedule() {
   const closeModal = () => {
     setShowModal(false);
     setEditingSlotId(null);
+    setModalStudentId('');
     setForm({ day: 'Monday', startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' });
     setSubjects([]);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudent || subjects.length === 0) { toast.error('Fill all fields'); return; }
+    if (!modalStudentId) { toast.error('Select a student'); return; }
     setSaving(true);
     try {
-      const payload = { ...form, subjects, studentId: selectedStudent };
+      const payload = { ...form, subjects, studentId: modalStudentId };
       if (editingSlotId) {
         import('firebase/firestore').then(({ updateDoc, doc }) => {
-           updateDoc(doc(db, 'schedules', selectedStudent, 'slots', editingSlotId), payload);
+           updateDoc(doc(db, 'schedules', modalStudentId, 'slots', editingSlotId), payload);
         });
         toast.success('Slot updated!');
       } else {
-        await addDoc(collection(db,'schedules',selectedStudent,'slots'), payload);
+        await addDoc(collection(db,'schedules',modalStudentId,'slots'), payload);
         toast.success('Slot added!');
       }
       closeModal();
-      loadSlots(selectedStudent);
+      loadAllSlots();
+      if (selectedStudent === modalStudentId) loadSlots(modalStudentId);
     } finally { setSaving(false); }
   };
 
-  const deleteSlot = async (slotId: string) => {
-    if (!window.confirm('Are you sure you want to delete this slot?')) return;
-    await deleteDoc(doc(db,'schedules',selectedStudent,'slots',slotId));
-    toast.success('Slot removed');
-    loadSlots(selectedStudent);
+  const deleteSlot = (slotId: string, studentId: string) => {
+    confirm('Are you sure you want to delete this slot?', async () => {
+      await deleteDoc(doc(db,'schedules',studentId,'slots',slotId));
+      toast.success('Slot removed');
+      loadAllSlots();
+      if (selectedStudent === studentId) loadSlots(studentId);
+    });
   };
+
+  const toggleDay = (day: string) => setExpandedDays(p => ({ ...p, [day]: !p[day] }));
+
+  // Grouped data for Master View
+  const groupedMaster = DAYS.reduce((acc, day) => {
+    const daySlots = allSlots.filter(s => s.day === day);
+    const slotMap = new Map<string, { startTime: string, endTime: string, type: 'tuition'|'other_tuition', students: { id: string, name: string, subjects: string[], slotId: string }[] }>();
+    
+    daySlots.forEach(s => {
+      const key = `${s.startTime}-${s.endTime}-${s.type}`;
+      if (!slotMap.has(key)) {
+        slotMap.set(key, { startTime: s.startTime, endTime: s.endTime, type: s.type, students: [] });
+      }
+      const st = students.find(x => x.id === s.studentId);
+      if (st) {
+        slotMap.get(key)!.students.push({ id: st.id, name: st.name, subjects: s.subjects || [], slotId: s.id });
+      }
+    });
+    
+    acc[day] = Array.from(slotMap.values()).sort((a,b) => a.startTime.localeCompare(b.startTime));
+    return acc;
+  }, {} as Record<string, any[]>);
 
   const student = students.find(s => s.id === selectedStudent);
 
@@ -121,22 +168,110 @@ export default function Schedule() {
         )}
       </div>
 
-      {/* Student selector */}
-      <div className="card mb-16">
-        <div className="form-group" style={{marginBottom:0}}>
-          <label>Select Student</label>
-          <select
-            id="schedule-student-select"
-            value={selectedStudent}
-            onChange={e => setSelectedStudent(e.target.value)}
-          >
-            <option value="">— Choose a student —</option>
-            {students.map(s => (
-              <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
-            ))}
-          </select>
+      <div className="filter-bar" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+        <div className="tabs" style={{ marginBottom: 0 }}>
+          <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>
+            Master View
+          </button>
+          <button className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`} onClick={() => setViewMode('student')}>
+            Student View
+          </button>
         </div>
       </div>
+
+      {viewMode === 'master' && (
+        <div className="accordion-container mt-16">
+          <div className="legend mb-16">
+            <span className="legend-item"><span className="legend-dot tuition"/>My Teaching Slot</span>
+            <span className="legend-item"><span className="legend-dot other"/>Other Tuition</span>
+          </div>
+          {DAYS.map(day => (
+            <div key={day} className="accordion-class-group">
+              <div 
+                className="accordion-header" 
+                onClick={() => toggleDay(day)}
+                style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', cursor: 'pointer', borderBottom: '1px solid var(--border-light)', background: 'var(--surface-2)', fontWeight: 700 }}
+              >
+                {expandedDays[day] ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                <span style={{ marginLeft: 8 }}>{day}</span>
+                <span className="badge badge-gray ml-auto">
+                  {groupedMaster[day].length} unique slots
+                </span>
+              </div>
+              {expandedDays[day] && (
+                 <div className="accordion-class-content" style={{ padding: '16px 24px' }}>
+                    {groupedMaster[day].length === 0 ? (
+                      <p className="text-muted">No slots for {day}</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {groupedMaster[day].map((slotInfo, i) => (
+                          <div key={i} className={`card slot-card ${slotInfo.type === 'tuition' ? 'tuition-border' : 'other-border'}`} style={{ padding: 16 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                              <div className="fw-600">
+                                {formatTime12h(slotInfo.startTime)} – {formatTime12h(slotInfo.endTime)}
+                                <span className={`badge ml-8 ${slotInfo.type === 'tuition' ? 'badge-blue' : 'badge-orange'}`}>
+                                  {slotInfo.type === 'tuition' ? 'My Slot' : 'Other Tuition'}
+                                </span>
+                              </div>
+                              <button className="btn-ghost btn-sm" onClick={() => {
+                                setEditingSlotId(null);
+                                setModalStudentId('');
+                                setForm({ day: day as DayOfWeek, startTime: slotInfo.startTime, endTime: slotInfo.endTime, type: slotInfo.type, notes: '' });
+                                setSubjects([]);
+                                setShowModal(true);
+                              }}>
+                                <Plus size={14} /> Add Student
+                              </button>
+                            </div>
+                            <div className="table-wrap">
+                              <table className="data-table">
+                                <thead><tr><th>Student</th><th>Subjects</th><th style={{width: 80}}>Actions</th></tr></thead>
+                                <tbody>
+                                  {slotInfo.students.map((st: any) => (
+                                    <tr key={st.id}>
+                                      <td className="fw-500">{st.name}</td>
+                                      <td>{st.subjects.join(', ')}</td>
+                                      <td>
+                                        <div className="action-btns">
+                                          <button className="icon-btn danger" onClick={() => deleteSlot(st.slotId, st.id)} title="Remove">
+                                            <Trash2 size={15} />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                 </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {viewMode === 'student' && (
+        <>
+          {/* Student selector */}
+          <div className="card mb-16">
+            <div className="form-group" style={{marginBottom:0}}>
+              <label>Select Student</label>
+              <select
+                id="schedule-student-select"
+                value={selectedStudent}
+                onChange={e => { setSelectedStudent(e.target.value); setModalStudentId(e.target.value); }}
+              >
+                <option value="">— Choose a student —</option>
+                {students.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
       {!selectedStudent ? (
         <div className="empty-state">
@@ -161,12 +296,12 @@ export default function Schedule() {
                   <div className="schedule-day-body">
                     {daySlots.map(slot => (
                       <div key={slot.id} className={`schedule-slot ${COLOR_MAP[slot.type]}`}>
-                        <div className="slot-time">{slot.startTime} – {slot.endTime}</div>
+                        <div className="slot-time">{formatTime12h(slot.startTime)} – {formatTime12h(slot.endTime)}</div>
                         <div className="slot-subject">{slot.subjects?.join(', ')}</div>
                         {slot.type === 'other_tuition' && <div className="slot-label">Other Tuition</div>}
                         <div className="slot-actions" style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 4 }}>
-                          <button className="slot-delete" style={{background:'white', color:'var(--text)', border:'none', borderRadius:4, padding:2, cursor:'pointer'}} onClick={() => openEditModal(slot)}><Pencil size={12}/></button>
-                          <button className="slot-delete" style={{background:'var(--danger)', color:'white', border:'none', borderRadius:4, padding:2, cursor:'pointer'}} onClick={() => deleteSlot(slot.id)}><Trash2 size={12}/></button>
+                          <button className="slot-delete" style={{background:'white', color:'var(--text)', border:'none', borderRadius:4, padding:2, cursor:'pointer'}} onClick={() => openEditModal(slot, selectedStudent)}><Pencil size={12}/></button>
+                          <button className="slot-delete" style={{background:'var(--danger)', color:'white', border:'none', borderRadius:4, padding:2, cursor:'pointer'}} onClick={() => deleteSlot(slot.id, selectedStudent)}><Trash2 size={12}/></button>
                         </div>
                       </div>
                     ))}
@@ -190,13 +325,13 @@ export default function Schedule() {
                     {slots.map(s => (
                       <tr key={s.id}>
                         <td>{s.day}</td>
-                        <td>{s.startTime} – {s.endTime}</td>
+                        <td>{formatTime12h(s.startTime)} – {formatTime12h(s.endTime)}</td>
                         <td>{s.subjects?.join(', ')}</td>
                         <td><span className={`badge ${s.type === 'tuition' ? 'badge-blue' : 'badge-orange'}`}>{s.type === 'tuition' ? 'My Slot' : 'Other Tuition'}</span></td>
                         <td>
                           <div className="action-btns">
-                            <button className="icon-btn" onClick={() => openEditModal(s)} title="Edit"><Pencil size={15}/></button>
-                            <button className="icon-btn danger" onClick={() => deleteSlot(s.id)} title="Delete"><Trash2 size={15}/></button>
+                            <button className="icon-btn" onClick={() => openEditModal(s, selectedStudent)} title="Edit"><Pencil size={15}/></button>
+                            <button className="icon-btn danger" onClick={() => deleteSlot(s.id, selectedStudent)} title="Delete"><Trash2 size={15}/></button>
                           </div>
                         </td>
                       </tr>
@@ -207,6 +342,8 @@ export default function Schedule() {
             )}
           </div>
         </>
+      )}
+      </>
       )}
 
       {/* Add Slot Modal */}
@@ -219,6 +356,15 @@ export default function Schedule() {
             </div>
             <form onSubmit={handleSave} className="modal-body">
               <div className="form-grid-2">
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label>Select Student *</label>
+                  <select value={modalStudentId} onChange={e => setModalStudentId(e.target.value)} disabled={!!editingSlotId}>
+                    <option value="">— Choose a student —</option>
+                    {students.map(s => (
+                      <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="form-group">
                   <label>Day</label>
                   <select value={form.day} onChange={e => setForm(f => ({ ...f, day: e.target.value as DayOfWeek }))}>
@@ -248,7 +394,6 @@ export default function Schedule() {
                   selected={subjects}
                   onChange={setSubjects}
                   placeholder="Select subjects"
-                  required
                 />
               </div>
               <div className="form-group">
@@ -266,6 +411,7 @@ export default function Schedule() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }

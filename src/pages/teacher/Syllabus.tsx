@@ -6,6 +6,7 @@ import { Plus, X, BookOpen, ChevronRight, Trash2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Timestamp } from 'firebase/firestore';
 import MultiSelect from '../../components/common/MultiSelect';
+import { useConfirm } from '../../hooks/useConfirm';
 
 const STATUS_OPTIONS: { value: SyllabusStatus; label: string; color: string }[] = [
   { value: 'not_started', label: 'Not Started', color: 'badge-gray' },
@@ -24,6 +25,7 @@ export default function Syllabus() {
   const [saving, setSaving] = useState(false);
   const [subjectFilter, setSubjectFilter] = useState('');
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
@@ -101,11 +103,12 @@ export default function Syllabus() {
     loadTopics(selectedStudent);
   };
 
-  const deleteTopic = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this topic?')) return;
-    await deleteDoc(doc(db,'syllabus',selectedStudent,'topics',id));
-    loadTopics(selectedStudent);
-    toast.success('Topic removed');
+  const deleteTopic = (id: string) => {
+    confirm('Are you sure you want to delete this topic?', async () => {
+      await deleteDoc(doc(db,'syllabus',selectedStudent,'topics',id));
+      loadTopics(selectedStudent);
+      toast.success('Topic removed');
+    });
   };
 
   return (
@@ -234,6 +237,7 @@ export default function Syllabus() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }

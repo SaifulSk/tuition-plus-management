@@ -10,9 +10,18 @@ import {
   ResponsiveContainer, Legend
 } from 'recharts';
 import MultiSelect from '../../components/common/MultiSelect';
+import { useConfirm } from '../../hooks/useConfirm';
 
 const EXAM_NAMES = ['Unit Test 1', 'Unit Test 2', 'Midterm', 'SA1', 'SA2', 'Final Exam'];
 const COLORS = ['#1E3A5F','#C1121F','#10b981','#f59e0b','#8b5cf6','#06b6d4','#ec4899'];
+
+const getMarksBadgeClass = (pct: number) => {
+  if (pct >= 90) return 'badge-excel-dark-green';
+  if (pct >= 71) return 'badge-excel-light-green';
+  if (pct >= 51) return 'badge-excel-yellow';
+  if (pct >= 31) return 'badge-excel-pink';
+  return 'badge-excel-red';
+};
 
 export default function SchoolExams() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -27,6 +36,7 @@ export default function SchoolExams() {
   const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
@@ -107,11 +117,12 @@ export default function SchoolExams() {
     } finally { setSaving(false); }
   };
 
-  const deleteExam = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this result?')) return;
-    await deleteDoc(doc(db,'schoolExams',selectedStudent,'exams',id));
-    loadExams(selectedStudent);
-    toast.success('Result deleted');
+  const deleteExam = (id: string) => {
+    confirm('Are you sure you want to delete this result?', async () => {
+      await deleteDoc(doc(db,'schoolExams',selectedStudent,'exams',id));
+      loadExams(selectedStudent);
+      toast.success('Result deleted');
+    });
   };
 
   return (
@@ -207,7 +218,7 @@ export default function SchoolExams() {
                         <td>{ex.marksObtained}</td>
                         <td>{ex.maxMarks}</td>
                         <td>
-                          <span className={`badge ${pct>=75?'badge-green':pct>=50?'badge-orange':'badge-red'}`}>
+                          <span className={`badge ${getMarksBadgeClass(pct)}`}>
                             {pct}%
                           </span>
                         </td>
@@ -275,6 +286,7 @@ export default function SchoolExams() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }

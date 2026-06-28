@@ -5,6 +5,7 @@ import type { Student, CenterEvent, EventType } from '../../types';
 import { Plus, X, PartyPopper, Trash2, Calendar, Users, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
+import { useConfirm } from '../../hooks/useConfirm';
 
 const EVENT_TYPES: { value: EventType; label: string; emoji: string }[] = [
   { value: 'picnic', label: 'Picnic', emoji: '🧺' },
@@ -29,6 +30,7 @@ export default function Events() {
     description: '', attendees: [] as string[],
   });
   const [saving, setSaving] = useState(false);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
@@ -90,11 +92,12 @@ export default function Events() {
     } finally { setSaving(false); }
   };
 
-  const deleteEvent = async (id: string) => {
-    if (!confirm('Delete this event?')) return;
-    await deleteDoc(doc(db,'events',id));
-    loadEvents();
-    toast.success('Event deleted');
+  const deleteEvent = (id: string) => {
+    confirm('Delete this event?', async () => {
+      await deleteDoc(doc(db,'events',id));
+      loadEvents();
+      toast.success('Event deleted');
+    });
   };
 
   return (
@@ -207,6 +210,7 @@ export default function Events() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }

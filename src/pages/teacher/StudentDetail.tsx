@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, FeePayment, SyllabusTopic, SchoolExam } from '../../types';
-import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -20,6 +20,7 @@ export default function StudentDetail() {
   const [exams, setExams] = useState<SchoolExam[]>([]);
   const [tab, setTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
+  const [showFees, setShowFees] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -85,11 +86,18 @@ export default function StudentDetail() {
         </div>
         <div className="profile-stats">
           <div className="profile-stat">
-            <div className="profile-stat-val">₹{student.confirmedFee?.toLocaleString()}</div>
+            <div className="profile-stat-val" style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+              {showFees ? `₹${student.confirmedFee?.toLocaleString()}` : '₹****'}
+              <button onClick={() => setShowFees(!showFees)} style={{ background:'none', border:'none', cursor:'pointer', color: 'var(--text-muted)', display: 'flex' }}>
+                {showFees ? <EyeOff size={14}/> : <Eye size={14}/>}
+              </button>
+            </div>
             <div className="profile-stat-label">Monthly Fee</div>
           </div>
           <div className="profile-stat">
-            <div className="profile-stat-val">₹{totalFeesPaid.toLocaleString()}</div>
+            <div className="profile-stat-val" style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+              {showFees ? `₹${totalFeesPaid.toLocaleString()}` : '₹****'}
+            </div>
             <div className="profile-stat-label">Total Paid</div>
           </div>
           <div className="profile-stat">
@@ -142,7 +150,7 @@ export default function StudentDetail() {
                   {fees.map(f => (
                     <tr key={f.id}>
                       <td>{f.datePaid ? format(f.datePaid.toDate(), 'dd MMM yyyy') : '—'}</td>
-                      <td>₹{f.amount?.toLocaleString()}</td>
+                      <td>{showFees ? `₹${f.amount?.toLocaleString()}` : '₹****'}</td>
                       <td>
                         <div className="subject-chips">
                           {f.monthsPaid?.map(m => {

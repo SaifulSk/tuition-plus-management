@@ -6,6 +6,15 @@ import { Plus, X, ClipboardList, Trash2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import MultiSelect from '../../components/common/MultiSelect';
+import { useConfirm } from '../../hooks/useConfirm';
+
+const getMarksBadgeClass = (pct: number) => {
+  if (pct >= 90) return 'badge-excel-dark-green';
+  if (pct >= 71) return 'badge-excel-light-green';
+  if (pct >= 51) return 'badge-excel-yellow';
+  if (pct >= 31) return 'badge-excel-pink';
+  return 'badge-excel-red';
+};
 
 export default function Tests() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -19,6 +28,7 @@ export default function Tests() {
   const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
@@ -97,11 +107,12 @@ export default function Tests() {
     } finally { setSaving(false); }
   };
 
-  const deleteTest = async (id: string) => {
-    if (!confirm('Delete this test?')) return;
-    await deleteDoc(doc(db,'tests',id));
-    loadTests();
-    toast.success('Test deleted');
+  const deleteTest = (id: string) => {
+    confirm('Delete this test?', async () => {
+      await deleteDoc(doc(db,'tests',id));
+      loadTests();
+      toast.success('Test deleted');
+    });
   };
 
   return (
@@ -146,7 +157,7 @@ export default function Tests() {
                       <td>{marked.length} / {students.length}</td>
                       <td>
                         {avg !== null ? (
-                          <span className={`badge ${avg/t.maxMarks>=0.75?'badge-green':avg/t.maxMarks>=0.5?'badge-orange':'badge-red'}`}>
+                          <span className={`badge ${getMarksBadgeClass(Math.round((avg/t.maxMarks)*100))}`}>
                             {avg}/{t.maxMarks}
                           </span>
                         ) : '—'}
@@ -180,7 +191,7 @@ export default function Tests() {
                   <div className="marks-name">{s.name}</div>
                   <div className="marks-value">
                     {mark !== undefined ? (
-                      <span className={`badge ${pct!>=75?'badge-green':pct!>=50?'badge-orange':'badge-red'}`}>
+                      <span className={`badge ${getMarksBadgeClass(pct!)}`}>
                         {mark}/{t.maxMarks}
                       </span>
                     ) : <span className="badge badge-gray">—</span>}
@@ -252,6 +263,7 @@ export default function Tests() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }

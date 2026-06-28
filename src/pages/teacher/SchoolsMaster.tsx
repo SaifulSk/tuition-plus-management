@@ -3,6 +3,7 @@ import { collection, getDocs, addDoc, deleteDoc, updateDoc, doc, query, orderBy 
 import { db } from '../../firebase/config';
 import { Plus, X, Trash2, Pencil, Building } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useConfirm } from '../../hooks/useConfirm';
 
 interface SchoolMaster {
   id: string;
@@ -15,6 +16,7 @@ export default function SchoolsMaster() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '' });
   const [saving, setSaving] = useState(false);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   useEffect(() => {
     loadSchools();
@@ -60,11 +62,12 @@ export default function SchoolsMaster() {
     } finally { setSaving(false); }
   };
 
-  const deleteSchool = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this school from the master list?')) return;
-    await deleteDoc(doc(db, 'schools', id));
-    toast.success('School deleted');
-    loadSchools();
+  const deleteSchool = (id: string) => {
+    confirm('Are you sure you want to delete this school from the master list?', async () => {
+      await deleteDoc(doc(db, 'schools', id));
+      toast.success('School deleted');
+      loadSchools();
+    });
   };
 
   return (
@@ -127,6 +130,7 @@ export default function SchoolsMaster() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import type { Student } from '../../types';
 import { format } from 'date-fns';
 import { Timestamp } from 'firebase/firestore';
 import MultiSelect from '../../components/common/MultiSelect';
+import { useConfirm } from '../../hooks/useConfirm';
 
 const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 
@@ -35,6 +36,7 @@ export default function Students() {
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
   const [masterSchools, setMasterSchools] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
   const [showFees, setShowFees] = useState<Record<string, boolean>>({});
@@ -126,8 +128,8 @@ export default function Students() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.class || !form.school) {
-      toast.error('Name, Class, and School are required'); return;
+    if (!form.name || !form.class || !form.school || subjects.length === 0) {
+      toast.error('Name, Class, School, and Subjects are required'); return;
     }
     
     setSaving(true);
@@ -321,9 +323,9 @@ export default function Students() {
                                 <span
                                   className={`badge cursor-pointer ${s.active ? 'badge-green' : 'badge-gray'}`}
                                   onClick={() => {
-                                    if (window.confirm(`Are you sure you want to ${s.active ? 'archive' : 'unarchive'} this student?`)) {
+                                    confirm(`Are you sure you want to ${s.active ? 'archive' : 'unarchive'} this student?`, () => {
                                       toggleActive(s);
-                                    }
+                                    });
                                   }}
                                   title="Click to toggle status"
                                 >
@@ -420,12 +422,13 @@ export default function Students() {
 
               {/* Subjects */}
               <div className="form-group">
-                <label>Subjects</label>
+                <label>Subjects *</label>
                 <MultiSelect 
                   options={masterSubjects}
                   selected={subjects}
                   onChange={setSubjects}
                   placeholder="Select subjects"
+                  required
                 />
               </div>
 
@@ -446,6 +449,7 @@ export default function Students() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }
