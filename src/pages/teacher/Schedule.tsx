@@ -181,10 +181,6 @@ export default function Schedule() {
 
       {viewMode === 'master' && (
         <div className="card mt-16" style={{ overflowX: 'auto', background: 'var(--surface)' }}>
-          <div className="legend mb-16" style={{ padding: '0 8px' }}>
-            <span className="legend-item"><span className="legend-dot tuition"/>My Teaching Slot</span>
-            <span className="legend-item"><span className="legend-dot other"/>Other Tuition</span>
-          </div>
           
           <div style={{ display: 'flex', gap: '16px', minWidth: '900px', padding: '8px' }}>
             {DAYS.map(day => (
