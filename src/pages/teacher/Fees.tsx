@@ -635,7 +635,18 @@ export default function Fees() {
                   ))}
                 </div>
               )}
-              <div className="modal-footer" style={{ marginTop: '24px' }}>
+              <div className="modal-footer" style={{ marginTop: '24px', display: 'flex', justifyContent: dueMonthsList.length > 2 && student?.parentPhone ? 'space-between' : 'flex-end' }}>
+                 {dueMonthsList.length > 2 && student?.parentPhone && (
+                   <a 
+                     href={`https://wa.me/${student.parentPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Dear Parent,\n\nThis is a gentle reminder that the tuition fees for ${student.name} are pending for the following months:\n${dueMonthsList.map(formatMonthLabel).join(', ')}.\n\nPlease clear the dues at your earliest convenience.\n\nThank you.`)}`} 
+                     target="_blank" 
+                     rel="noreferrer" 
+                     className="btn-primary" 
+                     style={{ background: '#25D366', borderColor: '#25D366', color: '#fff', textDecoration: 'none' }}
+                   >
+                     Send Reminder on WhatsApp
+                   </a>
+                 )}
                  <button className="btn-ghost" onClick={() => setShowDueModal(false)}>Close</button>
               </div>
             </div>
