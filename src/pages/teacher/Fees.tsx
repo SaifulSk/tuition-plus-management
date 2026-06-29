@@ -215,7 +215,7 @@ export default function Fees() {
 
     let y = startYear;
     let m = startMonth;
-    while (y < endYear || (y === endYear && m <= endMonth)) {
+    while (y < endYear || (y === endYear && m < endMonth)) {
       const monthStr = `${y}-${String(m + 1).padStart(2, '0')}`;
       if (!uniquePaidMonths.has(monthStr)) {
         dueMonthsList.push(monthStr);

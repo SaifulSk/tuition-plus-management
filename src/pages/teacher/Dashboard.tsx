@@ -85,7 +85,7 @@ export default function TeacherDashboard() {
           let expectedCount = 0;
           let d = new Date(startYear, startMonth, 1);
           const end = new Date(currentYear, currentMonth, 1);
-          while (d <= end) {
+          while (d < end) {
             const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             if (!allPayments[s.id] || !allPayments[s.id].has(mStr)) {
               expectedCount++;
