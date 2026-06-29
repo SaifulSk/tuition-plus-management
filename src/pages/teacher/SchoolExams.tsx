@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy, Timestamp, collectionGroup } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, SchoolExam } from '../../types';
 import { Plus, X, BarChart3, Trash2, Pencil, ChevronDown, ChevronRight, Users } from 'lucide-react';
@@ -181,14 +181,21 @@ export default function SchoolExams() {
     setMasterLoading(true);
     try {
       const classStudents = students.filter(s => s.class === className && s.active !== false);
+      const studentMap = new Map(classStudents.map(s => [s.id, s.name]));
       const currentSess = getCurrentSession();
-      const examPromises = classStudents.map(s => 
-        getDocs(query(collection(db, 'schoolExams', s.id, 'exams'), orderBy('date')))
-          .then(snap => snap.docs.map(d => ({ id: d.id, studentId: s.id, studentName: s.name, ...d.data() } as SchoolExam & { studentName?: string })))
-      );
-      const allExamsArrays = await Promise.all(examPromises);
-      const filteredForCurrentSession = allExamsArrays.flat().filter(e => (e.session || currentSess) === currentSess);
-      setMasterClassExams(filteredForCurrentSession);
+      const snap = await getDocs(collectionGroup(db, 'exams'));
+      const allExams: (SchoolExam & { studentName?: string })[] = [];
+      snap.docs.forEach(d => {
+        const studentId = d.ref.parent.parent?.id;
+        if (studentId && studentMap.has(studentId)) {
+          const e = { id: d.id, studentId, studentName: studentMap.get(studentId), ...d.data() } as SchoolExam & { studentName?: string };
+          if ((e.session || currentSess) === currentSess) {
+            allExams.push(e);
+          }
+        }
+      });
+      allExams.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      setMasterClassExams(allExams);
     } catch (err: any) {
       toast.error('Failed to load class exams');
     } finally {
