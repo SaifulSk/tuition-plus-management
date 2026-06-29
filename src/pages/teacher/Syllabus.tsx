@@ -383,7 +383,6 @@ export default function Syllabus() {
                             <span className="badge badge-blue">{classData.students.length} student{classData.students.length !== 1 ? 's' : ''}</span>
                             <span className="badge badge-green">{avgProgress}% avg progress</span>
                           </div>
-                          </div>
                         </div>
                         <div style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                           {Object.keys(classData.subjects).length} subject{Object.keys(classData.subjects).length !== 1 ? 's' : ''}
