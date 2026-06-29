@@ -162,8 +162,12 @@ export default function SchoolExams() {
               <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
                 <defs>
                   <linearGradient id="colorPerfExams" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={1}/>
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={1}/>
+                    <stop offset="0%" stopColor="#10b981" />
+                    <stop offset="25%" stopColor="#10b981" />
+                    <stop offset="25.01%" stopColor="#f59e0b" />
+                    <stop offset="50%" stopColor="#f59e0b" />
+                    <stop offset="50.01%" stopColor="#ef4444" />
+                    <stop offset="100%" stopColor="#ef4444" />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

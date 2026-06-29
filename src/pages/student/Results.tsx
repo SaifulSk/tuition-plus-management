@@ -33,12 +33,12 @@ export default function StudentResults() {
     load();
   }, [appUser]);
 
-  const subjects = [...new Set(exams.map(e => e.subject))];
+  const subjects = [...new Set(exams.flatMap(e => e.subjects || []))];
   const examNames = [...new Set(exams.map(e => e.examName))];
   const chartData = examNames.map(en => {
     const row: Record<string, string | number> = { exam: en };
     subjects.forEach(sub => {
-      const found = exams.find(e => e.examName === en && e.subject === sub);
+      const found = exams.find(e => e.examName === en && e.subjects?.includes(sub));
       if (found) row[sub] = Math.round((found.marksObtained / found.maxMarks) * 100);
     });
     return row;
@@ -65,8 +65,12 @@ export default function StudentResults() {
               <LineChart data={chartData}>
                 <defs>
                   <linearGradient id="colorPerfStudent" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={1}/>
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={1}/>
+                    <stop offset="0%" stopColor="#10b981" />
+                    <stop offset="25%" stopColor="#10b981" />
+                    <stop offset="25.01%" stopColor="#f59e0b" />
+                    <stop offset="50%" stopColor="#f59e0b" />
+                    <stop offset="50.01%" stopColor="#ef4444" />
+                    <stop offset="100%" stopColor="#ef4444" />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
@@ -99,7 +103,7 @@ export default function StudentResults() {
 
           <div className="stats-grid-sm mb-16">
             {subjects.map((sub,i) => {
-              const subExams = exams.filter(e => e.subject === sub);
+              const subExams = exams.filter(e => e.subjects?.includes(sub));
               const avg = subExams.length ? Math.round(subExams.reduce((a,e)=>a+(e.marksObtained/e.maxMarks)*100,0)/subExams.length) : 0;
               return (
                 <div key={sub} className="stat-card">
@@ -124,7 +128,7 @@ export default function StudentResults() {
                     return (
                       <tr key={ex.id}>
                         <td className="fw-600">{ex.examName}</td>
-                        <td>{ex.subject}</td>
+                        <td>{ex.subjects?.join(', ')}</td>
                         <td>{ex.date ? format(ex.date.toDate(),'dd MMM yyyy') : '—'}</td>
                         <td>{ex.marksObtained}/{ex.maxMarks}</td>
                         <td><span className={`badge ${pct>=75?'badge-green':pct>=50?'badge-orange':'badge-red'}`}>{pct}%</span></td>

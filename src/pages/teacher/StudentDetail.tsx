@@ -50,12 +50,12 @@ export default function StudentDetail() {
   const syllabusProgress = syllabus.length ? Math.round((completedTopics / syllabus.length) * 100) : 0;
 
   // Build exam chart data grouped by subject
-  const subjects = [...new Set(exams.map(e => e.subject))];
+  const subjects = [...new Set(exams.flatMap(e => e.subjects || []))];
   const examNames = [...new Set(exams.map(e => e.examName))];
   const chartData = examNames.map(en => {
     const row: Record<string, string | number> = { exam: en };
     subjects.forEach(sub => {
-      const found = exams.find(e => e.examName === en && e.subject === sub);
+      const found = exams.find(e => e.examName === en && e.subjects?.includes(sub));
       if (found) row[sub] = Math.round((found.marksObtained / found.maxMarks) * 100);
     });
     return row;
@@ -181,7 +181,7 @@ export default function StudentDetail() {
               <div key={t.id} className={`syllabus-item status-${t.status}`}>
                 <div>
                   <div className="fw-600">{t.topic}</div>
-                  <div className="text-muted text-sm">{t.subject} — {t.chapter}</div>
+                  <div className="text-muted text-sm">{t.subjects?.join(', ')} — {t.chapter}</div>
                 </div>
                 <span className={`badge badge-${t.status === 'completed' ? 'green' : t.status === 'in_progress' ? 'orange' : 'gray'}`}>
                   {t.status.replace('_',' ')}
@@ -204,8 +204,12 @@ export default function StudentDetail() {
                 <LineChart data={chartData}>
                   <defs>
                     <linearGradient id="colorPerf" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={1}/>
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={1}/>
+                      <stop offset="0%" stopColor="#10b981" />
+                      <stop offset="25%" stopColor="#10b981" />
+                      <stop offset="25.01%" stopColor="#f59e0b" />
+                      <stop offset="50%" stopColor="#f59e0b" />
+                      <stop offset="50.01%" stopColor="#ef4444" />
+                      <stop offset="100%" stopColor="#ef4444" />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -243,7 +247,7 @@ export default function StudentDetail() {
                     {exams.map(ex => (
                       <tr key={ex.id}>
                         <td>{ex.examName}</td>
-                        <td>{ex.subject}</td>
+                        <td>{ex.subjects?.join(', ')}</td>
                         <td>{ex.marksObtained}</td>
                         <td>{ex.maxMarks}</td>
                         <td>
