@@ -28,7 +28,8 @@ export default function TeacherDashboard() {
   });
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showFees, setShowFees] = useState(false);
+  const [showFeesCollected, setShowFeesCollected] = useState(false);
+  const [showFeesDue, setShowFeesDue] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -46,28 +47,58 @@ export default function TeacherDashboard() {
         
         setStudents(studs);
 
-        // Fees this month
-        const now = new Date();
-        let feesThisMonth = 0;
+        // Payments
         const paymentsSnap = await getDocs(collectionGroup(db, 'payments'));
+        let feesThisMonth = 0;
+        const allPayments: Record<string, Set<string>> = {};
+        
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+        
         paymentsSnap.docs.forEach(d => {
           const p = d.data() as FeePayment;
+          const studentId = d.ref.parent.parent?.id;
+          
           if (p.datePaid) {
             const pd = p.datePaid.toDate();
-            if (pd.getFullYear() === now.getFullYear() && pd.getMonth() === now.getMonth()) {
+            if (pd.getFullYear() === currentYear && pd.getMonth() === currentMonth) {
               feesThisMonth += p.amount || 0;
             }
           }
+          
+          if (studentId) {
+            if (!allPayments[studentId]) allPayments[studentId] = new Set();
+            p.months?.forEach(m => allPayments[studentId].add(m));
+          }
+        });
+
+        // Calculate pending fees
+        const activeStuds = studs.filter(s => s.active);
+        let pendingFees = 0;
+        activeStuds.forEach(s => {
+          if (!s.joiningDate) return;
+          const start = s.joiningDate.toDate();
+          const startYear = start.getFullYear();
+          const startMonth = start.getMonth();
+          
+          let expectedCount = 0;
+          let d = new Date(startYear, startMonth, 1);
+          const end = new Date(currentYear, currentMonth, 1);
+          while (d <= end) {
+            const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            if (!allPayments[s.id] || !allPayments[s.id].has(mStr)) {
+              expectedCount++;
+            }
+            d.setMonth(d.getMonth() + 1);
+          }
+          
+          pendingFees += expectedCount * (Number(s.confirmedFee) || 0);
         });
 
         // Tests
         const testSnap = await getDocs(query(collection(db, 'tests'), orderBy('date', 'desc')));
         const tests = testSnap.docs.slice(0, 3).map(d => ({ id: d.id, ...d.data() }) as TuitionTest);
-
-        // Calculate fees due
-        const activeStuds = studs.filter(s => s.active);
-        const totalExpectedFees = activeStuds.reduce((sum, s) => sum + (Number(s.confirmedFee) || 0), 0);
-        const pendingFees = Math.max(0, totalExpectedFees - feesThisMonth);
 
         // Events
         const evSnap = await getDocs(query(collection(db, 'events'), orderBy('date', 'desc')));
@@ -120,9 +151,9 @@ export default function TeacherDashboard() {
           <div className="stat-icon"><Wallet size={24} /></div>
           <div className="stat-body">
             <div className="stat-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {loading ? '₹—' : (showFees ? `₹${stats.feesThisMonth.toLocaleString()}` : '₹****')}
-              <button onClick={() => setShowFees(!showFees)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                {showFees ? <EyeOff size={16} color="var(--text-muted)" /> : <Eye size={16} color="var(--text-muted)" />}
+              {loading ? '₹—' : (showFeesCollected ? `₹${stats.feesThisMonth.toLocaleString()}` : '₹****')}
+              <button onClick={() => setShowFeesCollected(!showFeesCollected)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                {showFeesCollected ? <EyeOff size={16} color="var(--text-muted)" /> : <Eye size={16} color="var(--text-muted)" />}
               </button>
             </div>
             <div className="stat-label">Fees Collected</div>
@@ -143,7 +174,10 @@ export default function TeacherDashboard() {
           <div className="stat-icon"><TrendingDown size={24} /></div>
           <div className="stat-body">
             <div className="stat-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {loading ? '₹—' : (showFees ? `₹${stats.pendingFees.toLocaleString()}` : '₹****')}
+              {loading ? '₹—' : (showFeesDue ? `₹${stats.pendingFees.toLocaleString()}` : '₹****')}
+              <button onClick={() => setShowFeesDue(!showFeesDue)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                {showFeesDue ? <EyeOff size={16} color="var(--text-muted)" /> : <Eye size={16} color="var(--text-muted)" />}
+              </button>
             </div>
             <div className="stat-label">Fees Due</div>
             <div className="stat-sub">This month</div>
