@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy, collectionGroup } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, ScheduleSlot, DayOfWeek } from '../../types';
 import { Plus, X, Clock, Trash2, Pencil } from 'lucide-react';
@@ -54,11 +54,11 @@ export default function Schedule() {
   }, []);
 
   const loadAllSlots = async () => {
-    const allDocs: ScheduleSlot[] = [];
-    for (const s of students) {
-      const sSnap = await getDocs(collection(db,'schedules',s.id,'slots'));
-      sSnap.docs.forEach(d => allDocs.push({ id: d.id, ...d.data(), studentId: s.id } as ScheduleSlot));
-    }
+    const snap = await getDocs(collectionGroup(db, 'slots'));
+    const allDocs = snap.docs.map(d => {
+      const studentId = d.data().studentId || d.ref.parent.parent?.id;
+      return { id: d.id, ...d.data(), studentId } as ScheduleSlot;
+    });
     setAllSlots(allDocs);
   };
 

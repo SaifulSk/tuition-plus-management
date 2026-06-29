@@ -3,7 +3,7 @@ import {
   collection, query, getDocs, addDoc, updateDoc,
   doc, orderBy, deleteDoc
 } from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { db, secondaryAuth } from '../../firebase/config';
 import { setDoc } from 'firebase/firestore';
 import { Search, Eye, EyeOff, X, UserPlus, ChevronDown, ChevronRight, Pencil, Copy } from 'lucide-react';
@@ -161,15 +161,38 @@ export default function Students() {
           if (form.tempPassword.length < 6) {
             toast.error('Password must be at least 6 characters'); return;
           }
-          const cred = await createUserWithEmailAndPassword(secondaryAuth, form.email, form.tempPassword);
-          newUid = cred.user.uid;
-          
-          await setDoc(doc(db, 'users', newUid), {
-            role: 'student',
-            name: form.name,
-            email: form.email,
-            studentId: editingStudentId,
-          });
+          try {
+            const cred = await createUserWithEmailAndPassword(secondaryAuth, form.email, form.tempPassword);
+            newUid = cred.user.uid;
+            
+            await setDoc(doc(db, 'users', newUid), {
+              role: 'student',
+              name: form.name,
+              email: form.email,
+              studentId: editingStudentId,
+            });
+          } catch (err: any) {
+            if (err.message?.includes('EMAIL_EXISTS') || err.code === 'auth/email-already-in-use') {
+              try {
+                const signInCred = await signInWithEmailAndPassword(secondaryAuth, form.email, form.tempPassword);
+                newUid = signInCred.user.uid;
+                
+                await setDoc(doc(db, 'users', newUid), {
+                  role: 'student',
+                  name: form.name,
+                  email: form.email,
+                  studentId: editingStudentId,
+                });
+                toast.success('Successfully re-linked existing login account.');
+              } catch (signInErr) {
+                toast.error('This email is already registered. To re-link it, you must use its existing password. If forgotten, use a different email.');
+                setSaving(false);
+                return;
+              }
+            } else {
+              throw err;
+            }
+          }
         }
 
         if (newUid) {
@@ -204,8 +227,24 @@ export default function Students() {
 
         let uid = '';
         if (form.email && form.tempPassword) {
-          const cred = await createUserWithEmailAndPassword(secondaryAuth, form.email, form.tempPassword);
-          uid = cred.user.uid;
+          try {
+            const cred = await createUserWithEmailAndPassword(secondaryAuth, form.email, form.tempPassword);
+            uid = cred.user.uid;
+          } catch (err: any) {
+            if (err.message?.includes('EMAIL_EXISTS') || err.code === 'auth/email-already-in-use') {
+              try {
+                const signInCred = await signInWithEmailAndPassword(secondaryAuth, form.email, form.tempPassword);
+                uid = signInCred.user.uid;
+                toast.success('Successfully linked existing login account.');
+              } catch (signInErr) {
+                toast.error('This email is already registered. To link it, you must use its existing password. If forgotten, use a different email.');
+                setSaving(false);
+                return;
+              }
+            } else {
+              throw err;
+            }
+          }
         }
         const studentRef = await addDoc(collection(db, 'students'), {
           name: form.name,

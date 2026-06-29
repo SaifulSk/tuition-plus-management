@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  collection, getDocs, addDoc, query, orderBy, Timestamp
+  collection, getDocs, addDoc, query, orderBy, Timestamp, collectionGroup
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, FeePayment, PaymentMode } from '../../types';
@@ -48,10 +48,14 @@ export default function Fees() {
     setLoadingMaster(true);
     try {
       const all: Record<string, FeePayment[]> = {};
-      await Promise.all(students.map(async s => {
-        const snap = await getDocs(query(collection(db,'fees',s.id,'payments')));
-        all[s.id] = snap.docs.map(d => ({ id: d.id, ...d.data() }) as FeePayment);
-      }));
+      const snap = await getDocs(collectionGroup(db, 'payments'));
+      snap.docs.forEach(d => {
+        const studentId = d.ref.parent.parent?.id;
+        if (studentId) {
+          if (!all[studentId]) all[studentId] = [];
+          all[studentId].push({ id: d.id, ...d.data() } as FeePayment);
+        }
+      });
       setAllPayments(all);
     } finally {
       setLoadingMaster(false);

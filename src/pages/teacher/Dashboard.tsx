@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, collectionGroup } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -40,19 +40,17 @@ export default function TeacherDashboard() {
 
         // Fees this month
         const now = new Date();
-                let feesThisMonth = 0;
-        for (const s of studs) {
-          const fSnap = await getDocs(collection(db, 'fees', s.id, 'payments'));
-          fSnap.docs.forEach(d => {
-            const p = d.data() as FeePayment;
-            if (p.datePaid) {
-              const pd = p.datePaid.toDate();
-              if (pd.getFullYear() === now.getFullYear() && pd.getMonth() === now.getMonth()) {
-                feesThisMonth += p.amount || 0;
-              }
+        let feesThisMonth = 0;
+        const paymentsSnap = await getDocs(collectionGroup(db, 'payments'));
+        paymentsSnap.docs.forEach(d => {
+          const p = d.data() as FeePayment;
+          if (p.datePaid) {
+            const pd = p.datePaid.toDate();
+            if (pd.getFullYear() === now.getFullYear() && pd.getMonth() === now.getMonth()) {
+              feesThisMonth += p.amount || 0;
             }
-          });
-        }
+          }
+        });
 
         // Tests
         const testSnap = await getDocs(query(collection(db, 'tests'), orderBy('date', 'desc')));
