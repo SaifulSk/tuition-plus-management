@@ -97,7 +97,7 @@ export default function StudentResults() {
                   })}
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
-                <XAxis dataKey="exam" tick={{ fontSize: 12 }}/>
+                <XAxis dataKey="exam" tick={{ fontSize: 12 }} padding={{ left: 30, right: 30 }} />
                 <YAxis domain={[0,100]} tickFormatter={v=>`${v}%`} tick={{ fontSize: 12 }}/>
                 <Tooltip formatter={(v: any, name: any) => [`${v}%`, name]}/>
                 <Legend/>
