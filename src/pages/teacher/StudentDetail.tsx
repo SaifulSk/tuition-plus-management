@@ -205,6 +205,7 @@ export default function StudentDetail() {
 
       {/* Fees Tab */}
       {tab === 'fees' && (
+        <>
         <div className="card">
           <h3 className="section-title"><Wallet size={18}/> Payment History</h3>
           {fees.length === 0 ? (
@@ -296,6 +297,7 @@ export default function StudentDetail() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {/* Syllabus Tab */}
