@@ -437,6 +437,10 @@ export default function Syllabus() {
                                     ? Math.round(sTopics.filter(t => t.status === 'completed').length / sTopics.length * 100)
                                     : 0;
                                 }
+                                const avgSubjectPct = studentsForSubject.length
+                                  ? Math.round(Object.values(subjectProgressMap).reduce((a, b) => a + b, 0) / studentsForSubject.length)
+                                  : 0;
+                                const topicEntries = Object.entries(sd.topicMap);
 
                                 return (
                                   <div key={subject} style={{ border: '1px solid var(--border-light)', borderRadius: 10, marginBottom: 12, overflow: 'hidden' }}>
@@ -453,6 +457,13 @@ export default function Syllabus() {
                                       {subjectExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                                       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 2 }}>
                                         <span style={{ fontWeight: 600, fontSize: 14 }}>{subject}</span>
+                                      </div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        {/* Mini progress bar */}
+                                        <div style={{ width: 90, height: 6, background: 'var(--border-light)', borderRadius: 3, overflow: 'hidden' }}>
+                                          <div style={{ width: `${avgSubjectPct}%`, height: '100%', background: avgSubjectPct === 100 ? '#16a34a' : 'var(--primary)', borderRadius: 3, transition: 'width 0.3s' }} />
+                                        </div>
+                                        <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 36 }}>{avgSubjectPct}% avg</span>
                                       </div>
                                     </button>
 
