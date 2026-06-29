@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  collection, getDocs, addDoc, query, orderBy, where, Timestamp
+  collection, getDocs, addDoc, query, orderBy, Timestamp
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, FeePayment, PaymentMode } from '../../types';
-import { Plus, X, Printer, Share2, Receipt, Search, Pencil, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, X, Printer, Share2, Receipt, Pencil, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import html2canvas from 'html2canvas';
@@ -24,8 +24,7 @@ export default function Fees() {
   const [showModal, setShowModal] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [currentReceipt, setCurrentReceipt] = useState<FeePayment | null>(null);
-  const [search, setSearch] = useState('');
-  const receiptRef = useRef<HTMLDivElement>(null);
+    const receiptRef = useRef<HTMLDivElement>(null);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [transactions, setTransactions] = useState([{
     id: Date.now().toString(),
@@ -63,6 +62,7 @@ export default function Fees() {
     if (viewMode === 'master' && students.length > 0) {
       loadMasterData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, students]);
 
   useEffect(() => {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, ScheduleSlot, DayOfWeek } from '../../types';
-import { Plus, X, Clock, Trash2, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, X, Clock, Trash2, Pencil, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MultiSelect from '../../components/common/MultiSelect';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -28,8 +28,7 @@ export default function Schedule() {
   const [selectedStudent, setSelectedStudent] = useState('');
   const [modalStudentId, setModalStudentId] = useState('');
   const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
-  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
-  const [slots, setSlots] = useState<ScheduleSlot[]>([]);
+    const [slots, setSlots] = useState<ScheduleSlot[]>([]);
   const [allSlots, setAllSlots] = useState<ScheduleSlot[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
@@ -65,6 +64,7 @@ export default function Schedule() {
 
   useEffect(() => {
     if (students.length > 0) loadAllSlots();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [students]);
 
   const loadSlots = async (studentId: string) => {
@@ -130,8 +130,7 @@ export default function Schedule() {
     });
   };
 
-  const toggleDay = (day: string) => setExpandedDays(p => ({ ...p, [day]: !p[day] }));
-
+  
   // Grouped data for Master View
   const groupedMaster = DAYS.reduce((acc, day) => {
     const daySlots = allSlots.filter(s => s.day === day);
@@ -282,8 +281,7 @@ export default function Schedule() {
           <div className="schedule-grid">
             {DAYS.map(day => {
               const daySlots = slots.filter(s => s.day === day);
-              const conflicts = allSlots.filter(s => s.day === day && s.studentId !== selectedStudent);
-              return (
+                            return (
                 <div key={day} className="schedule-day">
                   <div className="schedule-day-header">{day.slice(0,3)}</div>
                   <div className="schedule-day-body">

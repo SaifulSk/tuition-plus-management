@@ -21,8 +21,7 @@ export default function StudentFees() {
   const [currentReceipt, setCurrentReceipt] = useState<FeePayment | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
-  const [studentId, setStudentId] = useState('');
-
+  
   useEffect(() => {
     if (!appUser) return;
     async function load() {

@@ -172,18 +172,19 @@ export default function SchoolExams() {
                 <Tooltip formatter={(v: any, name: string) => [`${v}%`, name]} />
                 <Legend />
                 {distinctSubjects.map((sub) => {
-                  const CustomDot = (props: any) => {
-                    const { cx, cy, value, index, dataKey } = props;
+                  const renderCustomDot = (props: any) => {
+                    const { cx, cy, value, index } = props;
+                    if (cx == null || cy == null) return null;
                     let fill = '#9ca3af';
-                    if (index > 0) {
-                      const prevValue = chartData[index - 1][dataKey];
-                      if (prevValue !== undefined) {
+                    if (index > 0 && chartData[index - 1]) {
+                      const prevValue = chartData[index - 1][sub];
+                      if (prevValue !== undefined && prevValue !== null) {
                         if (value > prevValue) fill = '#10b981';
                         else if (value < prevValue) fill = '#ef4444';
                         else fill = '#f59e0b';
                       }
                     }
-                    return <circle cx={cx} cy={cy} r={5} fill={fill} stroke="#fff" strokeWidth={2} />;
+                    return <circle key={`dot-${index}`} cx={cx} cy={cy} r={5} fill={fill} stroke="#fff" strokeWidth={2} />;
                   };
                   return (
                     <Line
@@ -192,7 +193,7 @@ export default function SchoolExams() {
                       dataKey={sub}
                       stroke="url(#colorPerfExams)"
                       strokeWidth={2.5}
-                      dot={<CustomDot />}
+                      dot={renderCustomDot}
                       activeDot={{ r: 7 }}
                     />
                   );

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, SyllabusTopic, SyllabusStatus } from '../../types';
-import { Plus, X, BookOpen, ChevronRight, Trash2, Pencil } from 'lucide-react';
+import { Plus, X, BookOpen, Trash2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Timestamp } from 'firebase/firestore';
 import MultiSelect from '../../components/common/MultiSelect';

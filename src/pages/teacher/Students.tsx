@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
-  collection, query, getDocs, addDoc, updateDoc, deleteDoc,
+  collection, query, getDocs, addDoc, updateDoc,
   doc, orderBy
 } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../../firebase/config';
 import { setDoc } from 'firebase/firestore';
-import { Search, Plus, Trash2, Eye, EyeOff, X, UserPlus, ChevronDown, ChevronRight, Pencil, Copy } from 'lucide-react';
+import { Search, Eye, EyeOff, X, UserPlus, ChevronDown, ChevronRight, Pencil, Copy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import type { Student } from '../../types';

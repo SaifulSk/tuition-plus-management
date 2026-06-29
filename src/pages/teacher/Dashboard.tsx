@@ -40,8 +40,7 @@ export default function TeacherDashboard() {
 
         // Fees this month
         const now = new Date();
-        const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        let feesThisMonth = 0;
+                let feesThisMonth = 0;
         for (const s of studs) {
           const fSnap = await getDocs(collection(db, 'fees', s.id, 'payments'));
           fSnap.docs.forEach(d => {
