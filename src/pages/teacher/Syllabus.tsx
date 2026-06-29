@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, SyllabusTopic, SyllabusStatus } from '../../types';
-import { Plus, X, BookOpen, Trash2, Pencil, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { Plus, X, BookOpen, Trash2, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Timestamp } from 'firebase/firestore';
 import MultiSelect from '../../components/common/MultiSelect';
@@ -211,6 +211,14 @@ export default function Syllabus() {
 
     for (const [, classData] of Object.entries(classMap)) {
       for (const s of classData.students) {
+        for (const subj of (s.subjects || [])) {
+          if (!classData.subjects[subj]) {
+            classData.subjects[subj] = { studentsInSubject: [], topicMap: {} };
+          }
+          if (!classData.subjects[subj].studentsInSubject.find(st => st.id === s.id)) {
+            classData.subjects[subj].studentsInSubject.push(s);
+          }
+        }
         const studentTopics = allTopics[s.id] || [];
         for (const topic of studentTopics) {
           for (const subj of (topic.subjects || [])) {
@@ -242,10 +250,15 @@ export default function Syllabus() {
   return (
     <div className="page">
       {/* ─── Page Header ──────────────────────────────────────────────────── */}
-      <div className="page-header">
+      <div className="page-header" style={{ alignItems: 'flex-start' }}>
         <div>
           <h1 className="page-title">Syllabus Tracker</h1>
-          <p className="page-sub">Track chapter and topic completion per student</p>
+          <p className="page-sub mb-16">Track chapter and topic completion per student</p>
+          {/* View toggle */}
+          <div className="tabs" style={{ marginBottom: 0 }}>
+            <button className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`} onClick={() => setViewMode('student')}>Student View</button>
+            <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>Master View</button>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {viewMode === 'student' && selectedStudent && (
@@ -253,16 +266,6 @@ export default function Syllabus() {
               <Plus size={18} /> Add Topic
             </button>
           )}
-          {viewMode === 'master' && (
-            <button className="btn-secondary" onClick={() => { setMasterLoaded(false); loadMasterData(); }} disabled={loadingMaster} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <RefreshCw size={15} style={{ animation: loadingMaster ? 'spin 1s linear infinite' : 'none' }} /> Refresh
-            </button>
-          )}
-          {/* View toggle */}
-          <div className="tabs" style={{ marginBottom: 0 }}>
-            <button className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`} onClick={() => setViewMode('student')}>Student View</button>
-            <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>Master View</button>
-          </div>
         </div>
       </div>
 
@@ -347,15 +350,7 @@ export default function Syllabus() {
             <div className="empty-state"><BookOpen size={48} /><p>No syllabus data found. Add topics in Student View first.</p></div>
           ) : (
             <div>
-              <div className="card mb-16" style={{ padding: '12px 16px', background: 'var(--surface-2)', display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-                  <span style={{ background: STATUS_BG.completed, color: STATUS_COLOR.completed, padding: '3px 10px', borderRadius: 6, fontWeight: 600 }}>✅ Done</span>
-                  <span style={{ background: STATUS_BG.in_progress, color: STATUS_COLOR.in_progress, padding: '3px 10px', borderRadius: 6, fontWeight: 600 }}>🔄 In Progress</span>
-                  <span style={{ background: STATUS_BG.not_started, color: STATUS_COLOR.not_started, padding: '3px 10px', borderRadius: 6, fontWeight: 600 }}>⏳ Not Started</span>
-                  <span style={{ border: '1px dashed var(--border)', color: 'var(--text-muted)', padding: '3px 10px', borderRadius: 6, fontSize: 12 }}>+ Assign = not yet assigned</span>
-                </div>
-                <span className="text-muted text-sm">Click any status pill to cycle it forward. Click "+ Assign" to add the topic to that student.</span>
-              </div>
+
 
               {Object.entries(masterData)
                 .sort(([a], [b]) => Number(a) - Number(b) || a.localeCompare(b))
@@ -388,8 +383,6 @@ export default function Syllabus() {
                             <span className="badge badge-blue">{classData.students.length} student{classData.students.length !== 1 ? 's' : ''}</span>
                             <span className="badge badge-green">{avgProgress}% avg progress</span>
                           </div>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-                            {classData.students.map(s => s.name).join(' · ')}
                           </div>
                         </div>
                         <div style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
@@ -435,7 +428,12 @@ export default function Syllabus() {
                                       }}
                                     >
                                       {subjectExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-                                      <span style={{ fontWeight: 600, flex: 1, fontSize: 14 }}>{subject}</span>
+                                      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 2 }}>
+                                        <span style={{ fontWeight: 600, fontSize: 14 }}>{subject}</span>
+                                        <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>
+                                          {sd.studentsInSubject.map(s => s.name.split(' ')[0]).join(', ')}
+                                        </span>
+                                      </div>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                         {/* Mini progress bar */}
                                         <div style={{ width: 90, height: 6, background: 'var(--border-light)', borderRadius: 3, overflow: 'hidden' }}>
