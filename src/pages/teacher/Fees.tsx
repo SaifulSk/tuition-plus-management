@@ -348,7 +348,10 @@ export default function Fees() {
                                     bgColor = '#ef4444'; // Red-500 (Due)
                                     color = '#ffffff';
                                     isDue = true;
-                                    if (new Date() < new Date(cellYear, cellMonth - 1, 1)) {
+                                    const now = new Date();
+                                    const currYear = now.getFullYear();
+                                    const currMonth = now.getMonth() + 1;
+                                    if (cellYear > currYear || (cellYear === currYear && cellMonth >= currMonth)) {
                                       bgColor = '#bae6fd'; // Sky-200 (Upcoming)
                                       color = '#0f172a';
                                       isDue = false;

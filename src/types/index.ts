@@ -25,6 +25,12 @@ export interface Student {
   uid: string;              // Firebase Auth uid for student login
   email: string;
   active: boolean;
+  feeHistory?: FeeChange[];
+}
+
+export interface FeeChange {
+  amount: number;
+  effectiveMonth: string; // "YYYY-MM"
 }
 
 // ─── Schedule ──────────────────────────────────────────────────────────────
