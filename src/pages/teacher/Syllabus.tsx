@@ -440,8 +440,6 @@ export default function Syllabus() {
                                 const avgSubjectPct = studentsForSubject.length
                                   ? Math.round(Object.values(subjectProgressMap).reduce((a, b) => a + b, 0) / studentsForSubject.length)
                                   : 0;
-                                const topicEntries = Object.entries(sd.topicMap);
-
                                 return (
                                   <div key={subject} style={{ border: '1px solid var(--border-light)', borderRadius: 10, marginBottom: 12, overflow: 'hidden' }}>
                                     {/* Subject accordion header */}
