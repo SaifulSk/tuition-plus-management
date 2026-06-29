@@ -5,7 +5,7 @@ import type { Student, TuitionTest } from '../../types';
 import { Plus, X, ClipboardList, Trash2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
-import MultiSelect from '../../components/common/MultiSelect';
+import MultiSelectObj from '../../components/common/MultiSelectObj';
 import { useConfirm } from '../../hooks/useConfirm';
 
 const getMarksBadgeClass = (pct: number) => {
@@ -26,6 +26,7 @@ export default function Tests() {
     maxMarks: '', marks: {} as Record<string, string>,
   });
   const [subjects, setSubjects] = useState<string[]>([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
   const { confirm, ConfirmDialog } = useConfirm();
@@ -52,10 +53,12 @@ export default function Tests() {
   const openEditModal = (t: TuitionTest) => {
     setEditingTestId(t.id);
     const marksStr: Record<string, string> = {};
+    const selectedIds: string[] = [];
     students.forEach(s => { marksStr[s.id] = ''; });
     if (t.studentMarks) {
       Object.entries(t.studentMarks).forEach(([id, mark]) => {
         marksStr[id] = mark.toString();
+        selectedIds.push(id);
       });
     }
     setForm({
@@ -65,6 +68,7 @@ export default function Tests() {
       marks: marksStr,
     });
     setSubjects(t.subjects || []);
+    setSelectedStudentIds(selectedIds);
     setShowModal(true);
   };
 
@@ -73,6 +77,7 @@ export default function Tests() {
     setEditingTestId(null);
     setForm(f => ({ ...f, title:'', maxMarks:'', marks: Object.fromEntries(students.map(s=>[s.id,''])) }));
     setSubjects([]);
+    setSelectedStudentIds([]);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -81,7 +86,7 @@ export default function Tests() {
     setSaving(true);
     const studentMarks: Record<string,number> = {};
     Object.entries(form.marks).forEach(([id,v]) => {
-      if (v !== '') studentMarks[id] = Number(v);
+      if (selectedStudentIds.includes(id) && v !== '') studentMarks[id] = Number(v);
     });
     try {
       const payload = {
@@ -218,14 +223,15 @@ export default function Tests() {
                   <input type="text" placeholder="e.g. Chapter 3 Test" value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} required />
                 </div>
                 <div className="form-group">
-                  <label>Subjects *</label>
-                  <MultiSelect 
-                    options={masterSubjects}
-                    selected={subjects}
-                    onChange={setSubjects}
-                    placeholder="Select subjects"
+                  <label>Subject *</label>
+                  <select 
+                    value={subjects[0] || ''}
+                    onChange={e => setSubjects([e.target.value])}
                     required
-                  />
+                  >
+                    <option value="" disabled>Select subject</option>
+                    {masterSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Date *</label>
@@ -237,21 +243,34 @@ export default function Tests() {
                 </div>
               </div>
               <h3 className="section-title mt-8">Student Marks</h3>
-              <div className="form-grid-2">
-                {students.map(s => (
-                  <div key={s.id} className="form-group">
-                    <label>{s.name} <span className="text-muted">(Class {s.class})</span></label>
-                    <input
-                      type="number"
-                      placeholder={`Out of ${form.maxMarks || '?'}`}
-                      min={0}
-                      max={Number(form.maxMarks)||undefined}
-                      value={form.marks[s.id] || ''}
-                      onChange={e => setForm(f => ({ ...f, marks: { ...f.marks, [s.id]: e.target.value } }))}
-                    />
-                  </div>
-                ))}
+              
+              <div className="form-group mb-16">
+                <label>Select Students *</label>
+                <MultiSelectObj
+                  options={students.map(s => ({ value: s.id, label: `${s.name} (Class ${s.class})` }))}
+                  selected={selectedStudentIds}
+                  onChange={setSelectedStudentIds}
+                  placeholder="Select students to mark"
+                />
               </div>
+
+              {selectedStudentIds.length > 0 && (
+                <div className="form-grid-2">
+                  {students.filter(s => selectedStudentIds.includes(s.id)).map(s => (
+                    <div key={s.id} className="form-group">
+                      <label>{s.name} <span className="text-muted">(Class {s.class})</span></label>
+                      <input
+                        type="number"
+                        placeholder={`Out of ${form.maxMarks || '?'}`}
+                        min={0}
+                        max={Number(form.maxMarks)||undefined}
+                        value={form.marks[s.id] || ''}
+                        onChange={e => setForm(f => ({ ...f, marks: { ...f.marks, [s.id]: e.target.value } }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="modal-footer">
                 <button type="button" className="btn-ghost" onClick={closeModal}>Cancel</button>
                 <button type="submit" className="btn-primary" disabled={saving}>
