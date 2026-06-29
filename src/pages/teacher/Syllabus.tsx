@@ -46,7 +46,7 @@ export default function Syllabus() {
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
 
   // ── View Mode ─────────────────────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState<'student' | 'master'>('student');
+  const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
 
   // ── Master View State ─────────────────────────────────────────────────────
   const [allTopics, setAllTopics] = useState<Record<string, SyllabusTopic[]>>({});
@@ -256,8 +256,8 @@ export default function Syllabus() {
           <p className="page-sub mb-16">Track chapter and topic completion per student</p>
           {/* View toggle */}
           <div className="tabs" style={{ marginBottom: 0 }}>
-            <button className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`} onClick={() => setViewMode('student')}>Student View</button>
             <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>Master View</button>
+            <button className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`} onClick={() => setViewMode('student')}>Student View</button>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
