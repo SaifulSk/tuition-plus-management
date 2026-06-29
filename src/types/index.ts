@@ -13,6 +13,7 @@ export interface Student {
   id: string;
   name: string;
   class: string;
+  session?: string;
   section: string;
   school: string;
   phone: string;
@@ -83,6 +84,8 @@ export interface SchoolExam {
   id: string;
   studentId: string;
   examName: string;       // SA1, SA2, Unit Test 1…
+  session?: string;
+  className?: string;
   subjects: string[];
   maxMarks: number;
   marksObtained: number;
@@ -101,4 +104,16 @@ export interface CenterEvent {
   description: string;
   attendees: string[];    // student IDs
   photoUrls: string[];
+}
+
+// ─── Homework ──────────────────────────────────────────────────────────────
+export interface Homework {
+  id: string;
+  title: string;
+  description: string;
+  subject: string;
+  targetClass: string; // e.g., "9"
+  dueDate: Timestamp;
+  assignedDate: Timestamp;
+  completedBy: string[]; // Array of student IDs
 }

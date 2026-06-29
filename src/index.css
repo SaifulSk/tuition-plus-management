@@ -337,7 +337,8 @@ img { max-width: 100%; }
 .form-group label { font-size: 13px; font-weight: 600; color: var(--text); }
 .form-group input,
 .form-group select,
-.form-group textarea {
+.form-group textarea,
+.input {
   padding: 11px 14px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
@@ -350,7 +351,8 @@ img { max-width: 100%; }
 }
 .form-group input:focus,
 .form-group select:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.input:focus {
   border-color: var(--navy);
   box-shadow: 0 0 0 3px rgba(30,58,95,0.1);
 }

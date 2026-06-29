@@ -9,6 +9,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend
 } from 'recharts';
+import { getCurrentSession } from '../../utils/dateUtils';
 
 const COLORS = ['#1E3A5F','#C1121F','#10b981','#f59e0b','#8b5cf6','#06b6d4'];
 
@@ -32,6 +33,8 @@ export default function StudentResults() {
   const { appUser } = useAuth();
   const [exams, setExams] = useState<SchoolExam[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedSession, setSelectedSession] = useState('');
+  const [studentSession, setStudentSession] = useState('');
 
   useEffect(() => {
     if (!appUser) return;
@@ -39,6 +42,13 @@ export default function StudentResults() {
       const userDoc = await getDoc(doc(db, 'users', appUser!.uid));
       const sid = userDoc.data()?.studentId;
       if (!sid) { setLoading(false); return; }
+      
+      const sSnap = await getDoc(doc(db, 'students', sid));
+      const sData = sSnap.data();
+      const currentSess = sData?.session || getCurrentSession();
+      setStudentSession(currentSess);
+      setSelectedSession(currentSess);
+
       const snap = await getDocs(query(collection(db,'schoolExams',sid,'exams'), orderBy('date')));
       setExams(snap.docs.map(d => ({ id: d.id, ...d.data() }) as SchoolExam));
       setLoading(false);
@@ -46,12 +56,25 @@ export default function StudentResults() {
     load();
   }, [appUser]);
 
-  const subjects = [...new Set(exams.flatMap(e => e.subjects || []))];
-  const examNames = [...new Set(exams.map(e => e.examName))];
+  const distinctSessions = [...new Set([
+    studentSession || getCurrentSession(),
+    ...exams.map(e => e.session).filter(Boolean)
+  ])].sort().reverse();
+
+  useEffect(() => {
+    if (distinctSessions.length > 0 && !distinctSessions.includes(selectedSession)) {
+      setSelectedSession(distinctSessions[0] as string);
+    }
+  }, [distinctSessions, selectedSession]);
+
+  const filteredExams = exams.filter(e => (e.session || getCurrentSession()) === selectedSession);
+
+  const subjects = [...new Set(filteredExams.flatMap(e => e.subjects || []))];
+  const examNames = [...new Set(filteredExams.map(e => e.examName))];
   const chartData = examNames.map(en => {
     const row: Record<string, string | number> = { exam: en };
     subjects.forEach(sub => {
-      const found = exams.find(e => e.examName === en && e.subjects?.includes(sub));
+      const found = filteredExams.find(e => e.examName === en && e.subjects?.includes(sub));
       if (found) row[sub] = Math.round((found.marksObtained / found.maxMarks) * 100);
     });
     return row;
@@ -62,14 +85,24 @@ export default function StudentResults() {
   return (
     <div className="page">
       <div className="page-header">
-        <div>
-          <h1 className="page-title">My Results</h1>
-          <p className="page-sub">School exam performance tracking</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', width: '100%' }}>
+          <div>
+            <h1 className="page-title">My Results</h1>
+            <p className="page-sub">School exam performance tracking</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label className="text-sm fw-600">Session:</label>
+            <select className="input" style={{ width: 'auto' }} value={selectedSession} onChange={e => setSelectedSession(e.target.value)}>
+              {distinctSessions.map(sess => (
+                <option key={sess} value={sess as string}>{sess}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {exams.length === 0 ? (
-        <div className="empty-state"><BarChart3 size={48}/><p>No exam results recorded yet</p></div>
+      {filteredExams.length === 0 ? (
+        <div className="empty-state"><BarChart3 size={48}/><p>No exam results recorded yet for {selectedSession}</p></div>
       ) : (
         <>
           <div className="card mb-16">

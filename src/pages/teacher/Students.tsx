@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
   collection, query, getDocs, addDoc, updateDoc,
-  doc, orderBy
+  doc, orderBy, deleteDoc
 } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../../firebase/config';
+import { db, secondaryAuth } from '../../firebase/config';
 import { setDoc } from 'firebase/firestore';
 import { Search, Eye, EyeOff, X, UserPlus, ChevronDown, ChevronRight, Pencil, Copy } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -14,6 +14,8 @@ import { format } from 'date-fns';
 import { Timestamp } from 'firebase/firestore';
 import MultiSelect from '../../components/common/MultiSelect';
 import { useConfirm } from '../../hooks/useConfirm';
+import { getCurrentSession, getNextSession } from '../../utils/dateUtils';
+import { GraduationCap } from 'lucide-react';
 
 const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 
@@ -41,6 +43,11 @@ export default function Students() {
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
   const [showFees, setShowFees] = useState<Record<string, boolean>>({});
   const [showArchived, setShowArchived] = useState(false);
+  
+  // Promotion State
+  const [showPromoteModal, setShowPromoteModal] = useState(false);
+  const [promotingStudent, setPromotingStudent] = useState<Student | null>(null);
+  const [promoteForm, setPromoteForm] = useState({ action: 'promote', newClass: '', newSession: '' });
 
   const toggleFee = (id: string) => {
     setShowFees(p => ({ ...p, [id]: !p[id] }));
@@ -147,10 +154,44 @@ export default function Students() {
           notes: form.notes,
           subjects,
         });
-        
         const s = students.find(x => x.id === editingStudentId);
-        if (s?.uid) {
+        
+        let newUid = '';
+        if (!s?.uid && form.email && form.tempPassword) {
+          if (form.tempPassword.length < 6) {
+            toast.error('Password must be at least 6 characters'); return;
+          }
+          const cred = await createUserWithEmailAndPassword(secondaryAuth, form.email, form.tempPassword);
+          newUid = cred.user.uid;
+          
+          await setDoc(doc(db, 'users', newUid), {
+            role: 'student',
+            name: form.name,
+            email: form.email,
+            studentId: editingStudentId,
+          });
+        }
+
+        if (newUid) {
+          await updateDoc(doc(db, 'students', editingStudentId), {
+            uid: newUid,
+            email: form.email
+          });
+        }
+
+        if (s?.uid && form.email === '' && form.tempPassword === '') {
+          // Revoke login
+          await deleteDoc(doc(db, 'users', s.uid));
+          await updateDoc(doc(db, 'students', editingStudentId), {
+            uid: null,
+            email: null
+          });
+          toast.success(`Login access revoked for ${form.name}`);
+        } else if (s?.uid && !newUid) {
            await updateDoc(doc(db, 'users', s.uid), { name: form.name });
+           if (form.tempPassword) {
+             toast.error('Cannot update password for existing login directly. To change, clear email to revoke access, then re-assign.');
+           }
         }
         toast.success(`${form.name} updated successfully!`);
       } else {
@@ -163,7 +204,7 @@ export default function Students() {
 
         let uid = '';
         if (form.email && form.tempPassword) {
-          const cred = await createUserWithEmailAndPassword(auth, form.email, form.tempPassword);
+          const cred = await createUserWithEmailAndPassword(secondaryAuth, form.email, form.tempPassword);
           uid = cred.user.uid;
         }
         const studentRef = await addDoc(collection(db, 'students'), {
@@ -206,6 +247,26 @@ export default function Students() {
     await updateDoc(doc(db, 'students', s.id), { active: !s.active });
     loadStudents();
     toast.success(`${s.name} marked ${!s.active ? 'active' : 'inactive'}`);
+  };
+
+  const handlePromote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!promotingStudent) return;
+    setSaving(true);
+    try {
+      const finalClass = promoteForm.action === 'promote' ? promoteForm.newClass : promotingStudent.class;
+      await updateDoc(doc(db, 'students', promotingStudent.id), {
+        class: finalClass,
+        session: promoteForm.newSession
+      });
+      toast.success(`${promotingStudent.name} session updated!`);
+      setShowPromoteModal(false);
+      loadStudents();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const groupedByClass = filtered.reduce((acc, s) => {
@@ -340,6 +401,17 @@ export default function Students() {
                                   <button className="icon-btn" onClick={() => duplicateStudent(s)} title="Duplicate">
                                     <Copy size={16} />
                                   </button>
+                                  <button className="icon-btn text-blue" onClick={() => {
+                                    setPromotingStudent(s);
+                                    setPromoteForm({
+                                      action: 'promote',
+                                      newClass: String(parseInt(s.class) + 1),
+                                      newSession: getNextSession(s.session || getCurrentSession())
+                                    });
+                                    setShowPromoteModal(true);
+                                  }} title="Promote / Retain">
+                                    <GraduationCap size={16} />
+                                  </button>
                                   <Link to={`/teacher/students/${s.id}`} className="icon-btn" title="View">
                                     <Eye size={16} />
                                   </Link>
@@ -406,18 +478,14 @@ export default function Students() {
                   <label>Date of Joining</label>
                   <input type="date" value={form.joiningDate} onChange={set('joiningDate')} />
                 </div>
-                {!editingStudentId && (
-                  <>
-                    <div className="form-group">
-                      <label>Login Email <span className="text-muted" style={{fontWeight:400}}>(optional — for student app access)</span></label>
-                      <input id="student-email" type="email" placeholder="student@email.com" value={form.email} onChange={set('email')} />
-                    </div>
-                    <div className="form-group">
-                      <label>Temp Password <span className="text-muted" style={{fontWeight:400}}>(optional — min 6 chars)</span></label>
-                      <input id="student-password" type="text" placeholder="Leave blank if no login needed" value={form.tempPassword} onChange={set('tempPassword')} minLength={form.tempPassword ? 6 : undefined} />
-                    </div>
-                  </>
-                )}
+                <div className="form-group">
+                  <label>Login Email <span className="text-muted" style={{fontWeight:400}}>(optional — for student app access)</span></label>
+                  <input id="student-email" type="email" placeholder="student@email.com" value={form.email} onChange={set('email')} />
+                </div>
+                <div className="form-group">
+                  <label>Temp Password <span className="text-muted" style={{fontWeight:400}}>(optional — min 6 chars)</span></label>
+                  <input id="student-password" type="text" placeholder="Leave blank if no login needed" value={form.tempPassword} onChange={set('tempPassword')} minLength={form.tempPassword ? 6 : undefined} />
+                </div>
               </div>
 
               {/* Subjects */}
@@ -444,6 +512,56 @@ export default function Students() {
                   {saving ? <span className="btn-spinner" /> : (editingStudentId ? <Pencil size={16} /> : <UserPlus size={16} />)}
                   {saving ? 'Saving…' : (editingStudentId ? 'Update Student' : 'Create Student')}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Promote Student Modal */}
+      {showPromoteModal && promotingStudent && (
+        <div className="modal-overlay" onClick={() => setShowPromoteModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Promote / Retain Student</h2>
+              <button className="modal-close" onClick={() => setShowPromoteModal(false)}><X size={20} /></button>
+            </div>
+            <form onSubmit={handlePromote} className="modal-body">
+              <div className="alert alert-info mb-16">
+                <strong>{promotingStudent.name}</strong> is currently in <strong>Class {promotingStudent.class}</strong> (Session: {promotingStudent.session || getCurrentSession()})
+              </div>
+              <div className="form-group mb-16">
+                <label>Action *</label>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input type="radio" name="action" checked={promoteForm.action === 'promote'} onChange={() => setPromoteForm(f => ({ ...f, action: 'promote' }))} />
+                    Promote to new class
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input type="radio" name="action" checked={promoteForm.action === 'retain'} onChange={() => setPromoteForm(f => ({ ...f, action: 'retain' }))} />
+                    Retain in same class
+                  </label>
+                </div>
+              </div>
+              
+              {promoteForm.action === 'promote' && (
+                <div className="form-group mb-16">
+                  <label>New Class *</label>
+                  <select value={promoteForm.newClass} onChange={e => setPromoteForm(f => ({ ...f, newClass: e.target.value }))} required className="input">
+                    <option value="">Select class</option>
+                    {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+                  </select>
+                </div>
+              )}
+              
+              <div className="form-group mb-16">
+                <label>New Academic Session *</label>
+                <input type="text" className="input" placeholder="e.g. 2024-2025" value={promoteForm.newSession} onChange={e => setPromoteForm(f => ({ ...f, newSession: e.target.value }))} required />
+              </div>
+              
+              <div className="modal-footer">
+                <button type="button" className="btn-secondary" onClick={() => setShowPromoteModal(false)}>Cancel</button>
+                <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Update Session'}</button>
               </div>
             </form>
           </div>

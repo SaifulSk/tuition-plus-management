@@ -18,6 +18,7 @@ const teacherLinks = [
   { to: '/teacher/syllabus', label: 'Syllabus', icon: BookOpen },
   { to: '/teacher/tests', label: 'Tuition Tests', icon: ClipboardList },
   { to: '/teacher/exams', label: 'School Exams', icon: FileText },
+  { to: '/teacher/homework', label: 'Homework', icon: BookOpen },
   { to: '/teacher/events', label: 'Events', icon: PartyPopper },
   { to: '/teacher/subjects', label: 'Subjects Master', icon: BookOpen },
   { to: '/teacher/schools', label: 'Schools Master', icon: Building },
@@ -28,6 +29,7 @@ const studentLinks = [
   { to: '/student/fees', label: 'My Fees', icon: Wallet },
   { to: '/student/syllabus', label: 'My Syllabus', icon: BookOpen },
   { to: '/student/results', label: 'My Results', icon: BarChart3 },
+  { to: '/student/homework', label: 'My Homework', icon: BookOpen },
   { to: '/student/events', label: 'Events', icon: PartyPopper },
 ];
 
@@ -161,15 +163,17 @@ export default function Sidebar({ role }: SidebarProps) {
               </div>
             </div>
           )}
-          <button
-            className={`sidebar-action ${(collapsed && !mobileOpen) ? 'collapsed' : ''}`}
-            onClick={() => setShowPasswordModal(true)}
-            title="Change Password"
-            style={{ marginBottom: '8px' }}
-          >
-            <Key size={18} />
-            {(!collapsed || mobileOpen) && <span>Change Password</span>}
-          </button>
+          {role === 'teacher' && (
+            <button
+              className={`sidebar-action ${(collapsed && !mobileOpen) ? 'collapsed' : ''}`}
+              onClick={() => setShowPasswordModal(true)}
+              title="Change Password"
+              style={{ marginBottom: '8px' }}
+            >
+              <Key size={18} />
+              {(!collapsed || mobileOpen) && <span>Change Password</span>}
+            </button>
+          )}
           <button
             className={`sidebar-signout ${(collapsed && !mobileOpen) ? 'collapsed' : ''}`}
             onClick={handleSignOut}

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, SchoolExam } from '../../types';
-import { Plus, X, BarChart3, Trash2, Pencil } from 'lucide-react';
+import { Plus, X, BarChart3, Trash2, Pencil, ChevronDown, ChevronRight, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import {
@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import MultiSelect from '../../components/common/MultiSelect';
 import { useConfirm } from '../../hooks/useConfirm';
+import { getCurrentSession } from '../../utils/dateUtils';
 
 const EXAM_NAMES = ['Unit Test 1', 'Unit Test 2', 'Midterm', 'SA1', 'SA2', 'Final Exam'];
 const getMarksBadgeClass = (pct: number) => {
@@ -38,10 +39,17 @@ export default function SchoolExams() {
   const [selectedStudent, setSelectedStudent] = useState('');
   const [exams, setExams] = useState<SchoolExam[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'student' | 'master'>('student');
+  const [masterExpandedClass, setMasterExpandedClass] = useState<string | null>(null);
+  const [masterClassExams, setMasterClassExams] = useState<SchoolExam[]>([]);
+  const [masterSubject, setMasterSubject] = useState<string>('');
+  const [masterLoading, setMasterLoading] = useState(false);
+
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
   const [form, setForm] = useState({
     examName: '', maxMarks: '', marksObtained: '',
     date: new Date().toISOString().split('T')[0],
+    session: '', className: ''
   });
   const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -62,17 +70,41 @@ export default function SchoolExams() {
     setExams(snap.docs.map(d => ({ id: d.id, ...d.data() }) as SchoolExam));
   };
 
-  useEffect(() => { if (selectedStudent) loadExams(selectedStudent); else setExams([]); }, [selectedStudent]);
+  const [selectedSession, setSelectedSession] = useState('');
+
+  useEffect(() => { 
+    if (selectedStudent) {
+      const s = students.find(x => x.id === selectedStudent);
+      setSelectedSession(s?.session || getCurrentSession());
+      loadExams(selectedStudent); 
+    } else { 
+      setExams([]); 
+    } 
+  }, [selectedStudent]);
 
   const student = students.find(s => s.id === selectedStudent);
-  const distinctSubjects = [...new Set(exams.flatMap(e => e.subjects || []))];
-  const examNames = [...new Set(exams.map(e => e.examName))];
+  
+  const distinctSessions = [...new Set([
+    student?.session || getCurrentSession(),
+    ...exams.map(e => e.session).filter(Boolean)
+  ])].sort().reverse();
+
+  useEffect(() => {
+    if (distinctSessions.length > 0 && !distinctSessions.includes(selectedSession)) {
+      setSelectedSession(distinctSessions[0] as string);
+    }
+  }, [distinctSessions, selectedSession]);
+
+  const filteredExams = exams.filter(e => (e.session || getCurrentSession()) === selectedSession);
+
+  const distinctSubjects = [...new Set(filteredExams.flatMap(e => e.subjects || []))];
+  const examNames = [...new Set(filteredExams.map(e => e.examName))];
 
   // Build chart data: x = examName, y = percentage per subject
   const chartData = examNames.map(en => {
     const row: Record<string, string | number> = { exam: en };
     distinctSubjects.forEach(sub => {
-      const found = exams.find(e => e.examName === en && e.subjects?.includes(sub));
+      const found = filteredExams.find(e => e.examName === en && e.subjects?.includes(sub));
       if (found) row[sub] = Math.round((found.marksObtained / found.maxMarks) * 100);
     });
     return row;
@@ -85,6 +117,8 @@ export default function SchoolExams() {
       maxMarks: ex.maxMarks?.toString() || '',
       marksObtained: ex.marksObtained?.toString() || '',
       date: ex.date ? new Date(ex.date.toDate().getTime() - ex.date.toDate().getTimezoneOffset() * 60000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      session: ex.session || getCurrentSession(),
+      className: ex.className || student?.class || ''
     });
     setSubjects(ex.subjects || []);
     setShowModal(true);
@@ -93,7 +127,7 @@ export default function SchoolExams() {
   const closeModal = () => {
     setShowModal(false);
     setEditingExamId(null);
-    setForm({ examName:'', maxMarks:'', marksObtained:'', date: new Date().toISOString().split('T')[0] });
+    setForm({ examName:'', maxMarks:'', marksObtained:'', date: new Date().toISOString().split('T')[0], session: '', className: '' });
     setSubjects([]);
   };
 
@@ -110,6 +144,8 @@ export default function SchoolExams() {
         marksObtained: Number(form.marksObtained),
         date: Timestamp.fromDate(new Date(form.date)),
         percentage: Math.round((Number(form.marksObtained)/Number(form.maxMarks))*100),
+        session: form.session || getCurrentSession(),
+        className: form.className || student?.class || ''
       };
 
       if (editingExamId) {
@@ -135,6 +171,46 @@ export default function SchoolExams() {
     });
   };
 
+  const handleToggleClass = async (className: string) => {
+    if (masterExpandedClass === className) {
+      setMasterExpandedClass(null);
+      return;
+    }
+    setMasterExpandedClass(className);
+    setMasterSubject('');
+    setMasterLoading(true);
+    try {
+      const classStudents = students.filter(s => s.class === className && s.active !== false);
+      const currentSess = getCurrentSession();
+      const examPromises = classStudents.map(s => 
+        getDocs(query(collection(db, 'schoolExams', s.id, 'exams'), orderBy('date')))
+          .then(snap => snap.docs.map(d => ({ id: d.id, studentId: s.id, studentName: s.name, ...d.data() } as SchoolExam & { studentName?: string })))
+      );
+      const allExamsArrays = await Promise.all(examPromises);
+      const filteredForCurrentSession = allExamsArrays.flat().filter(e => (e.session || currentSess) === currentSess);
+      setMasterClassExams(filteredForCurrentSession);
+    } catch (err: any) {
+      toast.error('Failed to load class exams');
+    } finally {
+      setMasterLoading(false);
+    }
+  };
+
+  const masterClasses = [...new Set(students.filter(s => s.active !== false).map(s => s.class))].sort((a,b) => parseInt(a) - parseInt(b));
+  
+  // Master chart data
+  const masterFilteredExams = masterClassExams.filter(e => e.subjects?.includes(masterSubject));
+  const masterExamNames = [...new Set(masterFilteredExams.map(e => e.examName))];
+  const masterStudentsInSubject = [...new Set(masterFilteredExams.map(e => (e as any).studentName))];
+
+  const masterChartData = masterExamNames.map(en => {
+    const row: Record<string, string | number> = { exam: en };
+    masterFilteredExams.filter(e => e.examName === en).forEach(e => {
+      row[(e as any).studentName] = Math.round((e.marksObtained / e.maxMarks) * 100);
+    });
+    return row;
+  });
+
   return (
     <div className="page">
       <div className="page-header">
@@ -143,26 +219,46 @@ export default function SchoolExams() {
           <p className="page-sub">Track and visualize school exam performance</p>
         </div>
         {selectedStudent && (
-          <button className="btn-primary" onClick={() => { setEditingExamId(null); setForm({ examName:'', maxMarks:'', marksObtained:'', date: new Date().toISOString().split('T')[0] }); setSubjects([]); setShowModal(true); }}>
+          <button className="btn-primary" onClick={() => { setEditingExamId(null); setForm({ examName:'', maxMarks:'', marksObtained:'', date: new Date().toISOString().split('T')[0], session: selectedSession, className: student?.class || '' }); setSubjects([]); setShowModal(true); }}>
             <Plus size={18}/> Add Result
           </button>
         )}
       </div>
 
-      <div className="card mb-16">
-        <div className="form-group" style={{marginBottom:0}}>
-          <label>Select Student</label>
-          <select id="exams-student-select" value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)}>
-            <option value="">— Choose a student —</option>
-            {students.map(s => <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>)}
-          </select>
+      <div className="filter-bar" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+        <div className="tabs" style={{ marginBottom: 0 }}>
+          <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>Master View</button>
+          <button className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`} onClick={() => setViewMode('student')}>Student View</button>
         </div>
       </div>
 
-      {!selectedStudent ? (
+      {viewMode === 'student' && (
+        <>
+          <div className="card mb-16" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+            <div className="form-group" style={{marginBottom:0, flex: 1, minWidth: '200px'}}>
+              <label>Select Student</label>
+              <select id="exams-student-select" className="input" value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)}>
+                <option value="">— Choose a student —</option>
+                {students.map(s => <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>)}
+              </select>
+            </div>
+            
+            {selectedStudent && (
+              <div className="form-group" style={{marginBottom:0, flex: 1, minWidth: '200px'}}>
+                <label>Academic Session</label>
+                <select className="input" value={selectedSession} onChange={e => setSelectedSession(e.target.value)}>
+                  {distinctSessions.map(sess => (
+                    <option key={sess} value={sess as string}>{sess}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {!selectedStudent ? (
         <div className="empty-state"><BarChart3 size={48}/><p>Select a student to view exam results</p></div>
-      ) : exams.length === 0 ? (
-        <div className="empty-state"><BarChart3 size={48}/><p>No exam results yet for {student?.name}</p></div>
+      ) : filteredExams.length === 0 ? (
+        <div className="empty-state"><BarChart3 size={48}/><p>No exam results yet for {student?.name} in {selectedSession}</p></div>
       ) : (
         <>
           {/* Performance chart */}
@@ -221,7 +317,7 @@ export default function SchoolExams() {
           {/* Per-subject summary */}
           <div className="stats-grid-sm mb-16">
             {distinctSubjects.map((sub, i) => {
-              const subExams = exams.filter(e => e.subjects?.includes(sub));
+              const subExams = filteredExams.filter(e => e.subjects?.includes(sub));
               const avg = subExams.length
                 ? Math.round(subExams.reduce((a,e) => a + (e.marksObtained/e.maxMarks)*100, 0) / subExams.length)
                 : 0;
@@ -246,7 +342,7 @@ export default function SchoolExams() {
                   <tr><th>Exam</th><th>Subjects</th><th>Date</th><th>Marks</th><th>Max</th><th>%</th><th></th></tr>
                 </thead>
                 <tbody>
-                  {exams.map(ex => {
+                  {filteredExams.map(ex => {
                     const pct = Math.round((ex.marksObtained / ex.maxMarks) * 100);
                     return (
                       <tr key={ex.id}>
@@ -273,7 +369,106 @@ export default function SchoolExams() {
               </table>
             </div>
           </div>
+            </>
+          )}
         </>
+      )}
+
+      {viewMode === 'master' && (
+        <div className="card mb-16">
+          <h2 className="section-title mb-16">Class-wise Performance</h2>
+          {masterClasses.length === 0 ? (
+            <div className="empty-state"><BarChart3 size={48}/><p>No active classes found.</p></div>
+          ) : (
+            <div className="accordion-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {masterClasses.map(cls => {
+                const isExpanded = masterExpandedClass === cls;
+                return (
+                  <div key={cls} className={`accordion-item ${isExpanded ? 'expanded' : ''}`} style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                    <div 
+                      className="accordion-header" 
+                      onClick={() => handleToggleClass(cls)}
+                      style={{ padding: '16px', background: isExpanded ? 'var(--bg)' : 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Users size={18} color="var(--navy)" />
+                        Class {cls}
+                      </div>
+                      {isExpanded ? <ChevronDown size={20} className="text-muted" /> : <ChevronRight size={20} className="text-muted" />}
+                    </div>
+                    {isExpanded && (
+                      <div className="accordion-body" style={{ padding: '16px', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
+                        {masterLoading ? (
+                          <div className="loader" style={{ margin: '20px auto' }} />
+                        ) : (
+                          <>
+                            {masterClassExams.length === 0 ? (
+                              <div className="empty-state" style={{ padding: '24px 0' }}><p>No exam results found for this class.</p></div>
+                            ) : (
+                              <>
+                                <div className="form-group mb-16" style={{ maxWidth: '300px' }}>
+                                  <label>Select Subject</label>
+                                  <select className="input" value={masterSubject} onChange={e => setMasterSubject(e.target.value)}>
+                                    <option value="">— Select Subject —</option>
+                                    {[...new Set(masterClassExams.flatMap(e => e.subjects || []))].map(s => (
+                                      <option key={s} value={s}>{s}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                
+                                {masterSubject ? (
+                                  masterChartData.length === 0 ? (
+                                    <div className="empty-state" style={{ padding: '24px 0' }}><p>No exams found for {masterSubject}.</p></div>
+                                  ) : (
+                                    <ResponsiveContainer width="100%" height={400}>
+                                      <LineChart data={masterChartData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                        <XAxis dataKey="exam" tick={{ fontSize: 12 }} padding={{ left: 30, right: 30 }} />
+                                        <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 12 }} />
+                                        <Tooltip formatter={(v: any, name: any) => [`${v}%`, name]} />
+                                        <Legend />
+                                        {masterStudentsInSubject.map((sName, i) => {
+                                          const color = COLORS[i % COLORS.length];
+                                          const renderCustomDot = (props: any) => {
+                                            const { cx, cy, value, index } = props;
+                                            if (cx == null || cy == null || value == null) return null;
+                                            return <circle key={`dot-${index}`} cx={cx} cy={cy} r={4} fill={color} stroke="#fff" strokeWidth={1} />;
+                                          };
+                                          return (
+                                            <Line
+                                              key={sName as string}
+                                              name={sName as string}
+                                              type="monotone"
+                                              dataKey={sName as string}
+                                              connectNulls={true}
+                                              stroke={color}
+                                              strokeWidth={2.5}
+                                              dot={renderCustomDot}
+                                              activeDot={{ r: 6 }}
+                                            />
+                                          );
+                                        })}
+                                      </LineChart>
+                                    </ResponsiveContainer>
+                                  )
+                                ) : (
+                                  <div className="empty-state" style={{ padding: '24px 0' }}>
+                                    <BarChart3 size={32} style={{ marginBottom: '8px', opacity: 0.5 }} />
+                                    <p>Please select a subject to view performance</p>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {showModal && (
@@ -311,6 +506,14 @@ export default function SchoolExams() {
                 <div className="form-group">
                   <label>Exam Date</label>
                   <input type="date" value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))} />
+                </div>
+                <div className="form-group">
+                  <label>Academic Session</label>
+                  <input type="text" placeholder="e.g. 2024-2025" value={form.session} onChange={e => setForm(f=>({...f,session:e.target.value}))} required />
+                </div>
+                <div className="form-group">
+                  <label>Class Name</label>
+                  <input type="text" placeholder="e.g. 9" value={form.className} onChange={e => setForm(f=>({...f,className:e.target.value}))} />
                 </div>
               </div>
               <div className="modal-footer">

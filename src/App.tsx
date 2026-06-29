@@ -14,6 +14,7 @@ import Fees from './pages/teacher/Fees';
 import Syllabus from './pages/teacher/Syllabus';
 import Tests from './pages/teacher/Tests';
 import SchoolExams from './pages/teacher/SchoolExams';
+import TeacherHomework from './pages/teacher/Homework';
 import Events from './pages/teacher/Events';
 import SubjectsMaster from './pages/teacher/SubjectsMaster';
 import SchoolsMaster from './pages/teacher/SchoolsMaster';
@@ -23,6 +24,7 @@ import StudentDashboard from './pages/student/Dashboard';
 import StudentFees from './pages/student/Fees';
 import StudentSyllabus from './pages/student/Syllabus';
 import StudentResults from './pages/student/Results';
+import StudentHomework from './pages/student/Homework';
 import StudentEvents from './pages/student/Events';
 
 export default function App() {
@@ -63,6 +65,7 @@ export default function App() {
             <Route path="syllabus" element={<Syllabus />} />
             <Route path="tests" element={<Tests />} />
             <Route path="exams" element={<SchoolExams />} />
+            <Route path="homework" element={<TeacherHomework />} />
             <Route path="events" element={<Events />} />
             <Route path="subjects" element={<SubjectsMaster />} />
             <Route path="schools" element={<SchoolsMaster />} />
@@ -81,6 +84,7 @@ export default function App() {
             <Route path="fees" element={<StudentFees />} />
             <Route path="syllabus" element={<StudentSyllabus />} />
             <Route path="results" element={<StudentResults />} />
+            <Route path="homework" element={<StudentHomework />} />
             <Route path="events" element={<StudentEvents />} />
           </Route>
 

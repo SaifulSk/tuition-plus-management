@@ -9,6 +9,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend
 } from 'recharts';
+import { getCurrentSession } from '../../utils/dateUtils';
 
 type Tab = 'overview' | 'fees' | 'syllabus' | 'exams';
 
@@ -37,12 +38,17 @@ export default function StudentDetail() {
   const [tab, setTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
   const [showFees, setShowFees] = useState(false);
+  const [selectedSession, setSelectedSession] = useState('');
 
   useEffect(() => {
     if (!id) return;
     async function load() {
       const sSnap = await getDoc(doc(db, 'students', id!));
-      if (sSnap.exists()) setStudent({ id: sSnap.id, ...sSnap.data() } as Student);
+      if (sSnap.exists()) {
+        const data = { id: sSnap.id, ...sSnap.data() } as Student;
+        setStudent(data);
+        setSelectedSession(data.session || getCurrentSession());
+      }
 
       const fSnap = await getDocs(query(collection(db, 'fees', id!, 'payments'), orderBy('datePaid', 'desc')));
       setFees(fSnap.docs.map(d => ({ id: d.id, ...d.data() }) as FeePayment));
@@ -66,12 +72,20 @@ export default function StudentDetail() {
   const syllabusProgress = syllabus.length ? Math.round((completedTopics / syllabus.length) * 100) : 0;
 
   // Build exam chart data grouped by subject
-  const subjects = [...new Set(exams.flatMap(e => e.subjects || []))];
-  const examNames = [...new Set(exams.map(e => e.examName))];
+  const distinctSessions = [...new Set([
+    student?.session || getCurrentSession(),
+    ...exams.map(e => e.session).filter(Boolean)
+  ])].sort().reverse();
+
+  const filteredExams = exams.filter(e => (e.session || getCurrentSession()) === selectedSession);
+
+  const subjects = [...new Set(filteredExams.flatMap(e => e.subjects || []))];
+  const examNames = [...new Set(filteredExams.map(e => e.examName))];
+
   const chartData = examNames.map(en => {
     const row: Record<string, string | number> = { exam: en };
     subjects.forEach(sub => {
-      const found = exams.find(e => e.examName === en && e.subjects?.includes(sub));
+      const found = filteredExams.find(e => e.examName === en && e.subjects?.includes(sub));
       if (found) row[sub] = Math.round((found.marksObtained / found.maxMarks) * 100);
     });
     return row;
@@ -211,9 +225,19 @@ export default function StudentDetail() {
       {/* Exams Tab */}
       {tab === 'exams' && (
         <div className="card">
-          <h3 className="section-title"><BarChart3 size={18}/> School Exam Results</h3>
-          {exams.length === 0 ? (
-            <div className="empty-state"><BarChart3 size={32}/><p>No exam results recorded</p></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '16px' }}>
+            <h3 className="section-title" style={{ margin: 0 }}><BarChart3 size={18}/> School Exam Results</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label className="text-sm fw-600">Session:</label>
+              <select className="input" style={{ width: 'auto', padding: '4px 8px', minHeight: '32px' }} value={selectedSession} onChange={e => setSelectedSession(e.target.value)}>
+                {distinctSessions.map(sess => (
+                  <option key={sess} value={sess as string}>{sess}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {filteredExams.length === 0 ? (
+            <div className="empty-state"><BarChart3 size={32}/><p>No exam results recorded for {selectedSession}</p></div>
           ) : (
             <>
               <ResponsiveContainer width="100%" height={300}>
@@ -261,7 +285,7 @@ export default function StudentDetail() {
                     <tr><th>Exam</th><th>Subject</th><th>Marks</th><th>Max</th><th>%</th></tr>
                   </thead>
                   <tbody>
-                    {exams.map(ex => (
+                    {filteredExams.map(ex => (
                       <tr key={ex.id}>
                         <td>{ex.examName}</td>
                         <td>{ex.subjects?.join(', ')}</td>

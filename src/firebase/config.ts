@@ -18,4 +18,9 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+// Secondary app for creating users without logging out the primary user
+const secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp');
+export const secondaryAuth = getAuth(secondaryApp);
+
 export default app;
