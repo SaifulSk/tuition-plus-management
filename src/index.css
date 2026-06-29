@@ -706,8 +706,9 @@ img { max-width: 100%; }
   background: rgba(15,25,35,0.7);
   backdrop-filter: blur(4px);
   z-index: 200;
-  display: flex; align-items: center; justify-content: center;
-  padding: 20px;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 40px 20px;
+  overflow-y: auto;
   animation: fadeIn 0.15s ease;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -716,8 +717,8 @@ img { max-width: 100%; }
   background: var(--surface);
   border-radius: var(--radius-lg);
   width: 100%; max-width: 520px;
-  max-height: 90vh;
-  overflow-y: auto;
+  margin: auto;
+  overflow: visible;
   box-shadow: var(--shadow-lg);
   animation: slideUp 0.2s ease;
 }
