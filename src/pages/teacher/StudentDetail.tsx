@@ -3,9 +3,10 @@ import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, FeePayment, SyllabusTopic, SchoolExam } from '../../types';
-import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff, Plus, X, Settings } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff, Plus, X, Settings, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
+import MultiSelect from '../../components/common/MultiSelect';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend
@@ -46,6 +47,9 @@ export default function StudentDetail() {
   const [showFeeConfig, setShowFeeConfig] = useState(false);
   const [newFeeAmount, setNewFeeAmount] = useState('');
   const [newFeeMonth, setNewFeeMonth] = useState('');
+  const [newFeeSubjects, setNewFeeSubjects] = useState<string[]>([]);
+  const [newFeeNote, setNewFeeNote] = useState('');
+  const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -55,6 +59,8 @@ export default function StudentDetail() {
         const data = { id: sSnap.id, ...sSnap.data() } as Student;
         setStudent(data);
         setSelectedSession(data.session || getCurrentSession());
+        // pre-fill new subjects with the student's current subjects
+        setNewFeeSubjects(data.subjects || []);
       }
 
       const fSnap = await getDocs(query(collection(db, 'fees', id!, 'payments'), orderBy('datePaid', 'desc')));
@@ -69,23 +75,36 @@ export default function StudentDetail() {
       setLoading(false);
     }
     load();
+    // Load master subjects list from Firestore
+    getDocs(collection(db, 'subjects')).then(snap => {
+      setAvailableSubjects(snap.docs.map(d => (d.data() as any).name).filter(Boolean));
+    });
   }, [id]);
 
   const handleAddFeeChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!student || !newFeeAmount || !newFeeMonth) return;
-    
+    if (newFeeSubjects.length === 0) {
+      toast.error('Please select at least one subject'); return;
+    }
     try {
       const history = student.feeHistory || [];
-      const updatedHistory = [...history, { amount: Number(newFeeAmount), effectiveMonth: newFeeMonth }];
+      const updatedHistory = [...history, {
+        amount: Number(newFeeAmount),
+        effectiveMonth: newFeeMonth,
+        subjects: newFeeSubjects,
+        note: newFeeNote || undefined,
+      }];
       await updateDoc(doc(db, 'students', student.id), {
         feeHistory: updatedHistory
       });
       setStudent({ ...student, feeHistory: updatedHistory });
       setNewFeeAmount('');
       setNewFeeMonth('');
+      setNewFeeSubjects(student.subjects || []);
+      setNewFeeNote('');
       setShowFeeConfig(false);
-      toast.success('Fee configuration updated');
+      toast.success('Fee & subject change recorded');
     } catch (err: any) {
       toast.error(err.message || 'Failed to update fee');
     }
@@ -251,28 +270,43 @@ export default function StudentDetail() {
         
         <div className="card mt-16">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 className="section-title" style={{ margin: 0 }}><Settings size={18}/> Fee Configuration (Variable Fees)</h3>
+            <h3 className="section-title" style={{ margin: 0 }}><Settings size={18}/> Fee &amp; Subject Changes</h3>
             <button className="btn-secondary" onClick={() => setShowFeeConfig(!showFeeConfig)}>
-              {showFeeConfig ? 'Cancel' : <><Plus size={16}/> Add Change</>}
+              {showFeeConfig ? 'Cancel' : <><Plus size={16}/> Record Change</>}
             </button>
           </div>
           
           <p className="text-muted text-sm mb-16">
-            If the student changes subjects mid-session, record the new fee amount and the month it becomes effective from here. This ensures past unpaid months are still calculated at the old fee rate.
+            Use this to record when a student changes subjects (and therefore fee). Each entry tracks the new fee amount, new subject list, and the month it takes effect. Past unpaid months will still use the fee that was active at that time.
           </p>
           
           {showFeeConfig && (
             <form onSubmit={handleAddFeeChange} className="card bg-surface-2" style={{ marginBottom: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 16, alignItems: 'flex-end' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Effective Month *</label>
+                  <label>Effective From Month *</label>
                   <input type="month" value={newFeeMonth} onChange={e => setNewFeeMonth(e.target.value)} required />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>New Amount (₹) *</label>
+                  <label>New Monthly Fee (₹) *</label>
                   <input type="number" value={newFeeAmount} onChange={e => setNewFeeAmount(e.target.value)} required placeholder="e.g. 2000" />
                 </div>
-                <button type="submit" className="btn-primary">Save</button>
+              </div>
+              <div className="form-group" style={{ marginTop: 16 }}>
+                <label>New Subjects * <span className="text-muted text-sm">(select all subjects from this month)</span></label>
+                <MultiSelect
+                  options={availableSubjects}
+                  selected={newFeeSubjects}
+                  onChange={setNewFeeSubjects}
+                  placeholder="Select subjects..."
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Note <span className="text-muted text-sm">(optional reason)</span></label>
+                <input type="text" value={newFeeNote} onChange={e => setNewFeeNote(e.target.value)} placeholder="e.g. Added Physics" />
+              </div>
+              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className="btn-primary">Save Change</button>
               </div>
             </form>
           )}
@@ -280,12 +314,24 @@ export default function StudentDetail() {
           <div className="table-wrap">
             <table className="data-table">
               <thead>
-                <tr><th>Effective From Month</th><th>Monthly Fee Amount</th><th style={{width:50}}></th></tr>
+                <tr>
+                  <th>Effective From</th>
+                  <th>Fee/Month</th>
+                  <th>Subjects</th>
+                  <th>Note</th>
+                  <th style={{width:50}}></th>
+                </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>{student.joiningDate ? format(student.joiningDate.toDate(), 'MMMM yyyy') : 'Joining Date'} (Base Fee)</td>
+                  <td>{student.joiningDate ? format(student.joiningDate.toDate(), 'MMMM yyyy') : '—'} <span className="badge badge-gray">Base</span></td>
                   <td>₹{student.confirmedFee?.toLocaleString()}</td>
+                  <td>
+                    <div className="subject-chips">
+                      {(student.subjects || []).map(s => <span key={s} className="chip">{s}</span>)}
+                    </div>
+                  </td>
+                  <td className="text-muted text-sm">Initial enrollment</td>
                   <td></td>
                 </tr>
                 {(student.feeHistory || []).sort((a,b) => a.effectiveMonth.localeCompare(b.effectiveMonth)).map((fh, idx) => (
@@ -297,6 +343,13 @@ export default function StudentDetail() {
                       })()}
                     </td>
                     <td>₹{fh.amount.toLocaleString()}</td>
+                    <td>
+                      <div className="subject-chips">
+                        {(fh.subjects || []).map(s => <span key={s} className="chip">{s}</span>)}
+                        {(!fh.subjects || fh.subjects.length === 0) && <span className="text-muted text-sm">—</span>}
+                      </div>
+                    </td>
+                    <td className="text-muted text-sm">{fh.note || '—'}</td>
                     <td>
                       <button className="btn-ghost" style={{ color: 'var(--red)', padding: 4 }} onClick={() => handleRemoveFeeChange(idx)}>
                         <X size={16}/>

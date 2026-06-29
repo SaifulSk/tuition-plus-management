@@ -31,6 +31,8 @@ export interface Student {
 export interface FeeChange {
   amount: number;
   effectiveMonth: string; // "YYYY-MM"
+  subjects?: string[];    // optional: subjects in effect from this month
+  note?: string;          // optional: reason/note for the change
 }
 
 // ─── Schedule ──────────────────────────────────────────────────────────────
