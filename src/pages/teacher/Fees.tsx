@@ -36,7 +36,7 @@ export default function Fees() {
   }]);
   const [saving, setSaving] = useState(false);
   const [showConfirmed, setShowConfirmed] = useState(false);
-  const [showTableFees, setShowTableFees] = useState(false);
+  const [showPaymentAmounts, setShowPaymentAmounts] = useState<Record<string, boolean>>({});
   const [showDueModal, setShowDueModal] = useState(false);
 
   const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
@@ -449,14 +449,7 @@ export default function Fees() {
                   <thead>
                     <tr>
                       <th>Date</th>
-                      <th>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          Amount
-                          <button onClick={() => setShowTableFees(!showTableFees)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}>
-                            {showTableFees ? <EyeOff size={14} /> : <Eye size={14} />}
-                          </button>
-                        </div>
-                      </th>
+                      <th>Amount</th>
                       <th>Months Paid</th>
                       <th>Mode</th>
                       <th>Receipt</th>
@@ -466,7 +459,14 @@ export default function Fees() {
                     {payments.map(p => (
                       <tr key={p.id}>
                         <td>{p.datePaid ? format(p.datePaid.toDate(),'dd MMM yyyy') : '—'}</td>
-                        <td className="fw-600">{showTableFees ? `₹${p.amount?.toLocaleString()}` : '₹****'}</td>
+                        <td className="fw-600">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {showPaymentAmounts[p.id!] ? `₹${p.amount?.toLocaleString()}` : '₹****'}
+                            <button onClick={() => setShowPaymentAmounts(prev => ({ ...prev, [p.id!]: !prev[p.id!] }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}>
+                              {showPaymentAmounts[p.id!] ? <EyeOff size={13} /> : <Eye size={13} />}
+                            </button>
+                          </div>
+                        </td>
                         <td>
                           <div className="subject-chips">
                             {p.monthsPaid?.map(m => <span key={m} className="chip">{formatMonthLabel(m)}</span>)}

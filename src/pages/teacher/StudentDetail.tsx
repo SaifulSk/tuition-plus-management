@@ -38,7 +38,9 @@ export default function StudentDetail() {
   const [exams, setExams] = useState<SchoolExam[]>([]);
   const [tab, setTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
-  const [showFees, setShowFees] = useState(false);
+  const [showMonthlyFee, setShowMonthlyFee] = useState(false);
+  const [showTotalPaid, setShowTotalPaid] = useState(false);
+  const [showPaymentRows, setShowPaymentRows] = useState<Record<string, boolean>>({});
   const [selectedSession, setSelectedSession] = useState('');
   
   const [showFeeConfig, setShowFeeConfig] = useState(false);
@@ -155,16 +157,19 @@ export default function StudentDetail() {
         <div className="profile-stats">
           <div className="profile-stat">
             <div className="profile-stat-val" style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-              {showFees ? `₹${student.confirmedFee?.toLocaleString()}` : '₹****'}
-              <button onClick={() => setShowFees(!showFees)} style={{ background:'none', border:'none', cursor:'pointer', color: 'var(--text-muted)', display: 'flex' }}>
-                {showFees ? <EyeOff size={14}/> : <Eye size={14}/>}
+              {showMonthlyFee ? `₹${student.confirmedFee?.toLocaleString()}` : '₹****'}
+              <button onClick={() => setShowMonthlyFee(!showMonthlyFee)} style={{ background:'none', border:'none', cursor:'pointer', color: 'var(--text-muted)', display: 'flex' }}>
+                {showMonthlyFee ? <EyeOff size={14}/> : <Eye size={14}/>}
               </button>
             </div>
             <div className="profile-stat-label">Monthly Fee</div>
           </div>
           <div className="profile-stat">
             <div className="profile-stat-val" style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-              {showFees ? `₹${totalFeesPaid.toLocaleString()}` : '₹****'}
+              {showTotalPaid ? `₹${totalFeesPaid.toLocaleString()}` : '₹****'}
+              <button onClick={() => setShowTotalPaid(!showTotalPaid)} style={{ background:'none', border:'none', cursor:'pointer', color: 'var(--text-muted)', display: 'flex' }}>
+                {showTotalPaid ? <EyeOff size={14}/> : <Eye size={14}/>}
+              </button>
             </div>
             <div className="profile-stat-label">Total Paid</div>
           </div>
@@ -219,7 +224,14 @@ export default function StudentDetail() {
                   {fees.map(f => (
                     <tr key={f.id}>
                       <td>{f.datePaid ? format(f.datePaid.toDate(), 'dd MMM yyyy') : '—'}</td>
-                      <td>{showFees ? `₹${f.amount?.toLocaleString()}` : '₹****'}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {showPaymentRows[f.id!] ? `₹${f.amount?.toLocaleString()}` : '₹****'}
+                          <button onClick={() => setShowPaymentRows(p => ({ ...p, [f.id!]: !p[f.id!] }))} style={{ background:'none', border:'none', cursor:'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}>
+                            {showPaymentRows[f.id!] ? <EyeOff size={13}/> : <Eye size={13}/>}
+                          </button>
+                        </div>
+                      </td>
                       <td>
                         <div className="subject-chips">
                           {f.monthsPaid?.map(m => {
