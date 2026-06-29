@@ -2,13 +2,12 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
-import type { Student, SyllabusTopic, SyllabusStatus } from '../../types';
+import type { SyllabusTopic } from '../../types';
 import { BookOpen } from 'lucide-react';
 
 export default function StudentSyllabus() {
   const { appUser } = useAuth();
-  const [student, setStudent] = useState<Student | null>(null);
-  const [topics, setTopics] = useState<SyllabusTopic[]>([]);
+    const [topics, setTopics] = useState<SyllabusTopic[]>([]);
   const [subjectFilter, setSubjectFilter] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -19,7 +18,9 @@ export default function StudentSyllabus() {
       const sid = userDoc.data()?.studentId;
       if (!sid) { setLoading(false); return; }
       const sSnap = await getDoc(doc(db, 'students', sid));
-      if (sSnap.exists()) setStudent({ id: sSnap.id, ...sSnap.data() } as Student);
+      if (sSnap.exists()) {
+        // do nothing
+      }
       const snap = await getDocs(collection(db, 'syllabus', sid, 'topics'));
       setTopics(snap.docs.map(d => ({ id: d.id, ...d.data() }) as SyllabusTopic));
       setLoading(false);
@@ -27,8 +28,8 @@ export default function StudentSyllabus() {
     load();
   }, [appUser]);
 
-  const subjects = [...new Set(topics.map(t => t.subject))];
-  const filtered = subjectFilter ? topics.filter(t => t.subject === subjectFilter) : topics;
+  const subjects = [...new Set(topics.map(t => t.subjects?.join(', ')))];
+  const filtered = subjectFilter ? topics.filter(t => t.subjects?.join(', ') === subjectFilter) : topics;
   const completed = topics.filter(t => t.status === 'completed').length;
   const progress = topics.length ? Math.round((completed / topics.length) * 100) : 0;
 
@@ -72,7 +73,7 @@ export default function StudentSyllabus() {
               <div key={t.id} className={`syllabus-item status-${t.status}`}>
                 <div>
                   <div className="fw-600">{t.topic}</div>
-                  <div className="text-muted text-sm">{t.subject}{t.chapter && ` — ${t.chapter}`}</div>
+                  <div className="text-muted text-sm">{t.subjects?.join(', ')}{t.chapter && ` — ${t.chapter}`}</div>
                 </div>
                 <span className={`badge badge-${t.status==='completed'?'green':t.status==='in_progress'?'orange':'gray'}`}>
                   {t.status.replace('_',' ')}

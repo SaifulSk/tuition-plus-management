@@ -210,7 +210,7 @@ export default function TeacherDashboard() {
             <div key={t.id} className="test-row">
               <div>
                 <div className="test-title">{t.title}</div>
-                <div className="test-meta">{t.subject} • Max: {t.maxMarks}</div>
+                <div className="test-meta">{t.subjects?.join(', ')} • Max: {t.maxMarks}</div>
               </div>
               <div className="test-date">
                 {t.date ? format(t.date.toDate(), 'dd MMM') : '—'}

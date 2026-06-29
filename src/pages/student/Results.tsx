@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
-import type { Student, SchoolExam } from '../../types';
+import type { SchoolExam } from '../../types';
 import { BarChart3 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -12,9 +12,24 @@ import {
 
 const COLORS = ['#1E3A5F','#C1121F','#10b981','#f59e0b','#8b5cf6','#06b6d4'];
 
+const getMarksBadgeClass = (pct: number) => {
+  if (pct >= 90) return 'badge-excel-dark-green';
+  if (pct >= 71) return 'badge-excel-light-green';
+  if (pct >= 51) return 'badge-excel-yellow';
+  if (pct >= 31) return 'badge-excel-pink';
+  return 'badge-excel-red';
+};
+
+const getMarksColor = (pct: number) => {
+  if (pct >= 90) return '#00B050';
+  if (pct >= 71) return '#C6EFCE';
+  if (pct >= 51) return '#FFEB9C';
+  if (pct >= 31) return '#FFC7CE';
+  return '#FF5050';
+};
+
 export default function StudentResults() {
   const { appUser } = useAuth();
-  const [student, setStudent] = useState<Student | null>(null);
   const [exams, setExams] = useState<SchoolExam[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,8 +39,6 @@ export default function StudentResults() {
       const userDoc = await getDoc(doc(db, 'users', appUser!.uid));
       const sid = userDoc.data()?.studentId;
       if (!sid) { setLoading(false); return; }
-      const sSnap = await getDoc(doc(db, 'students', sid));
-      if (sSnap.exists()) setStudent({ id: sSnap.id, ...sSnap.data() } as Student);
       const snap = await getDocs(query(collection(db,'schoolExams',sid,'exams'), orderBy('date')));
       setExams(snap.docs.map(d => ({ id: d.id, ...d.data() }) as SchoolExam));
       setLoading(false);
@@ -73,14 +86,11 @@ export default function StudentResults() {
                     return (
                       <linearGradient key={`grad-${sub}`} id={`colorPerfStudent-${sub.replace(/\s+/g, '')}`} x1="0" y1="0" x2="1" y2="0">
                         {validPoints.map((d, i) => {
-                          let color = '#ef4444';
-                          if (d.val! >= 75) color = '#10b981';
-                          else if (d.val! >= 50) color = '#f59e0b';
                           const offset = range > 0 ? ((d.index - minIdx) / range) * 100 : 0;
-                          return <stop key={i} offset={`${offset}%`} stopColor={color} />;
+                          return <stop key={i} offset={`${offset}%`} stopColor={getMarksColor(d.val!)} />;
                         })}
                         {validPoints.length === 1 && (
-                          <stop offset="100%" stopColor={validPoints[0].val! >= 75 ? '#10b981' : validPoints[0].val! >= 50 ? '#f59e0b' : '#ef4444'} />
+                          <stop offset="100%" stopColor={getMarksColor(validPoints[0].val!)} />
                         )}
                       </linearGradient>
                     );
@@ -89,16 +99,13 @@ export default function StudentResults() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
                 <XAxis dataKey="exam" tick={{ fontSize: 12 }}/>
                 <YAxis domain={[0,100]} tickFormatter={v=>`${v}%`} tick={{ fontSize: 12 }}/>
-                <Tooltip formatter={(v: number, name: string) => [`${v}%`, name]}/>
+                <Tooltip formatter={(v: any, name: any) => [`${v}%`, name]}/>
                 <Legend/>
                 {subjects.map((sub) => {
                   const renderCustomDot = (props: any) => {
                     const { cx, cy, value, index } = props;
                     if (cx == null || cy == null || value == null) return null;
-                    let fill = '#ef4444';
-                    if (value >= 75) fill = '#10b981';
-                    else if (value >= 50) fill = '#f59e0b';
-                    return <circle key={`dot-${index}`} cx={cx} cy={cy} r={5} fill={fill} stroke="#fff" strokeWidth={2} />;
+                    return <circle key={`dot-${index}`} cx={cx} cy={cy} r={5} fill={getMarksColor(value)} stroke="#fff" strokeWidth={2} />;
                   };
                   return (
                     <Line key={sub} type="monotone" dataKey={sub} stroke={`url(#colorPerfStudent-${sub.replace(/\s+/g, '')})`} strokeWidth={2.5} dot={renderCustomDot} activeDot={{ r:7 }}/>
@@ -138,7 +145,7 @@ export default function StudentResults() {
                         <td>{ex.subjects?.join(', ')}</td>
                         <td>{ex.date ? format(ex.date.toDate(),'dd MMM yyyy') : '—'}</td>
                         <td>{ex.marksObtained}/{ex.maxMarks}</td>
-                        <td><span className={`badge ${pct>=75?'badge-green':pct>=50?'badge-orange':'badge-red'}`}>{pct}%</span></td>
+                        <td><span className={`badge ${getMarksBadgeClass(pct)}`}>{pct}%</span></td>
                       </tr>
                     );
                   })}

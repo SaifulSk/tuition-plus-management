@@ -13,8 +13,6 @@ import MultiSelect from '../../components/common/MultiSelect';
 import { useConfirm } from '../../hooks/useConfirm';
 
 const EXAM_NAMES = ['Unit Test 1', 'Unit Test 2', 'Midterm', 'SA1', 'SA2', 'Final Exam'];
-const COLORS = ['#1E3A5F','#C1121F','#10b981','#f59e0b','#8b5cf6','#06b6d4','#ec4899'];
-
 const getMarksBadgeClass = (pct: number) => {
   if (pct >= 90) return 'badge-excel-dark-green';
   if (pct >= 71) return 'badge-excel-light-green';
@@ -22,6 +20,18 @@ const getMarksBadgeClass = (pct: number) => {
   if (pct >= 31) return 'badge-excel-pink';
   return 'badge-excel-red';
 };
+
+const getMarksColor = (pct: number) => {
+  if (pct >= 90) return '#00B050';
+  if (pct >= 71) return '#C6EFCE';
+  if (pct >= 51) return '#FFEB9C';
+  if (pct >= 31) return '#FFC7CE';
+  return '#FF5050';
+};
+
+const COLORS = ['#1E3A5F','#C1121F','#10b981','#f59e0b','#8b5cf6','#06b6d4','#ec4899'];
+
+
 
 export default function SchoolExams() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -170,14 +180,11 @@ export default function SchoolExams() {
                     return (
                       <linearGradient key={`grad-${sub}`} id={`colorPerfExams-${sub.replace(/\s+/g, '')}`} x1="0" y1="0" x2="1" y2="0">
                         {validPoints.map((d, i) => {
-                          let color = '#ef4444';
-                          if (d.val! >= 75) color = '#10b981';
-                          else if (d.val! >= 50) color = '#f59e0b';
                           const offset = range > 0 ? ((d.index - minIdx) / range) * 100 : 0;
-                          return <stop key={i} offset={`${offset}%`} stopColor={color} />;
+                          return <stop key={i} offset={`${offset}%`} stopColor={getMarksColor(d.val!)} />;
                         })}
                         {validPoints.length === 1 && (
-                          <stop offset="100%" stopColor={validPoints[0].val! >= 75 ? '#10b981' : validPoints[0].val! >= 50 ? '#f59e0b' : '#ef4444'} />
+                          <stop offset="100%" stopColor={getMarksColor(validPoints[0].val!)} />
                         )}
                       </linearGradient>
                     );
@@ -186,16 +193,13 @@ export default function SchoolExams() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="exam" tick={{ fontSize: 12 }} />
                 <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(v: any, name: string) => [`${v}%`, name]} />
+                <Tooltip formatter={(v: any, name: any) => [`${v}%`, name]} />
                 <Legend />
                 {distinctSubjects.map((sub) => {
                   const renderCustomDot = (props: any) => {
                     const { cx, cy, value, index } = props;
                     if (cx == null || cy == null || value == null) return null;
-                    let fill = '#ef4444';
-                    if (value >= 75) fill = '#10b981';
-                    else if (value >= 50) fill = '#f59e0b';
-                    return <circle key={`dot-${index}`} cx={cx} cy={cy} r={5} fill={fill} stroke="#fff" strokeWidth={2} />;
+                    return <circle key={`dot-${index}`} cx={cx} cy={cy} r={5} fill={getMarksColor(value)} stroke="#fff" strokeWidth={2} />;
                   };
                   return (
                     <Line

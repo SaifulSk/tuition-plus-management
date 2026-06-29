@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, ScheduleSlot, DayOfWeek } from '../../types';
-import { Plus, X, Clock, Trash2, Pencil, ChevronDown } from 'lucide-react';
+import { Plus, X, Clock, Trash2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MultiSelect from '../../components/common/MultiSelect';
 import { useConfirm } from '../../hooks/useConfirm';

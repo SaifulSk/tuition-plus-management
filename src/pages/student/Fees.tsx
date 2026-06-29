@@ -28,7 +28,6 @@ export default function StudentFees() {
       const userDoc = await getDoc(doc(db, 'users', appUser!.uid));
       const sid = userDoc.data()?.studentId;
       if (!sid) { setLoading(false); return; }
-      setStudentId(sid);
       const sSnap = await getDoc(doc(db, 'students', sid));
       if (sSnap.exists()) setStudent({ id: sSnap.id, ...sSnap.data() } as Student);
       const fSnap = await getDocs(query(collection(db,'fees',sid,'payments'), orderBy('datePaid','desc')));
