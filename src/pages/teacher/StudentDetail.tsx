@@ -203,14 +203,27 @@ export default function StudentDetail() {
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={chartData}>
                   <defs>
-                    <linearGradient id="colorPerf" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" />
-                      <stop offset="25%" stopColor="#10b981" />
-                      <stop offset="25.01%" stopColor="#f59e0b" />
-                      <stop offset="50%" stopColor="#f59e0b" />
-                      <stop offset="50.01%" stopColor="#ef4444" />
-                      <stop offset="100%" stopColor="#ef4444" />
-                    </linearGradient>
+                    {subjects.map(sub => {
+                      const validPoints = chartData.map((row, index) => ({ val: row[sub] as number | undefined, index })).filter(d => d.val !== undefined);
+                      if (validPoints.length === 0) return null;
+                      const minIdx = validPoints[0].index;
+                      const maxIdx = validPoints[validPoints.length - 1].index;
+                      const range = maxIdx - minIdx;
+                      return (
+                        <linearGradient key={`grad-${sub}`} id={`colorPerf-${sub.replace(/\s+/g, '')}`} x1="0" y1="0" x2="1" y2="0">
+                          {validPoints.map((d, i) => {
+                            let color = '#ef4444';
+                            if (d.val! >= 75) color = '#10b981';
+                            else if (d.val! >= 50) color = '#f59e0b';
+                            const offset = range > 0 ? ((d.index - minIdx) / range) * 100 : 0;
+                            return <stop key={i} offset={`${offset}%`} stopColor={color} />;
+                          })}
+                          {validPoints.length === 1 && (
+                            <stop offset="100%" stopColor={validPoints[0].val! >= 75 ? '#10b981' : validPoints[0].val! >= 50 ? '#f59e0b' : '#ef4444'} />
+                          )}
+                        </linearGradient>
+                      );
+                    })}
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="exam" />
@@ -220,20 +233,14 @@ export default function StudentDetail() {
                   {subjects.map((sub) => {
                     const renderCustomDot = (props: any) => {
                       const { cx, cy, value, index } = props;
-                      if (cx == null || cy == null) return null;
-                      let fill = '#9ca3af';
-                      if (index > 0 && chartData[index - 1]) {
-                        const prevValue = chartData[index - 1][sub];
-                        if (prevValue !== undefined && prevValue !== null) {
-                          if (value > prevValue) fill = '#10b981';
-                          else if (value < prevValue) fill = '#ef4444';
-                          else fill = '#f59e0b';
-                        }
-                      }
+                      if (cx == null || cy == null || value == null) return null;
+                      let fill = '#ef4444';
+                      if (value >= 75) fill = '#10b981';
+                      else if (value >= 50) fill = '#f59e0b';
                       return <circle key={`dot-${index}`} cx={cx} cy={cy} r={5} fill={fill} stroke="#fff" strokeWidth={2} />;
                     };
                     return (
-                      <Line key={sub} type="monotone" dataKey={sub} stroke="url(#colorPerf)" strokeWidth={2.5} dot={renderCustomDot} activeDot={{ r: 7 }} />
+                      <Line key={sub} type="monotone" dataKey={sub} stroke={`url(#colorPerf-${sub.replace(/\s+/g, '')})`} strokeWidth={2.5} dot={renderCustomDot} activeDot={{ r: 7 }} />
                     );
                   })}
                 </LineChart>
