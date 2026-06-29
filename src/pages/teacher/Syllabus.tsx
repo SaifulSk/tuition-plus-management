@@ -372,7 +372,7 @@ export default function Syllabus() {
                   return (
                     <div key={cls} className="card mb-16" style={{ padding: 0, overflow: 'hidden' }}>
                       {/* Class accordion header */}
-                      <button
+                      <div
                         onClick={() => toggleClass(cls)}
                         style={{
                           width: '100%', display: 'flex', alignItems: 'center', gap: 12,
@@ -385,7 +385,7 @@ export default function Syllabus() {
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
                           <span style={{ fontWeight: 700, fontSize: 16 }}>Class {cls}</span>
                         </div>
-                      </button>
+                      </div>
 
                       {classExpanded && (
                         <div style={{ padding: '16px 20px 20px' }}>
@@ -401,7 +401,7 @@ export default function Syllabus() {
                                 return (
                                   <div key={school} style={{ border: '1px solid var(--border-light)', borderRadius: 10, marginBottom: 12, overflow: 'hidden' }}>
                                     {/* School accordion header */}
-                                    <button
+                                    <div
                                       onClick={() => toggleSchool(schoolKey)}
                                       style={{
                                         width: '100%', display: 'flex', alignItems: 'center', gap: 10,
@@ -414,7 +414,7 @@ export default function Syllabus() {
                                       <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
                                         <span style={{ fontWeight: 600, fontSize: 15 }}>{school}</span>
                                       </div>
-                                    </button>
+                                    </div>
 
                                     {schoolExpanded && (
                                       <div style={{ padding: '16px' }}>
@@ -443,7 +443,7 @@ export default function Syllabus() {
                                 return (
                                   <div key={subject} style={{ border: '1px solid var(--border-light)', borderRadius: 10, marginBottom: 12, overflow: 'hidden' }}>
                                     {/* Subject accordion header */}
-                                    <button
+                                    <div
                                       onClick={() => toggleSubject(subjectKey)}
                                       style={{
                                         width: '100%', display: 'flex', alignItems: 'center', gap: 10,
@@ -463,7 +463,7 @@ export default function Syllabus() {
                                         </div>
                                         <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 36 }}>{avgSubjectPct}% avg</span>
                                       </div>
-                                    </button>
+                                    </div>
 
                                     {subjectExpanded && (
                                       <div style={{ overflowX: 'auto' }}>
