@@ -63,14 +63,35 @@ export default function StudentResults() {
             <h3 className="section-title">📊 Performance Graph</h3>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorPerfStudent" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={1}/>
+                    <stop offset="95%" stopColor="#ef4444" stopOpacity={1}/>
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
                 <XAxis dataKey="exam" tick={{ fontSize: 12 }}/>
                 <YAxis domain={[0,100]} tickFormatter={v=>`${v}%`} tick={{ fontSize: 12 }}/>
                 <Tooltip formatter={(v: number, name: string) => [`${v}%`, name]}/>
                 <Legend/>
-                {subjects.map((sub,i) => (
-                  <Line key={sub} type="monotone" dataKey={sub} stroke={COLORS[i%COLORS.length]} strokeWidth={2.5} dot={{ r:5 }} activeDot={{ r:7 }}/>
-                ))}
+                {subjects.map((sub) => {
+                  const CustomDot = (props: any) => {
+                    const { cx, cy, value, index, dataKey } = props;
+                    let fill = '#9ca3af';
+                    if (index > 0) {
+                      const prevValue = chartData[index - 1][dataKey];
+                      if (prevValue !== undefined) {
+                        if (value > prevValue) fill = '#10b981';
+                        else if (value < prevValue) fill = '#ef4444';
+                        else fill = '#f59e0b';
+                      }
+                    }
+                    return <circle cx={cx} cy={cy} r={5} fill={fill} stroke="#fff" strokeWidth={2} />;
+                  };
+                  return (
+                    <Line key={sub} type="monotone" dataKey={sub} stroke="url(#colorPerfStudent)" strokeWidth={2.5} dot={<CustomDot />} activeDot={{ r:7 }}/>
+                  );
+                })}
               </LineChart>
             </ResponsiveContainer>
           </div>
