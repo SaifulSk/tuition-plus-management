@@ -3,8 +3,8 @@ import { collection, query, getDocs, orderBy, collectionGroup } from 'firebase/f
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  Users, Wallet, ClipboardList, PartyPopper,
-  TrendingUp, BookOpen, CalendarCheck, ArrowRight, Eye, EyeOff
+  Users, Wallet, ClipboardList, TrendingDown,
+  TrendingUp, BookOpen, CalendarCheck, ArrowRight, Eye, EyeOff, PartyPopper
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Student, FeePayment, TuitionTest, CenterEvent } from '../../types';
@@ -16,7 +16,6 @@ interface Stats {
   feesThisMonth: number;
   pendingFees: number;
   recentTests: TuitionTest[];
-  upcomingEvents: CenterEvent[];
 }
 
 export default function TeacherDashboard() {
@@ -24,7 +23,7 @@ export default function TeacherDashboard() {
   const [stats, setStats] = useState<Stats>({
     totalStudents: 0, activeStudents: 0,
     feesThisMonth: 0, pendingFees: 0,
-    recentTests: [], upcomingEvents: []
+    recentTests: []
   });
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,8 +33,16 @@ export default function TeacherDashboard() {
     async function load() {
       try {
         // Students
-        const studSnap = await getDocs(query(collection(db, 'students'), orderBy('name')));
+        const studSnap = await getDocs(query(collection(db, 'students')));
         const studs = studSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Student);
+        
+        // Sort students by joiningDate descending for the Recent Students view
+        studs.sort((a, b) => {
+          const tA = a.joiningDate ? a.joiningDate.toDate().getTime() : 0;
+          const tB = b.joiningDate ? b.joiningDate.toDate().getTime() : 0;
+          return tB - tA;
+        });
+        
         setStudents(studs);
 
         // Fees this month
@@ -56,17 +63,17 @@ export default function TeacherDashboard() {
         const testSnap = await getDocs(query(collection(db, 'tests'), orderBy('date', 'desc')));
         const tests = testSnap.docs.slice(0, 3).map(d => ({ id: d.id, ...d.data() }) as TuitionTest);
 
-        // Events
-        const evSnap = await getDocs(query(collection(db, 'events'), orderBy('date', 'desc')));
-        const events = evSnap.docs.slice(0, 3).map(d => ({ id: d.id, ...d.data() }) as CenterEvent);
+        // Calculate fees due
+        const activeStuds = studs.filter(s => s.active);
+        const totalExpectedFees = activeStuds.reduce((sum, s) => sum + (Number(s.confirmedFee) || 0), 0);
+        const pendingFees = Math.max(0, totalExpectedFees - feesThisMonth);
 
         setStats({
           totalStudents: studs.length,
-          activeStudents: studs.filter(s => s.active).length,
+          activeStudents: activeStuds.length,
           feesThisMonth,
-          pendingFees: studs.filter(s => s.active).length,
+          pendingFees,
           recentTests: tests,
-          upcomingEvents: events,
         });
       } finally {
         setLoading(false);
@@ -127,11 +134,13 @@ export default function TeacherDashboard() {
         </div>
 
         <div className="stat-card stat-orange">
-          <div className="stat-icon"><PartyPopper size={24} /></div>
+          <div className="stat-icon"><TrendingDown size={24} /></div>
           <div className="stat-body">
-            <div className="stat-value">{loading ? '—' : stats.upcomingEvents.length}</div>
-            <div className="stat-label">Events</div>
-            <div className="stat-sub">Total recorded</div>
+            <div className="stat-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {loading ? '₹—' : (showFees ? `₹${stats.pendingFees.toLocaleString()}` : '₹****')}
+            </div>
+            <div className="stat-label">Fees Due</div>
+            <div className="stat-sub">This month</div>
           </div>
         </div>
       </div>
