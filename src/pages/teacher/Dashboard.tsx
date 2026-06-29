@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { collection, query, getDocs, orderBy, collectionGroup } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
+import { getFeeForMonth } from '../../utils/feeUtils';
 import {
   Users, Wallet, ClipboardList, TrendingDown,
   TrendingUp, BookOpen, CalendarCheck, ArrowRight, Eye, EyeOff, PartyPopper
@@ -89,11 +90,10 @@ export default function TeacherDashboard() {
             const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             if (!allPayments[s.id] || !allPayments[s.id].has(mStr)) {
               expectedCount++;
+              pendingFees += getFeeForMonth(mStr, s);
             }
             d.setMonth(d.getMonth() + 1);
           }
-          
-          pendingFees += expectedCount * (Number(s.confirmedFee) || 0);
         });
 
         // Tests

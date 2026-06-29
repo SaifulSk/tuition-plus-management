@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { doc, getDoc, collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import type { Student, FeePayment, SyllabusTopic, SchoolExam } from '../../types';
-import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff } from 'lucide-react';
+import type { Student, FeePayment, SyllabusTopic, SchoolExam, FeeChange } from '../../types';
+import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff, Plus, X, Settings } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -37,8 +38,13 @@ export default function StudentDetail() {
   const [exams, setExams] = useState<SchoolExam[]>([]);
   const [tab, setTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [showFees, setShowFees] = useState(false);
   const [selectedSession, setSelectedSession] = useState('');
+  
+  const [showFeeConfig, setShowFeeConfig] = useState(false);
+  const [newFeeAmount, setNewFeeAmount] = useState('');
+  const [newFeeMonth, setNewFeeMonth] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -63,6 +69,40 @@ export default function StudentDetail() {
     }
     load();
   }, [id]);
+
+  const handleAddFeeChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!student || !newFeeAmount || !newFeeMonth) return;
+    
+    try {
+      const history = student.feeHistory || [];
+      const updatedHistory = [...history, { amount: Number(newFeeAmount), effectiveMonth: newFeeMonth }];
+      await updateDoc(doc(db, 'students', student.id), {
+        feeHistory: updatedHistory
+      });
+      setStudent({ ...student, feeHistory: updatedHistory });
+      setNewFeeAmount('');
+      setNewFeeMonth('');
+      setShowFeeConfig(false);
+      toast.success('Fee configuration updated');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update fee');
+    }
+  };
+
+  const handleRemoveFeeChange = async (idx: number) => {
+    if (!student) return;
+    try {
+      const updatedHistory = (student.feeHistory || []).filter((_, i) => i !== idx);
+      await updateDoc(doc(db, 'students', student.id), {
+        feeHistory: updatedHistory
+      });
+      setStudent({ ...student, feeHistory: updatedHistory });
+      toast.success('Fee configuration removed');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove fee');
+    }
+  };
 
   if (loading) return <div className="page"><div className="loader large" /></div>;
   if (!student) return <div className="page"><p>Student not found.</p></div>;
@@ -195,6 +235,66 @@ export default function StudentDetail() {
               </table>
             </div>
           )}
+        </div>
+        
+        <div className="card mt-16">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 className="section-title" style={{ margin: 0 }}><Settings size={18}/> Fee Configuration (Variable Fees)</h3>
+            <button className="btn-secondary" onClick={() => setShowFeeConfig(!showFeeConfig)}>
+              {showFeeConfig ? 'Cancel' : <><Plus size={16}/> Add Change</>}
+            </button>
+          </div>
+          
+          <p className="text-muted text-sm mb-16">
+            If the student changes subjects mid-session, record the new fee amount and the month it becomes effective from here. This ensures past unpaid months are still calculated at the old fee rate.
+          </p>
+          
+          {showFeeConfig && (
+            <form onSubmit={handleAddFeeChange} className="card bg-surface-2" style={{ marginBottom: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 16, alignItems: 'flex-end' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Effective Month *</label>
+                  <input type="month" value={newFeeMonth} onChange={e => setNewFeeMonth(e.target.value)} required />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>New Amount (₹) *</label>
+                  <input type="number" value={newFeeAmount} onChange={e => setNewFeeAmount(e.target.value)} required placeholder="e.g. 2000" />
+                </div>
+                <button type="submit" className="btn-primary">Save</button>
+              </div>
+            </form>
+          )}
+
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr><th>Effective From Month</th><th>Monthly Fee Amount</th><th style={{width:50}}></th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{student.joiningDate ? format(student.joiningDate.toDate(), 'MMMM yyyy') : 'Joining Date'} (Base Fee)</td>
+                  <td>₹{student.confirmedFee?.toLocaleString()}</td>
+                  <td></td>
+                </tr>
+                {(student.feeHistory || []).sort((a,b) => a.effectiveMonth.localeCompare(b.effectiveMonth)).map((fh, idx) => (
+                  <tr key={idx}>
+                    <td>
+                      {(() => {
+                        const [y,m] = fh.effectiveMonth.split('-');
+                        return new Date(Number(y), Number(m)-1).toLocaleString('en-US', {month:'long', year:'numeric'});
+                      })()}
+                    </td>
+                    <td>₹{fh.amount.toLocaleString()}</td>
+                    <td>
+                      <button className="btn-ghost" style={{ color: 'var(--red)', padding: 4 }} onClick={() => handleRemoveFeeChange(idx)}>
+                        <X size={16}/>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

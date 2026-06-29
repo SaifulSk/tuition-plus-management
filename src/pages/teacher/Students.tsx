@@ -260,6 +260,7 @@ export default function Students() {
           email: form.email,
           uid,
           active: true,
+          feeHistory: [],
         });
         if (uid) {
           await setDoc(doc(db, 'users', uid), {

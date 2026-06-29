@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, FeePayment, PaymentMode } from '../../types';
+import { getFeeForMonth } from '../../utils/feeUtils';
 import { Plus, X, Printer, Share2, Receipt, Pencil, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -139,7 +140,7 @@ export default function Fees() {
           studentId: selectedStudent,
           studentName: student.name,
           studentClass: student.class,
-          amount: (student.confirmedFee || 0) * t.monthsPaid.length,
+          amount: t.monthsPaid.reduce((sum, m) => sum + getFeeForMonth(m, student), 0),
           mode: t.mode,
           monthsPaid: t.monthsPaid,
           datePaid: Timestamp.fromDate(new Date(t.datePaid)),
@@ -153,7 +154,7 @@ export default function Fees() {
             studentId: selectedStudent,
             studentName: student.name,
             studentClass: student.class,
-            amount: (student.confirmedFee || 0) * t.monthsPaid.length,
+            amount: t.monthsPaid.reduce((sum, m) => sum + getFeeForMonth(m, student), 0),
             mode: t.mode,
             monthsPaid: t.monthsPaid,
             datePaid: Timestamp.fromDate(new Date(t.datePaid)),
@@ -409,7 +410,11 @@ export default function Fees() {
               <div className="stat-icon"><Receipt size={20}/></div>
               <div className="stat-body">
                 <div className="stat-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {showConfirmed ? `₹${student?.confirmedFee?.toLocaleString()}/mo` : '₹****'}
+                  {(() => {
+                    const currentMStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+                    const currentFee = student ? getFeeForMonth(currentMStr, student) : 0;
+                    return showConfirmed ? `₹${currentFee.toLocaleString()}/mo` : '₹****';
+                  })()}
                   <button onClick={() => setShowConfirmed(!showConfirmed)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}>
                     {showConfirmed ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
