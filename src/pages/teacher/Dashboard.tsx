@@ -16,6 +16,7 @@ interface Stats {
   feesThisMonth: number;
   pendingFees: number;
   recentTests: TuitionTest[];
+  upcomingEvents: CenterEvent[];
 }
 
 export default function TeacherDashboard() {
@@ -23,7 +24,7 @@ export default function TeacherDashboard() {
   const [stats, setStats] = useState<Stats>({
     totalStudents: 0, activeStudents: 0,
     feesThisMonth: 0, pendingFees: 0,
-    recentTests: []
+    recentTests: [], upcomingEvents: []
   });
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,12 +69,17 @@ export default function TeacherDashboard() {
         const totalExpectedFees = activeStuds.reduce((sum, s) => sum + (Number(s.confirmedFee) || 0), 0);
         const pendingFees = Math.max(0, totalExpectedFees - feesThisMonth);
 
+        // Events
+        const evSnap = await getDocs(query(collection(db, 'events'), orderBy('date', 'desc')));
+        const events = evSnap.docs.slice(0, 3).map(d => ({ id: d.id, ...d.data() }) as CenterEvent);
+
         setStats({
           totalStudents: studs.length,
           activeStudents: activeStuds.length,
           feesThisMonth,
           pendingFees,
           recentTests: tests,
+          upcomingEvents: events,
         });
       } finally {
         setLoading(false);
