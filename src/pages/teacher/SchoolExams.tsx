@@ -206,6 +206,7 @@ export default function SchoolExams() {
                       key={sub}
                       type="monotone"
                       dataKey={sub}
+                      connectNulls={true}
                       stroke={`url(#colorPerfExams-${sub.replace(/\s+/g, '')})`}
                       strokeWidth={2.5}
                       dot={renderCustomDot}

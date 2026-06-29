@@ -250,7 +250,7 @@ export default function StudentDetail() {
                       return <circle key={`dot-${index}`} cx={cx} cy={cy} r={5} fill={getMarksColor(value)} stroke="#fff" strokeWidth={2} />;
                     };
                     return (
-                      <Line key={sub} type="monotone" dataKey={sub} stroke={`url(#colorPerf-${sub.replace(/\s+/g, '')})`} strokeWidth={2.5} dot={renderCustomDot} activeDot={{ r: 7 }} />
+                      <Line key={sub} connectNulls={true} type="monotone" dataKey={sub} stroke={`url(#colorPerf-${sub.replace(/\s+/g, '')})`} strokeWidth={2.5} dot={renderCustomDot} activeDot={{ r: 7 }} />
                     );
                   })}
                 </LineChart>
