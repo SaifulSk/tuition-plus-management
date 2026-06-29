@@ -69,7 +69,7 @@ export default function TeacherDashboard() {
           
           if (studentId) {
             if (!allPayments[studentId]) allPayments[studentId] = new Set();
-            p.months?.forEach(m => allPayments[studentId].add(m));
+            p.monthsPaid?.forEach((m: string) => allPayments[studentId].add(m));
           }
         });
 
