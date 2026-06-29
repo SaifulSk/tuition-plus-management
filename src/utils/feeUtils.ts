@@ -1,4 +1,4 @@
-import { FeeChange, Student } from '../types';
+import type { Student } from '../types';
 
 /**
  * Returns the effective fee for a specific month.

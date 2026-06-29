@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import type { Student, FeePayment, SyllabusTopic, SchoolExam, FeeChange } from '../../types';
+import type { Student, FeePayment, SyllabusTopic, SchoolExam } from '../../types';
 import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff, Plus, X, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -37,7 +37,6 @@ export default function StudentDetail() {
   const [syllabus, setSyllabus] = useState<SyllabusTopic[]>([]);
   const [exams, setExams] = useState<SchoolExam[]>([]);
   const [tab, setTab] = useState<Tab>('overview');
-  const [loading, setLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [showFees, setShowFees] = useState(false);
   const [selectedSession, setSelectedSession] = useState('');
