@@ -93,7 +93,7 @@ export default function StudentDetail() {
         amount: Number(newFeeAmount),
         effectiveMonth: newFeeMonth,
         subjects: newFeeSubjects,
-        note: newFeeNote || undefined,
+        note: newFeeNote || '',
       }];
       await updateDoc(doc(db, 'students', student.id), {
         feeHistory: updatedHistory
