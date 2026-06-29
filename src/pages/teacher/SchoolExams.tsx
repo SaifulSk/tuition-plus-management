@@ -194,7 +194,11 @@ export default function SchoolExams() {
           }
         }
       });
-      allExams.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      allExams.sort((a, b) => {
+        const timeA = a.date instanceof Timestamp ? a.date.toMillis() : new Date(a.date as any).getTime();
+        const timeB = b.date instanceof Timestamp ? b.date.toMillis() : new Date(b.date as any).getTime();
+        return timeA - timeB;
+      });
       setMasterClassExams(allExams);
     } catch (err: any) {
       toast.error('Failed to load class exams');
