@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, FeePayment, SyllabusTopic, SchoolExam } from '../../types';
-import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff, Plus, X, Settings, Tag } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff, Plus, X, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import MultiSelect from '../../components/common/MultiSelect';
