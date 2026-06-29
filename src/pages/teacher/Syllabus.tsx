@@ -54,6 +54,7 @@ export default function Syllabus() {
   const [masterLoaded, setMasterLoaded] = useState(false);
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
+  const [expandedSchools, setExpandedSchools] = useState<Set<string>>(new Set());
 
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -200,39 +201,46 @@ export default function Syllabus() {
 
     type TopicEntry = { chapter: string; subjects: string[]; studentTopics: Record<string, SyllabusTopic> };
     type SubjectEntry = { studentsInSubject: Student[]; topicMap: Record<string, TopicEntry> };
-    type ClassEntry = { students: Student[]; subjects: Record<string, SubjectEntry> };
+    type SchoolEntry = { students: Student[]; subjects: Record<string, SubjectEntry> };
+    type ClassEntry = { students: Student[]; schools: Record<string, SchoolEntry> };
     const classMap: Record<string, ClassEntry> = {};
 
     for (const s of students) {
       const cls = s.class || 'Unknown';
-      if (!classMap[cls]) classMap[cls] = { students: [], subjects: {} };
+      const sch = s.school || 'Unknown';
+      if (!classMap[cls]) classMap[cls] = { students: [], schools: {} };
       classMap[cls].students.push(s);
+      
+      if (!classMap[cls].schools[sch]) classMap[cls].schools[sch] = { students: [], subjects: {} };
+      classMap[cls].schools[sch].students.push(s);
     }
 
     for (const [, classData] of Object.entries(classMap)) {
-      for (const s of classData.students) {
-        for (const subj of (s.subjects || [])) {
-          if (!classData.subjects[subj]) {
-            classData.subjects[subj] = { studentsInSubject: [], topicMap: {} };
+      for (const [, schoolData] of Object.entries(classData.schools)) {
+        for (const s of schoolData.students) {
+          for (const subj of (s.subjects || [])) {
+            if (!schoolData.subjects[subj]) {
+              schoolData.subjects[subj] = { studentsInSubject: [], topicMap: {} };
+            }
+            if (!schoolData.subjects[subj].studentsInSubject.find(st => st.id === s.id)) {
+              schoolData.subjects[subj].studentsInSubject.push(s);
+            }
           }
-          if (!classData.subjects[subj].studentsInSubject.find(st => st.id === s.id)) {
-            classData.subjects[subj].studentsInSubject.push(s);
-          }
-        }
-        const studentTopics = allTopics[s.id] || [];
-        for (const topic of studentTopics) {
-          for (const subj of (topic.subjects || [])) {
-            if (!classData.subjects[subj]) {
-              classData.subjects[subj] = { studentsInSubject: [], topicMap: {} };
+          const studentTopics = allTopics[s.id] || [];
+          for (const topic of studentTopics) {
+            for (const subj of (topic.subjects || [])) {
+              if (!schoolData.subjects[subj]) {
+                schoolData.subjects[subj] = { studentsInSubject: [], topicMap: {} };
+              }
+              const sd = schoolData.subjects[subj];
+              if (!sd.studentsInSubject.find(st => st.id === s.id)) {
+                sd.studentsInSubject.push(s);
+              }
+              if (!sd.topicMap[topic.topic]) {
+                sd.topicMap[topic.topic] = { chapter: topic.chapter || '', subjects: topic.subjects || [], studentTopics: {} };
+              }
+              sd.topicMap[topic.topic].studentTopics[s.id] = topic;
             }
-            const sd = classData.subjects[subj];
-            if (!sd.studentsInSubject.find(st => st.id === s.id)) {
-              sd.studentsInSubject.push(s);
-            }
-            if (!sd.topicMap[topic.topic]) {
-              sd.topicMap[topic.topic] = { chapter: topic.chapter || '', subjects: topic.subjects || [], studentTopics: {} };
-            }
-            sd.topicMap[topic.topic].studentTopics[s.id] = topic;
           }
         }
       }
@@ -246,6 +254,9 @@ export default function Syllabus() {
 
   const toggleSubject = (key: string) =>
     setExpandedSubjects(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+
+  const toggleSchool = (key: string) =>
+    setExpandedSchools(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
   return (
     <div className="page">
@@ -356,13 +367,7 @@ export default function Syllabus() {
                 .sort(([a], [b]) => Number(a) - Number(b) || a.localeCompare(b))
                 .map(([cls, classData]) => {
                   const classExpanded = expandedClasses.has(cls);
-                  const classTopicCounts = classData.students.map(s => {
-                    const st = allTopics[s.id] || [];
-                    return st.length ? (st.filter(t => t.status === 'completed').length / st.length) * 100 : 0;
-                  });
-                  const avgProgress = classTopicCounts.length
-                    ? Math.round(classTopicCounts.reduce((a, b) => a + b, 0) / classTopicCounts.length)
-                    : 0;
+
 
                   return (
                     <div key={cls} className="card mb-16" style={{ padding: 0, overflow: 'hidden' }}>
@@ -377,29 +382,65 @@ export default function Syllabus() {
                         }}
                       >
                         {classExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                            <span style={{ fontWeight: 700, fontSize: 16 }}>Class {cls}</span>
-                            <span className="badge badge-blue">{classData.students.length} student{classData.students.length !== 1 ? 's' : ''}</span>
-                            <span className="badge badge-green">{avgProgress}% avg progress</span>
-                          </div>
-                        </div>
-                        <div style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                          {Object.keys(classData.subjects).length} subject{Object.keys(classData.subjects).length !== 1 ? 's' : ''}
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 700, fontSize: 16 }}>Class {cls}</span>
                         </div>
                       </button>
 
                       {classExpanded && (
                         <div style={{ padding: '16px 20px 20px' }}>
-                          {Object.keys(classData.subjects).length === 0 ? (
-                            <p className="text-muted text-sm">No topics recorded for students in this class yet.</p>
+                          {Object.keys(classData.schools).length === 0 ? (
+                            <p className="text-muted text-sm">No schools recorded for students in this class yet.</p>
                           ) : (
-                            Object.entries(classData.subjects)
+                            Object.entries(classData.schools)
                               .sort(([a], [b]) => a.localeCompare(b))
-                              .map(([subject, sd]) => {
-                                const subjectKey = `${cls}__${subject}`;
-                                const subjectExpanded = expandedSubjects.has(subjectKey);
-                                const topicEntries = Object.entries(sd.topicMap);
+                              .map(([school, schoolData]) => {
+                                const schoolKey = `${cls}__${school}`;
+                                const schoolExpanded = expandedSchools.has(schoolKey);
+
+                                // school progress
+                                const schoolTopicCounts = schoolData.students.map(s => {
+                                  const st = allTopics[s.id] || [];
+                                  return st.length ? (st.filter(t => t.status === 'completed').length / st.length) * 100 : 0;
+                                });
+                                const avgSchoolProgress = schoolTopicCounts.length
+                                  ? Math.round(schoolTopicCounts.reduce((a, b) => a + b, 0) / schoolTopicCounts.length)
+                                  : 0;
+
+                                return (
+                                  <div key={school} style={{ border: '1px solid var(--border-light)', borderRadius: 10, marginBottom: 12, overflow: 'hidden' }}>
+                                    {/* School accordion header */}
+                                    <button
+                                      onClick={() => toggleSchool(schoolKey)}
+                                      style={{
+                                        width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                                        padding: '14px 16px', background: 'var(--surface)',
+                                        border: 'none', cursor: 'pointer', textAlign: 'left',
+                                        borderBottom: schoolExpanded ? '1px solid var(--border-light)' : 'none',
+                                      }}
+                                    >
+                                      {schoolExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                      <div style={{ flex: 1 }}>
+                                        <span style={{ fontWeight: 600, fontSize: 15 }}>{school}</span>
+                                      </div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <span className="badge badge-green">{avgSchoolProgress}% avg</span>
+                                        <span className="badge badge-blue">{schoolData.students.length} student{schoolData.students.length !== 1 ? 's' : ''}</span>
+                                        <span className="badge badge-gray">{Object.keys(schoolData.subjects).length} subject{Object.keys(schoolData.subjects).length !== 1 ? 's' : ''}</span>
+                                      </div>
+                                    </button>
+
+                                    {schoolExpanded && (
+                                      <div style={{ padding: '16px' }}>
+                                        {Object.keys(schoolData.subjects).length === 0 ? (
+                                          <p className="text-muted text-sm">No topics recorded for this school yet.</p>
+                                        ) : (
+                                          Object.entries(schoolData.subjects)
+                                            .sort(([a], [b]) => a.localeCompare(b))
+                                            .map(([subject, sd]) => {
+                                              const subjectKey = `${schoolKey}__${subject}`;
+                                              const subjectExpanded = expandedSubjects.has(subjectKey);
+                                              const topicEntries = Object.entries(sd.topicMap);
 
                                 // Per-student progress for this subject
                                 const studentsForSubject = sd.studentsInSubject;
@@ -529,6 +570,12 @@ export default function Syllabus() {
                                               ))}
                                           </tbody>
                                         </table>
+                                      </div>
+                                    )}
+                                              </div>
+                                            );
+                                          })
+                                        )}
                                       </div>
                                     )}
                                   </div>
