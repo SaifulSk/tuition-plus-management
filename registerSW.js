@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/tuition-plus-management/sw.js', { scope: '/tuition-plus-management/' })})}
