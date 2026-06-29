@@ -39,7 +39,7 @@ export default function SchoolExams() {
   const [selectedStudent, setSelectedStudent] = useState('');
   const [exams, setExams] = useState<SchoolExam[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [viewMode, setViewMode] = useState<'student' | 'master'>('student');
+  const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
   const [masterExpandedClass, setMasterExpandedClass] = useState<string | null>(null);
   const [masterClassExams, setMasterClassExams] = useState<SchoolExam[]>([]);
   const [masterSubject, setMasterSubject] = useState<string>('');
