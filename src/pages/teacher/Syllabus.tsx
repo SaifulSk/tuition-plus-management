@@ -398,15 +398,6 @@ export default function Syllabus() {
                                 const schoolKey = `${cls}__${school}`;
                                 const schoolExpanded = expandedSchools.has(schoolKey);
 
-                                // school progress
-                                const schoolTopicCounts = schoolData.students.map(s => {
-                                  const st = allTopics[s.id] || [];
-                                  return st.length ? (st.filter(t => t.status === 'completed').length / st.length) * 100 : 0;
-                                });
-                                const avgSchoolProgress = schoolTopicCounts.length
-                                  ? Math.round(schoolTopicCounts.reduce((a, b) => a + b, 0) / schoolTopicCounts.length)
-                                  : 0;
-
                                 return (
                                   <div key={school} style={{ border: '1px solid var(--border-light)', borderRadius: 10, marginBottom: 12, overflow: 'hidden' }}>
                                     {/* School accordion header */}
@@ -420,13 +411,8 @@ export default function Syllabus() {
                                       }}
                                     >
                                       {schoolExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                                      <div style={{ flex: 1 }}>
+                                      <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
                                         <span style={{ fontWeight: 600, fontSize: 15 }}>{school}</span>
-                                      </div>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <span className="badge badge-green">{avgSchoolProgress}% avg</span>
-                                        <span className="badge badge-blue">{schoolData.students.length} student{schoolData.students.length !== 1 ? 's' : ''}</span>
-                                        <span className="badge badge-gray">{Object.keys(schoolData.subjects).length} subject{Object.keys(schoolData.subjects).length !== 1 ? 's' : ''}</span>
                                       </div>
                                     </button>
 
@@ -451,9 +437,6 @@ export default function Syllabus() {
                                     ? Math.round(sTopics.filter(t => t.status === 'completed').length / sTopics.length * 100)
                                     : 0;
                                 }
-                                const avgSubjectPct = studentsForSubject.length
-                                  ? Math.round(Object.values(subjectProgressMap).reduce((a, b) => a + b, 0) / studentsForSubject.length)
-                                  : 0;
 
                                 return (
                                   <div key={subject} style={{ border: '1px solid var(--border-light)', borderRadius: 10, marginBottom: 12, overflow: 'hidden' }}>
@@ -470,17 +453,6 @@ export default function Syllabus() {
                                       {subjectExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                                       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 2 }}>
                                         <span style={{ fontWeight: 600, fontSize: 14 }}>{subject}</span>
-                                        <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>
-                                          {sd.studentsInSubject.map(s => s.name.split(' ')[0]).join(', ')}
-                                        </span>
-                                      </div>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        {/* Mini progress bar */}
-                                        <div style={{ width: 90, height: 6, background: 'var(--border-light)', borderRadius: 3, overflow: 'hidden' }}>
-                                          <div style={{ width: `${avgSubjectPct}%`, height: '100%', background: avgSubjectPct === 100 ? '#16a34a' : 'var(--primary)', borderRadius: 3, transition: 'width 0.3s' }} />
-                                        </div>
-                                        <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 36 }}>{avgSubjectPct}% avg</span>
-                                        <span className="badge badge-gray">{topicEntries.length} topic{topicEntries.length !== 1 ? 's' : ''}</span>
                                       </div>
                                     </button>
 
