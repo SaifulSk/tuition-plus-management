@@ -177,24 +177,30 @@ export default function Fees() {
     } finally { setSaving(false); }
   };
 
+  const student = students.find(s => s.id === selectedStudent);
+
   const shareReceipt = async () => {
     if (!receiptRef.current) return;
     const canvas = await html2canvas(receiptRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
     canvas.toBlob(async blob => {
       if (!blob) return;
-      const file = new File([blob], 'fee-receipt.png', { type: 'image/png' });
+      const sName = currentReceipt?.studentName || student?.name || 'Student';
+      const mPaid = currentReceipt?.monthsPaid?.map(formatMonthLabel).join(', ') || '';
+      const shareText = `Fee Receipt - Tuition Plus - ${sName} (${mPaid})`;
+      const filename = `Fee_Receipt_${sName.replace(/\s+/g, '_')}.png`;
+
+      const file = new File([blob], filename, { type: 'image/png' });
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Fee Receipt - Tuition Plus' });
+        await navigator.share({ files: [file], title: shareText, text: shareText });
       } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = 'fee-receipt.png'; a.click();
+        a.href = url; a.download = filename; a.click();
         toast.success('Receipt downloaded!');
       }
     });
   };
 
-  const student = students.find(s => s.id === selectedStudent);
   
   let monthsDueCount = 0;
   const dueMonthsList: string[] = [];
