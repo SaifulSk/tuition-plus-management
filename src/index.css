@@ -1048,36 +1048,37 @@ img { max-width: 100%; }
    RECEIPT
 ═══════════════════════════════════════════════════ */
 .receipt-card {
-  max-width: 600px;
+  width: 100%;
+  max-width: 450px;
   margin: 0 auto 20px;
   background: #fff;
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.08);
   border: 1px solid #e2e8f0;
 }
-.receipt-logo { width: 100px; display: block; margin: 0 auto 12px; }
-.receipt-title { text-align: center; font-size: 26px; font-weight: 800; color: var(--navy); }
-.receipt-subtitle { text-align: center; color: var(--text-muted); margin-bottom: 20px; font-size: 14px; }
+.receipt-logo { width: 85px; display: block; margin: 0 auto 10px; }
+.receipt-title { text-align: center; font-size: 22px; font-weight: 800; color: var(--navy); }
+.receipt-subtitle { text-align: center; color: var(--text-muted); margin-bottom: 16px; font-size: 13px; }
 .receipt-table { width: 100%; border-collapse: collapse; }
-.receipt-table td { padding: 10px; border: 1px solid #e2e8f0; font-size: 14px; }
-.receipt-label { background: #f8fafc; font-weight: 600; width: 40%; color: var(--text-muted); }
+.receipt-table td { padding: 8px 10px; border: 1px solid #e2e8f0; font-size: 13px; }
+.receipt-label { background: #f8fafc; font-weight: 600; width: 40%; color: var(--text-muted); font-size: 12px; }
 .receipt-address {
-  margin-top: 16px; padding: 12px;
+  margin-top: 14px; padding: 10px;
   background: #f8fafc; border-radius: 8px;
-  text-align: center; font-size: 13px; color: var(--text-muted);
+  text-align: center; font-size: 11px; color: var(--text-muted);
 }
 .receipt-footer {
-  margin-top: 16px;
+  margin-top: 14px;
   background: var(--navy); color: #fff;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: 8px;
   display: flex; justify-content: space-between; align-items: center;
 }
-.receipt-footer-brand { display: flex; align-items: center; gap: 10px; }
-.receipt-footer-brand strong { font-size: 14px; }
-.receipt-footer-brand small { font-size: 11px; opacity: 0.7; }
-.receipt-phone { font-size: 15px; font-weight: 700; letter-spacing: 1px; }
+.receipt-footer-brand { display: flex; align-items: center; gap: 8px; }
+.receipt-footer-brand strong { font-size: 13px; }
+.receipt-footer-brand small { font-size: 10px; opacity: 0.7; }
+.receipt-phone { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; }
 .receipt-actions { display: flex; gap: 10px; justify-content: center; }
 
 /* ═══════════════════════════════════════════════════
