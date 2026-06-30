@@ -597,8 +597,8 @@ export default function Fees() {
                     <tr><td className="receipt-label">Student Name</td><td>{currentReceipt.studentName || student?.name}</td></tr>
                     <tr><td className="receipt-label">Class</td><td>{currentReceipt.studentClass || student?.class}</td></tr>
                     <tr><td className="receipt-label">Date Paid On</td><td>{currentReceipt.datePaid ? format(currentReceipt.datePaid.toDate(),'d MMMM yyyy') : '—'}</td></tr>
-                    <tr><td className="receipt-label">Month Paid For</td><td>{currentReceipt.monthsPaid?.map(formatMonthLabel).join(', ')}</td></tr>
-                    <tr><td className="receipt-label">Mode Of Payment</td><td>{currentReceipt.mode}</td></tr>
+                    <tr><td className="receipt-label">Month Paid</td><td>{currentReceipt.monthsPaid?.map(formatMonthLabel).join(', ')}</td></tr>
+                    <tr><td className="receipt-label">Paid Via</td><td>{currentReceipt.mode}</td></tr>
                   </tbody>
                 </table>
                 <div className="receipt-address">
