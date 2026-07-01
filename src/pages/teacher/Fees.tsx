@@ -39,7 +39,8 @@ export default function Fees() {
   const [showPaymentAmounts, setShowPaymentAmounts] = useState<Record<string, boolean>>({});
   const [showDueModal, setShowDueModal] = useState(false);
 
-  const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
+  const [viewMode, setViewMode] = useState<'student' | 'master' | 'history'>('master');
+  const [historyMonth, setHistoryMonth] = useState<string>(new Date().toISOString().slice(0, 7));
   const [masterYear, setMasterYear] = useState<number>(new Date().getFullYear());
   const [allPayments, setAllPayments] = useState<Record<string, FeePayment[]>>({});
   const [loadingMaster, setLoadingMaster] = useState(false);
@@ -64,7 +65,7 @@ export default function Fees() {
   };
 
   useEffect(() => {
-    if (viewMode === 'master' && students.length > 0) {
+    if ((viewMode === 'master' || viewMode === 'history') && students.length > 0) {
       loadMasterData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -253,12 +254,15 @@ export default function Fees() {
       </div>
 
       <div className="filter-bar" style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: 16 }}>
-        <div className="tabs" style={{ marginBottom: 0 }}>
+        <div className="tabs">
           <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>
             Master View
           </button>
           <button className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`} onClick={() => setViewMode('student')}>
             Student View
+          </button>
+          <button className={`tab-btn ${viewMode === 'history' ? 'active' : ''}`} onClick={() => setViewMode('history')}>
+            History
           </button>
         </div>
       </div>
@@ -581,6 +585,73 @@ export default function Fees() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {viewMode === 'history' && (
+        <div className="card">
+          <div className="flex-between mb-16">
+            <h3 className="section-title" style={{ marginBottom: 0 }}>Payment History</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <label style={{ fontSize: 13, fontWeight: 500 }}>Month:</label>
+              <input 
+                type="month" 
+                className="input" 
+                value={historyMonth} 
+                onChange={e => setHistoryMonth(e.target.value)} 
+                style={{ width: 'auto' }}
+              />
+            </div>
+          </div>
+
+          {loadingMaster ? (
+            <div className="loader" style={{ margin: '40px auto' }} />
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Name</th>
+                    <th>Class</th>
+                    <th>Amount</th>
+                    <th>Paid Via</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const filtered = Object.values(allPayments).flat().filter(p => {
+                      if (!p.datePaid) return false;
+                      const d = p.datePaid.toDate();
+                      const yyyy = d.getFullYear();
+                      const mm = String(d.getMonth() + 1).padStart(2, '0');
+                      return `${yyyy}-${mm}` === historyMonth;
+                    }).sort((a, b) => b.datePaid!.toMillis() - a.datePaid!.toMillis());
+
+                    if (filtered.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={5} className="text-center text-muted" style={{ padding: '24px 0' }}>
+                            No payments found in {formatMonthLabel(historyMonth + '-01')}.
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return filtered.map(p => (
+                      <tr key={p.id}>
+                        <td>{p.datePaid ? format(p.datePaid.toDate(), 'dd MMM yyyy') : '—'}</td>
+                        <td className="fw-600">{p.studentName || '—'}</td>
+                        <td>{p.studentClass || '—'}</td>
+                        <td className="fw-600" style={{ color: '#16a34a' }}>₹{(p.amount || 0).toLocaleString()}</td>
+                        <td>{p.mode}</td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
