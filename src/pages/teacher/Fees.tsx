@@ -110,6 +110,7 @@ export default function Fees() {
   };
 
   const openEditModal = (p: FeePayment) => {
+    setSelectedStudent(p.studentId);
     setEditingPaymentId(p.id);
     setTransactions([{
       id: p.id,
@@ -615,6 +616,7 @@ export default function Fees() {
                     <th>Name</th>
                     <th>Class</th>
                     <th>Paid Via</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -643,6 +645,24 @@ export default function Fees() {
                         <td className="fw-600">{p.studentName || '—'}</td>
                         <td>{p.studentClass || '—'}</td>
                         <td>{p.mode}</td>
+                        <td>
+                          <div className="action-btns">
+                            <button
+                              className="icon-btn"
+                              title="Edit Payment"
+                              onClick={() => openEditModal(p)}
+                            >
+                              <Pencil size={16}/>
+                            </button>
+                            <button
+                              className="icon-btn"
+                              title="View Receipt"
+                              onClick={() => { setCurrentReceipt(p); setShowReceipt(true); }}
+                            >
+                              <Printer size={16}/>
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ));
                   })()}
