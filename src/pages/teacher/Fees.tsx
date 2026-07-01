@@ -614,7 +614,6 @@ export default function Fees() {
                     <th>Date</th>
                     <th>Name</th>
                     <th>Class</th>
-                    <th>Amount</th>
                     <th>Paid Via</th>
                   </tr>
                 </thead>
@@ -643,7 +642,6 @@ export default function Fees() {
                         <td>{p.datePaid ? format(p.datePaid.toDate(), 'dd MMM yyyy') : '—'}</td>
                         <td className="fw-600">{p.studentName || '—'}</td>
                         <td>{p.studentClass || '—'}</td>
-                        <td className="fw-600" style={{ color: '#16a34a' }}>₹{(p.amount || 0).toLocaleString()}</td>
                         <td>{p.mode}</td>
                       </tr>
                     ));
