@@ -379,9 +379,15 @@ export default function Fees() {
                                     const now = new Date();
                                     const currYear = now.getFullYear();
                                     const currMonth = now.getMonth() + 1;
+                                    
+                                    let isAfterLeaving = false;
+                                    if (s.active === false && s.leavingMonth) {
+                                      const [lYear, lMonth] = s.leavingMonth.split('-').map(Number);
+                                      isAfterLeaving = cellYear > lYear || (cellYear === lYear && cellMonth > lMonth);
+                                    }
                                     const isFuture = cellYear > currYear || (cellYear === currYear && cellMonth >= currMonth);
 
-                                    if (s.active === false && isFuture) {
+                                    if (s.active === false && (isAfterLeaving || (!s.leavingMonth && isFuture))) {
                                       bgColor = '#e2e8f0'; // Slate-200 (Archived)
                                       color = 'transparent';
                                       isDue = false;

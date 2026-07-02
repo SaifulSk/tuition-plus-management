@@ -25,6 +25,7 @@ export interface Student {
   uid: string;              // Firebase Auth uid for student login
   email: string;
   active: boolean;
+  leavingMonth?: string;
   feeHistory?: FeeChange[];
 }
 

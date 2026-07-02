@@ -44,6 +44,11 @@ export default function Students() {
   const [showFees, setShowFees] = useState<Record<string, boolean>>({});
   const [showArchived, setShowArchived] = useState(false);
   
+  // Archive State
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [archivingStudent, setArchivingStudent] = useState<Student | null>(null);
+  const [leavingMonth, setLeavingMonth] = useState('');
+  
   // Promotion State
   const [showPromoteModal, setShowPromoteModal] = useState(false);
   const [promotingStudent, setPromotingStudent] = useState<Student | null>(null);
@@ -287,13 +292,16 @@ export default function Students() {
     }
   };
 
-  const toggleActive = async (s: Student) => {
-    await updateDoc(doc(db, 'students', s.id), { active: !s.active });
+  const toggleActive = async (s: Student, lMonth: string | null = null) => {
+    await updateDoc(doc(db, 'students', s.id), { 
+      active: !s.active,
+      leavingMonth: lMonth
+    });
     loadStudents();
     if (!s.active) {
       toast.success(`${s.name} unarchived! Reminder: Go to the Fees page and mark their gap months as 'Waived / Leave' so they don't show as Due.`, { duration: 8000 });
     } else {
-      toast.success(`${s.name} archived. Future fee months will be auto-greyed out.`);
+      toast.success(`${s.name} archived. Fees for months after ${lMonth || 'now'} will be greyed out.`);
     }
   };
 
@@ -434,9 +442,16 @@ export default function Students() {
                                 <span
                                   className={`badge cursor-pointer ${s.active ? 'badge-green' : 'badge-gray'}`}
                                   onClick={() => {
-                                    confirm(`Are you sure you want to ${s.active ? 'archive' : 'unarchive'} this student?`, () => {
-                                      toggleActive(s);
-                                    });
+                                    if (s.active) {
+                                      setArchivingStudent(s);
+                                      const now = new Date();
+                                      setLeavingMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+                                      setShowArchiveModal(true);
+                                    } else {
+                                      confirm(`Are you sure you want to unarchive this student?`, () => {
+                                        toggleActive(s, null);
+                                      });
+                                    }
                                   }}
                                   title="Click to toggle status"
                                 >
@@ -575,52 +590,77 @@ export default function Students() {
         </div>
       )}
 
-      {/* Promote Student Modal */}
+      {/* Promote Modal */}
       {showPromoteModal && promotingStudent && (
         <div className="modal-overlay" onClick={() => setShowPromoteModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Promote / Retain Student</h2>
+              <h2>Promote/Retain Student</h2>
               <button className="modal-close" onClick={() => setShowPromoteModal(false)}><X size={20} /></button>
             </div>
             <form onSubmit={handlePromote} className="modal-body">
-              <div className="alert alert-info mb-16">
+              <div className="mb-4 text-sm" style={{ padding: '12px', background: 'var(--surface-2)', borderRadius: '8px' }}>
                 <strong>{promotingStudent.name}</strong> is currently in <strong>Class {promotingStudent.class}</strong> (Session: {promotingStudent.session || getCurrentSession()})
               </div>
-              <div className="form-group mb-16">
-                <label>Action *</label>
+              <div className="form-group mb-4">
+                <label>Action</label>
                 <div style={{ display: 'flex', gap: '16px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <input type="radio" name="action" checked={promoteForm.action === 'promote'} onChange={() => setPromoteForm(f => ({ ...f, action: 'promote' }))} />
-                    Promote to new class
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input type="radio" name="action" value="promote" checked={promoteForm.action === 'promote'} onChange={e => setPromoteForm({...promoteForm, action: 'promote'})} />
+                    Promote to Next Class
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <input type="radio" name="action" checked={promoteForm.action === 'retain'} onChange={() => setPromoteForm(f => ({ ...f, action: 'retain' }))} />
-                    Retain in same class
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input type="radio" name="action" value="retain" checked={promoteForm.action === 'retain'} onChange={e => setPromoteForm({...promoteForm, action: 'retain'})} />
+                    Retain in Same Class
                   </label>
                 </div>
               </div>
-              
-              {promoteForm.action === 'promote' && (
-                <div className="form-group mb-16">
-                  <label>New Class *</label>
-                  <select value={promoteForm.newClass} onChange={e => setPromoteForm(f => ({ ...f, newClass: e.target.value }))} required className="input">
-                    <option value="">Select class</option>
+              <div className="form-grid-2">
+                <div className="form-group">
+                  <label>New Class</label>
+                  <select value={promoteForm.newClass} onChange={e => setPromoteForm({...promoteForm, newClass: e.target.value})} required>
                     {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
                   </select>
                 </div>
-              )}
-              
-              <div className="form-group mb-16">
-                <label>New Academic Session *</label>
-                <input type="text" className="input" placeholder="e.g. 2024-2025" value={promoteForm.newSession} onChange={e => setPromoteForm(f => ({ ...f, newSession: e.target.value }))} required />
+                <div className="form-group">
+                  <label>New Session</label>
+                  <select value={promoteForm.newSession} onChange={e => setPromoteForm({...promoteForm, newSession: e.target.value})} required>
+                    {['2024-2025','2025-2026','2026-2027','2026-2028','2028-2029','2029-2030'].map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
               </div>
-              
-              <div className="modal-footer">
-                <button type="button" className="btn-secondary" onClick={() => setShowPromoteModal(false)}>Cancel</button>
-                <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Update Session'}</button>
+              <div className="modal-footer mt-4">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowPromoteModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Confirm'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Archive Modal */}
+      {showArchiveModal && archivingStudent && (
+        <div className="modal-overlay" onClick={() => setShowArchiveModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Archive Student</h2>
+              <button className="modal-close" onClick={() => setShowArchiveModal(false)}><X size={20} /></button>
+            </div>
+            <div className="modal-body">
+              <p>Please select the month <strong>{archivingStudent.name}</strong> stopped attending.</p>
+              <p className="text-sm text-gray mb-4">Fees for months <strong>after</strong> this will be greyed out.</p>
+              <div className="form-group">
+                <label>Month of Leaving</label>
+                <input type="month" value={leavingMonth} onChange={e => setLeavingMonth(e.target.value)} required />
+              </div>
+              <div className="modal-footer mt-4">
+                <button className="btn btn-secondary" onClick={() => setShowArchiveModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={() => {
+                  toggleActive(archivingStudent, leavingMonth);
+                  setShowArchiveModal(false);
+                }}>Archive</button>
+              </div>
+            </div>
           </div>
         </div>
       )}
