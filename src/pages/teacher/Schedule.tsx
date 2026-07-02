@@ -188,7 +188,7 @@ export default function Schedule() {
               options={DAYS} 
               selected={selectedDays} 
               onChange={setSelectedDays} 
-              placeholder="Select days"
+              placeholder="All Days"
               showSelectAll
             />
           </div>
@@ -199,7 +199,7 @@ export default function Schedule() {
         <div className="card mt-16" style={{ overflowX: 'auto', background: 'var(--surface)' }}>
           
           <div style={{ display: 'flex', gap: '16px', minWidth: '900px', padding: '8px' }}>
-            {DAYS.filter(d => selectedDays.includes(d)).map(day => (
+            {(selectedDays.length === 0 ? DAYS : DAYS.filter(d => selectedDays.includes(d))).map(day => (
               <div key={day} style={{ flex: 1, minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ padding: '12px', background: 'var(--surface-2)', borderRadius: '8px', borderTop: '4px solid var(--primary)', fontWeight: 700, textAlign: 'center', boxShadow: 'var(--shadow-sm)' }}>
                   {day}
