@@ -394,13 +394,13 @@ export default function Students() {
                           {groupedByClass[cls].map(s => (
                             <tr key={s.id}>
                               <td style={{ paddingLeft: '24px' }}>
-                                <div className="table-student">
+                                <Link to={`/teacher/students/${s.id}`} className="table-student" style={{ textDecoration: 'none', color: 'inherit' }}>
                                   <div className="student-avatar sm">{s.name.charAt(0)}</div>
                                   <div>
-                                    <div className="fw-600">{s.name}</div>
+                                    <div className="fw-600 hover-primary">{s.name}</div>
                                     <div className="text-muted text-sm">{s.school}</div>
                                   </div>
-                                </div>
+                                </Link>
                               </td>
                               <td>{s.section || '—'}</td>
                               <td>
