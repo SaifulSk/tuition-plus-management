@@ -1073,8 +1073,9 @@ img { max-width: 100%; }
   display: flex; justify-content: space-between; align-items: center;
 }
 .receipt-footer-brand { display: flex; align-items: center; gap: 8px; }
-.receipt-footer-brand strong { font-size: 13px; }
-.receipt-footer-brand small { font-size: 10px; opacity: 0.7; }
+.receipt-footer-brand > div { display: flex; flex-direction: column; gap: 2px; }
+.receipt-footer-brand strong { font-size: 13px; line-height: 1; }
+.receipt-footer-brand small { font-size: 10px; opacity: 0.7; line-height: 1; }
 .receipt-phone { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; }
 .receipt-actions { display: flex; gap: 10px; justify-content: center; }
 

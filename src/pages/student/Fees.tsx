@@ -142,7 +142,10 @@ export default function StudentFees() {
                 <div className="receipt-footer">
                   <div className="receipt-footer-brand">
                     <img src={logo} alt="logo" style={{width:30,height:30,objectFit:'contain'}}/>
-                    <div><strong>TUITION PLUS</strong><br/><small>Empowering Young Minds</small></div>
+                    <div>
+                      <strong>TUITION PLUS</strong>
+                      <small>Empowering Young Minds</small>
+                    </div>
                   </div>
                   <div className="receipt-phone">8013753344</div>
                 </div>

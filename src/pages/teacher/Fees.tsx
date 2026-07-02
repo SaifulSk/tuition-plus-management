@@ -703,7 +703,7 @@ export default function Fees() {
                   <div className="receipt-footer-brand">
                     <img src={logo} alt="logo" style={{width:30,height:30,objectFit:'contain'}}/>
                     <div>
-                      <strong>TUITION PLUS</strong><br/>
+                      <strong>TUITION PLUS</strong>
                       <small>Empowering Young Minds</small>
                     </div>
                   </div>
