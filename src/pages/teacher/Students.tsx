@@ -460,9 +460,11 @@ export default function Students() {
                               </td>
                               <td>
                                 <div className="action-btns">
-                                  <button className="icon-btn" onClick={() => openEditModal(s)} title="Edit">
-                                    <Pencil size={16} />
-                                  </button>
+                                  {s.active && (
+                                    <button className="icon-btn" onClick={() => openEditModal(s)} title="Edit">
+                                      <Pencil size={16} />
+                                    </button>
+                                  )}
                                   <button className="icon-btn" onClick={() => duplicateStudent(s)} title="Duplicate">
                                     <Copy size={16} />
                                   </button>
