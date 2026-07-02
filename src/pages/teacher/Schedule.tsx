@@ -419,6 +419,7 @@ export default function Schedule() {
                   selected={subjects}
                   onChange={setSubjects}
                   placeholder="Select subjects"
+                  showSelectAll
                 />
               </div>
               <div className="form-group">

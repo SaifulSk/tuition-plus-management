@@ -537,6 +537,7 @@ export default function Students() {
                   onChange={setSubjects}
                   placeholder="Select subjects"
                   required
+                  showSelectAll
                 />
               </div>
 

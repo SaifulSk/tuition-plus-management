@@ -299,6 +299,7 @@ export default function StudentDetail() {
                   selected={newFeeSubjects}
                   onChange={setNewFeeSubjects}
                   placeholder="Select subjects..."
+                  showSelectAll
                 />
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>

@@ -504,6 +504,7 @@ export default function SchoolExams() {
                     onChange={setSubjects}
                     placeholder="Select subjects"
                     required
+                    showSelectAll
                   />
                 </div>
                 <div className="form-group">

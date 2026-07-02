@@ -590,6 +590,7 @@ export default function Syllabus() {
                   onChange={setSubjects}
                   placeholder="Select subjects"
                   required
+                  showSelectAll
                 />
               </div>
               <div className="form-group">
