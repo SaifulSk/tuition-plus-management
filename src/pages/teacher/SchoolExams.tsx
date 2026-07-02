@@ -406,6 +406,9 @@ export default function SchoolExams() {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         Class {cls}
+                        <span className="badge badge-gray ml-auto" style={{ marginLeft: 8 }}>
+                          {students.filter(s => s.class === cls && s.active !== false).length} students
+                        </span>
                       </div>
                       {isExpanded ? <ChevronDown size={20} className="text-muted" /> : <ChevronRight size={20} className="text-muted" />}
                     </div>

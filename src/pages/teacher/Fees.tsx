@@ -321,6 +321,9 @@ export default function Fees() {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         Class {cls}
+                        <span className="badge badge-gray ml-auto" style={{ marginLeft: 8 }}>
+                          {groupedStudents[cls].length} students
+                        </span>
                       </div>
                       {isExpanded ? <ChevronDown size={20} className="text-muted" /> : <ChevronRight size={20} className="text-muted" />}
                     </div>

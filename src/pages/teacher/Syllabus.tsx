@@ -397,6 +397,9 @@ export default function Syllabus() {
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           Class {cls}
+                          <span className="badge badge-gray ml-auto" style={{ marginLeft: 8 }}>
+                            {classData.students.length} students
+                          </span>
                         </div>
                         {classExpanded ? <ChevronDown size={20} className="text-muted" /> : <ChevronRight size={20} className="text-muted" />}
                       </div>
@@ -427,6 +430,9 @@ export default function Syllabus() {
                                       {schoolExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                                       <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
                                         <span style={{ fontWeight: 600, fontSize: 15 }}>{school}</span>
+                                        <span className="badge badge-gray ml-auto" style={{ marginLeft: 8 }}>
+                                          {schoolData.students.length} students
+                                        </span>
                                       </div>
                                     </div>
 
@@ -468,7 +474,12 @@ export default function Syllabus() {
                                     >
                                       {subjectExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                                       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 2 }}>
-                                        <span style={{ fontWeight: 600, fontSize: 14 }}>{subject}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                          <span style={{ fontWeight: 600, fontSize: 14 }}>{subject}</span>
+                                          <span className="badge badge-gray" style={{ marginLeft: 8 }}>
+                                            {sd.studentsInSubject.length} students
+                                          </span>
+                                        </div>
                                       </div>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                         {/* Mini progress bar */}
