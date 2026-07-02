@@ -137,7 +137,7 @@ export default function Schedule() {
   
   // Grouped data for Master View
   const groupedMaster = DAYS.reduce((acc, day) => {
-    const daySlots = allSlots.filter(s => s.day === day);
+    const daySlots = allSlots.filter(s => s.day === day && s.type === 'tuition');
     const slotMap = new Map<string, { startTime: string, endTime: string, type: 'tuition'|'other_tuition', students: { id: string, name: string, subjects: string[], slotId: string }[] }>();
     
     daySlots.forEach(s => {
