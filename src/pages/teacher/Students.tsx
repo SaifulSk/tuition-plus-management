@@ -43,6 +43,7 @@ export default function Students() {
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
   const [showFees, setShowFees] = useState<Record<string, boolean>>({});
   const [showArchived, setShowArchived] = useState(false);
+  const [archivedSessionFilter, setArchivedSessionFilter] = useState('');
   
   // Archive State
   const [showArchiveModal, setShowArchiveModal] = useState(false);
@@ -82,9 +83,12 @@ export default function Students() {
 
   useEffect(() => {
     let list = students.filter(s => showArchived ? !s.active : s.active !== false);
+    if (showArchived && archivedSessionFilter) {
+      list = list.filter(s => (s.session || getCurrentSession()) === archivedSessionFilter);
+    }
     if (search) list = list.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
     setFiltered(list);
-  }, [search, students, showArchived]);
+  }, [search, students, showArchived, archivedSessionFilter]);
 
   const toggleClass = (cls: string) => {
     setExpandedClasses(p => ({ ...p, [cls]: !p[cls] }));
@@ -332,6 +336,8 @@ export default function Students() {
   }, {} as Record<string, Student[]>);
 
   const sortedClasses = Object.keys(groupedByClass).sort((a,b) => parseInt(a) - parseInt(b));
+  
+  const distinctArchivedSessions = [...new Set(students.filter(s => !s.active).map(s => s.session || getCurrentSession()))].sort().reverse();
 
   return (
     <div className="page">
@@ -356,6 +362,14 @@ export default function Students() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
+        {showArchived && (
+          <select className="input" style={{ width: 'auto' }} value={archivedSessionFilter} onChange={e => setArchivedSessionFilter(e.target.value)}>
+            <option value="">All Sessions</option>
+            {distinctArchivedSessions.map(sess => (
+              <option key={sess} value={sess}>{sess}</option>
+            ))}
+          </select>
+        )}
         <div className="tabs" style={{ marginBottom: 0 }}>
           <button className={`tab-btn ${!showArchived ? 'active' : ''}`} onClick={() => setShowArchived(false)}>
             Active
