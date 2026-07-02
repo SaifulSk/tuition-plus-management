@@ -353,12 +353,21 @@ export default function Schedule() {
               <div className="form-grid-2">
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label>Select Student *</label>
-                  <select value={modalStudentId} onChange={e => setModalStudentId(e.target.value)} disabled={!!editingSlotId}>
-                    <option value="">— Choose a student —</option>
-                    {students.map(s => (
-                      <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
-                    ))}
-                  </select>
+                  {modalStudentId ? (
+                    <div className="fw-600" style={{ fontSize: 15, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      {students.find(s => s.id === modalStudentId)?.name || '—'} 
+                      <span style={{color: 'var(--text-muted)', fontSize: 13, marginLeft: 8}}>
+                        (Class {students.find(s => s.id === modalStudentId)?.class || '—'})
+                      </span>
+                    </div>
+                  ) : (
+                    <select value={modalStudentId} onChange={e => setModalStudentId(e.target.value)} disabled={!!editingSlotId} required>
+                      <option value="">— Choose a student —</option>
+                      {students.map(s => (
+                        <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Day</label>
