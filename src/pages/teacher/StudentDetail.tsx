@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import type { Student, FeePayment, SyllabusTopic, SchoolExam } from '../../types';
-import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff, Plus, X, Settings } from 'lucide-react';
+import type { Student, FeePayment, SyllabusTopic, SchoolExam, ScheduleSlot, TuitionTest, Homework, CenterEvent } from '../../types';
+import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff, Plus, X, Settings, Clock, ClipboardList, CalendarDays, BookOpenCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import MultiSelect from '../../components/common/MultiSelect';
@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import { getCurrentSession } from '../../utils/dateUtils';
 
-type Tab = 'overview' | 'fees' | 'syllabus' | 'exams';
+type Tab = 'overview' | 'fees' | 'syllabus' | 'exams' | 'schedule' | 'tests' | 'homework' | 'events';
 
 const getMarksBadgeClass = (pct: number) => {
   if (pct >= 90) return 'badge-excel-dark-green';
@@ -21,6 +21,15 @@ const getMarksBadgeClass = (pct: number) => {
   if (pct >= 51) return 'badge-excel-yellow';
   if (pct >= 31) return 'badge-excel-pink';
   return 'badge-excel-red';
+};
+
+const formatTime12h = (time24?: string) => {
+  if (!time24) return '';
+  const [h, m] = time24.split(':');
+  const hours = parseInt(h, 10);
+  const suffix = hours >= 12 ? 'PM' : 'AM';
+  const h12 = hours % 12 || 12;
+  return `${h12}:${m} ${suffix}`;
 };
 
 const getMarksColor = (pct: number) => {
@@ -37,6 +46,10 @@ export default function StudentDetail() {
   const [fees, setFees] = useState<FeePayment[]>([]);
   const [syllabus, setSyllabus] = useState<SyllabusTopic[]>([]);
   const [exams, setExams] = useState<SchoolExam[]>([]);
+  const [slots, setSlots] = useState<ScheduleSlot[]>([]);
+  const [tests, setTests] = useState<TuitionTest[]>([]);
+  const [homeworks, setHomeworks] = useState<Homework[]>([]);
+  const [events, setEvents] = useState<CenterEvent[]>([]);
   const [tab, setTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
   const [showMonthlyFee, setShowMonthlyFee] = useState(false);
@@ -71,6 +84,27 @@ export default function StudentDetail() {
 
       const exSnap = await getDocs(query(collection(db, 'schoolExams', id!, 'exams'), orderBy('date')));
       setExams(exSnap.docs.map(d => ({ id: d.id, ...d.data() }) as SchoolExam));
+
+      // Fetch Schedule
+      const slotSnap = await getDocs(collection(db, 'schedules', id!, 'slots'));
+      setSlots(slotSnap.docs.map(d => ({ id: d.id, ...d.data() }) as ScheduleSlot));
+
+      // Fetch Global Tuition Tests and filter
+      const testSnap = await getDocs(query(collection(db, 'tests'), orderBy('date', 'desc')));
+      setTests(testSnap.docs.map(d => ({ id: d.id, ...d.data() }) as TuitionTest)
+        .filter(t => t.studentMarks && t.studentMarks[id!] !== undefined));
+
+      // Fetch Global Homework and filter
+      if (data) {
+        const hwSnap = await getDocs(query(collection(db, 'homework'), orderBy('dueDate', 'desc')));
+        const allHw = hwSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Homework);
+        setHomeworks(allHw.filter(h => h.targetClass === data.class && data.subjects?.includes(h.subject)));
+      }
+
+      // Fetch Global Events
+      const evSnap = await getDocs(query(collection(db, 'events'), orderBy('date', 'desc')));
+      setEvents(evSnap.docs.map(d => ({ id: d.id, ...d.data() }) as CenterEvent)
+        .filter(e => !e.attendees || e.attendees.length === 0 || e.attendees.includes(id!)));
 
       setLoading(false);
     }
@@ -201,7 +235,7 @@ export default function StudentDetail() {
 
       {/* Tabs */}
       <div className="tabs">
-        {(['overview','fees','syllabus','exams'] as Tab[]).map(t => (
+        {(['overview','schedule','fees','syllabus','tests','exams','homework','events'] as Tab[]).map(t => (
           <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
@@ -469,6 +503,123 @@ export default function StudentDetail() {
                 </table>
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {/* Schedule Tab */}
+      {tab === 'schedule' && (
+        <div className="card">
+          <h3 className="section-title"><Clock size={18}/> Weekly Schedule</h3>
+          {slots.length === 0 ? (
+            <div className="empty-state"><Clock size={32}/><p>No schedule slots</p></div>
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead><tr><th>Day</th><th>Time</th><th>Subjects</th><th>Type</th></tr></thead>
+                <tbody>
+                  {slots.map(s => (
+                    <tr key={s.id}>
+                      <td>{s.day}</td>
+                      <td>{formatTime12h(s.startTime)} – {formatTime12h(s.endTime)}</td>
+                      <td>{s.subjects?.join(', ')}</td>
+                      <td><span className={`badge ${s.type === 'tuition' ? 'badge-blue' : 'badge-orange'}`}>{s.type === 'tuition' ? 'My Slot' : 'Other Tuition'}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tests Tab */}
+      {tab === 'tests' && (
+        <div className="card">
+          <h3 className="section-title"><ClipboardList size={18}/> Tuition Tests</h3>
+          {tests.length === 0 ? (
+            <div className="empty-state"><ClipboardList size={32}/><p>No test marks recorded</p></div>
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead><tr><th>Date</th><th>Test Name</th><th>Subjects</th><th>Marks</th><th>Max</th><th>%</th></tr></thead>
+                <tbody>
+                  {tests.map(t => {
+                    const mark = t.studentMarks[student.id];
+                    const pct = Math.round((mark / t.maxMarks) * 100);
+                    return (
+                      <tr key={t.id}>
+                        <td>{t.date ? format(t.date.toDate(), 'dd MMM yyyy') : '—'}</td>
+                        <td className="fw-600">{t.title}</td>
+                        <td>{t.subjects?.join(', ')}</td>
+                        <td>{mark}</td>
+                        <td>{t.maxMarks}</td>
+                        <td><span className={`badge ${getMarksBadgeClass(pct)}`}>{pct}%</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Homework Tab */}
+      {tab === 'homework' && (
+        <div className="card">
+          <h3 className="section-title"><BookOpenCheck size={18}/> Homework</h3>
+          {homeworks.length === 0 ? (
+            <div className="empty-state"><BookOpenCheck size={32}/><p>No homework assigned</p></div>
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead><tr><th>Due Date</th><th>Title</th><th>Subject</th><th>Status</th></tr></thead>
+                <tbody>
+                  {homeworks.map(h => {
+                    const isCompleted = h.completedBy?.includes(student.id);
+                    const isOverdue = !isCompleted && h.dueDate.toMillis() < Date.now();
+                    return (
+                      <tr key={h.id}>
+                        <td className={isOverdue ? 'text-red' : ''}>{h.dueDate ? format(h.dueDate.toDate(), 'dd MMM yyyy') : '—'}</td>
+                        <td className="fw-600">{h.title}</td>
+                        <td>{h.subject}</td>
+                        <td>
+                          {isCompleted ? <span className="badge badge-green">Completed</span> : 
+                           isOverdue ? <span className="badge badge-red">Overdue</span> : 
+                           <span className="badge badge-orange">Pending</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Events Tab */}
+      {tab === 'events' && (
+        <div className="card">
+          <h3 className="section-title"><CalendarDays size={18}/> Events</h3>
+          {events.length === 0 ? (
+            <div className="empty-state"><CalendarDays size={32}/><p>No events scheduled</p></div>
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead><tr><th>Date</th><th>Event</th><th>Type</th></tr></thead>
+                <tbody>
+                  {events.map(e => (
+                    <tr key={e.id}>
+                      <td>{e.date ? format(e.date.toDate(), 'dd MMM yyyy') : '—'}</td>
+                      <td className="fw-600">{e.title}</td>
+                      <td><span className="badge badge-purple" style={{textTransform:'capitalize'}}>{e.type.replace('_',' ')}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
