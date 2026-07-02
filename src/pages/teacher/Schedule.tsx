@@ -191,7 +191,7 @@ export default function Schedule() {
     }
   };
   
-  // Grouped data for Master View
+  // Grouped data for Overview
   const groupedMaster = DAYS.reduce((acc, day) => {
     const daySlots = allSlots.filter(s => s.day === day && s.type === 'tuition');
     const slotMap = new Map<string, { startTime: string, endTime: string, type: 'tuition'|'other_tuition', students: { id: string, name: string, subjects: string[], slotId: string }[] }>();
@@ -303,7 +303,7 @@ export default function Schedule() {
       <div className="filter-bar" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
         <div className="tabs" style={{ marginBottom: 0 }}>
           <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>
-            Master View
+            Overview
           </button>
           <button className={`tab-btn ${viewMode === 'free_slots' ? 'active' : ''}`} onClick={() => setViewMode('free_slots')}>
             Free Slots

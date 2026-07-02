@@ -247,7 +247,7 @@ export default function SchoolExams() {
 
       <div className="filter-bar" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
         <div className="tabs" style={{ marginBottom: 0 }}>
-          <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>Master View</button>
+          <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>Overview</button>
           <button className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`} onClick={() => setViewMode('student')}>Student View</button>
         </div>
       </div>

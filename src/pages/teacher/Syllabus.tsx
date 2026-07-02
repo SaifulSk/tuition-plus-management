@@ -50,7 +50,7 @@ export default function Syllabus() {
   // ── View Mode ─────────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
 
-  // ── Master View State ─────────────────────────────────────────────────────
+  // ── Overview State ─────────────────────────────────────────────────────
   const [allTopics, setAllTopics] = useState<Record<string, SyllabusTopic[]>>({});
   const [loadingMaster, setLoadingMaster] = useState(false);
   const [masterLoaded, setMasterLoaded] = useState(false);
@@ -173,7 +173,7 @@ export default function Syllabus() {
     });
   };
 
-  // ── Master View: update status by cycling ─────────────────────────────────
+  // ── Overview: update status by cycling ─────────────────────────────────
   const masterUpdateStatus = async (studentId: string, topicId: string, currentStatus: SyllabusStatus) => {
     const nextIdx = (STATUS_CYCLE.indexOf(currentStatus) + 1) % STATUS_CYCLE.length;
     const nextStatus = STATUS_CYCLE[nextIdx];
@@ -188,7 +188,7 @@ export default function Syllabus() {
     toast.success(`Marked as "${nextStatus.replace('_', ' ')}"`);
   };
 
-  // ── Master View: assign new topic to a student ────────────────────────────
+  // ── Overview: assign new topic to a student ────────────────────────────
   const masterAssignTopic = async (studentId: string, topicName: string, chapter: string, subjectList: string[]) => {
     const payload = {
       topic: topicName,
@@ -279,7 +279,7 @@ export default function Syllabus() {
           <p className="page-sub mb-16">Track chapter and topic completion per student</p>
           {/* View toggle */}
           <div className="tabs" style={{ marginBottom: 0 }}>
-            <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>Master View</button>
+            <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>Overview</button>
             <button className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`} onClick={() => setViewMode('student')}>Student View</button>
           </div>
         </div>

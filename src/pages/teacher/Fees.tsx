@@ -268,7 +268,7 @@ export default function Fees() {
       <div className="filter-bar" style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: 16 }}>
         <div className="tabs">
           <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>
-            Master View
+            Overview
           </button>
           <button className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`} onClick={() => setViewMode('student')}>
             Student View
