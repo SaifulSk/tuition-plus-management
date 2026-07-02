@@ -388,7 +388,7 @@ export default function Syllabus() {
 
 
                   return (
-                    <div key={cls} className="accordion-item" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
+                    <div key={cls} className="accordion-item" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
                       {/* Class accordion header */}
                       <div 
                         className="accordion-header" 

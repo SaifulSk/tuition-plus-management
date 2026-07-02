@@ -363,7 +363,7 @@ export default function Students() {
         ) : (
           <div className="accordion-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {sortedClasses.map(cls => (
-              <div key={cls} className="accordion-item" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
+              <div key={cls} className="accordion-item" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
                 <div 
                   className="accordion-header" 
                   onClick={() => toggleClass(cls)}

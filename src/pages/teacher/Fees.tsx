@@ -291,7 +291,7 @@ export default function Fees() {
           {loadingMaster ? (
             <div style={{ padding: '40px', textAlign: 'center' }}><span className="btn-spinner" style={{ borderColor: 'var(--navy)', borderTopColor: 'transparent', width: 24, height: 24 }}/></div>
           ) : (
-            <div>
+            <div className="accordion-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {(() => {
                 const studentsByClass = students.reduce((acc, s) => {
                   const c = s.class || 'Other';
@@ -309,7 +309,7 @@ export default function Fees() {
                 return classKeys.map(cls => {
                   const isExpanded = expandedClasses[cls] !== false;
                   return (
-                  <div key={cls} className="accordion-item" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
+                  <div key={cls} className="accordion-item" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
                     <div 
                       className="accordion-header" 
                       onClick={() => setExpandedClasses(prev => ({...prev, [cls]: !isExpanded}))}
