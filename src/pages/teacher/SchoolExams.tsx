@@ -58,7 +58,7 @@ export default function SchoolExams() {
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
-      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false));
+      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student));
     });
     getDocs(collection(db, 'subjects')).then(snap => {
       setMasterSubjects(snap.docs.map(d => d.data().name));

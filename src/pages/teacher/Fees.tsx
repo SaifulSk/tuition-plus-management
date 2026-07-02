@@ -74,7 +74,7 @@ export default function Fees() {
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
-      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false));
+      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student));
     });
   }, []);
 
@@ -281,7 +281,7 @@ export default function Fees() {
             <h2 className="section-title" style={{ margin: 0 }}>Master Fee View</h2>
             <div className="form-group" style={{ margin: 0, minWidth: '120px' }}>
               <select value={masterYear} onChange={e => setMasterYear(Number(e.target.value))}>
-                {[2026].map(y => (
+                {[2023, 2024, 2025, 2026, 2027, 2028].map(y => (
                   <option key={y} value={y}>{y}-{y+1}</option>
                 ))}
               </select>

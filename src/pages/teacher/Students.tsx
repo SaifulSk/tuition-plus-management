@@ -23,7 +23,7 @@ const EMPTY_FORM = {
   name: '', class: '', section: '', school: '',
   phone: '', parentPhone: '', confirmedFee: '',
   joiningDate: new Date().toISOString().split('T')[0],
-  notes: '', email: '', tempPassword: '',
+  notes: '', email: '', tempPassword: '', session: getCurrentSession(),
 };
 
 export default function Students() {
@@ -102,6 +102,7 @@ export default function Students() {
       notes: s.notes || '',
       email: s.email || '',
       tempPassword: '',
+      session: s.session || getCurrentSession(),
     });
     setSubjects(s.subjects || []);
     setShowModal(true);
@@ -121,6 +122,7 @@ export default function Students() {
       notes: s.notes || '',
       email: '',
       tempPassword: '',
+      session: s.session || getCurrentSession(),
     });
     setSubjects(s.subjects || []);
     setShowModal(true);
@@ -153,6 +155,7 @@ export default function Students() {
           joiningDate: Timestamp.fromDate(new Date(form.joiningDate)),
           notes: form.notes,
           subjects,
+          session: form.session,
         });
         const s = students.find(x => x.id === editingStudentId);
         
@@ -261,6 +264,7 @@ export default function Students() {
           uid,
           active: true,
           feeHistory: [],
+          session: form.session,
         });
         if (uid) {
           await setDoc(doc(db, 'users', uid), {
@@ -496,6 +500,12 @@ export default function Students() {
                 <div className="form-group">
                   <label>Section</label>
                   <input type="text" placeholder="A / B / C" value={form.section} onChange={set('section')} />
+                </div>
+                <div className="form-group">
+                  <label>Session</label>
+                  <select value={form.session} onChange={set('session')}>
+                    {['2024-2025', '2025-2026', '2026-2027', '2027-2028', '2028-2029'].map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>School *</label>
