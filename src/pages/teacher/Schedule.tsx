@@ -410,31 +410,29 @@ export default function Schedule() {
       )}
 
       {viewMode === 'free_slots' && (
-        <div className="mt-16" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="mt-16 accordion-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {freeSlotsData.length === 0 ? (
              <div className="card empty-state"><Clock size={48}/><p>No active students in the current session.</p></div>
           ) : (
             freeSlotsData.map(classData => (
-              <div key={classData.class} className="card p-0" style={{ overflow: 'hidden' }}>
+              <div key={classData.class} className="accordion-item" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
                 <div 
                   className="accordion-header"
                   onClick={() => setExpandedClasses(p => ({ ...p, [classData.class]: !p[classData.class] }))}
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', cursor: 'pointer', background: expandedClasses[classData.class] ? 'var(--surface-2)' : 'var(--surface)', borderBottom: expandedClasses[classData.class] ? '1px solid var(--border)' : 'none' }}
+                  style={{ padding: '16px', background: expandedClasses[classData.class] ? 'var(--bg)' : 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ background: 'var(--primary)', color: 'white', width: 36, height: 36, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-                      {classData.class}
-                    </div>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: '16px' }}>Class {classData.class}</h3>
-                      <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>{classData.studentCount} students</p>
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    Class {classData.class}
+                    <span className="badge badge-gray ml-auto" style={{ marginLeft: 8 }}>
+                      {classData.studentCount} students
+                    </span>
                   </div>
-                  {expandedClasses[classData.class] ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                  {expandedClasses[classData.class] ? <ChevronDown size={20} className="text-muted" /> : <ChevronRight size={20} className="text-muted" />}
                 </div>
                 
                 {expandedClasses[classData.class] && (
-                  <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', background: 'var(--surface)' }}>
+                  <div className="accordion-body" style={{ padding: '16px', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                     {classData.days.map(dayData => (
                       <div key={dayData.day} style={{ background: 'var(--bg)', borderRadius: '8px', padding: '12px', border: '1px solid var(--border-light)' }}>
                         <div className="fw-700" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '12px' }}>{dayData.day}</div>
@@ -454,6 +452,7 @@ export default function Schedule() {
                         </div>
                       </div>
                     ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -637,8 +636,9 @@ export default function Schedule() {
               <h2>Configure Operating Hours</h2>
               <button className="modal-close" onClick={() => setShowOpsModal(false)}><X size={20}/></button>
             </div>
-            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-              <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '16px' }}>
+            <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              <div className="modal-body">
+                <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '16px' }}>
                 Define your general working hours for each day. These hours are used to calculate the available free slots for your classes.
               </p>
               {DAYS.map(day => (
@@ -684,6 +684,7 @@ export default function Schedule() {
                   )}
                 </div>
               ))}
+              </div>
             </div>
             <div className="modal-footer">
               <button className="btn-ghost" onClick={() => setShowOpsModal(false)}>Cancel</button>
