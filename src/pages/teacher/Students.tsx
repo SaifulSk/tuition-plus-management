@@ -406,7 +406,7 @@ export default function Students() {
                             <th>Fee (₹/mo)</th>
                             <th>Joined</th>
                             <th>Status</th>
-                            <th>Actions</th>
+                            {!showArchived && <th>Actions</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -458,32 +458,34 @@ export default function Students() {
                                   {s.active ? 'Active' : 'Archived'}
                                 </span>
                               </td>
-                              <td>
-                                <div className="action-btns">
-                                  {s.active && (
-                                    <button className="icon-btn" onClick={() => openEditModal(s)} title="Edit">
-                                      <Pencil size={16} />
+                              {!showArchived && (
+                                <td>
+                                  <div className="action-btns">
+                                    {s.active && (
+                                      <button className="icon-btn" onClick={() => openEditModal(s)} title="Edit">
+                                        <Pencil size={16} />
+                                      </button>
+                                    )}
+                                    <button className="icon-btn" onClick={() => duplicateStudent(s)} title="Duplicate">
+                                      <Copy size={16} />
                                     </button>
-                                  )}
-                                  <button className="icon-btn" onClick={() => duplicateStudent(s)} title="Duplicate">
-                                    <Copy size={16} />
-                                  </button>
-                                  <button className="icon-btn text-blue" onClick={() => {
-                                    setPromotingStudent(s);
-                                    setPromoteForm({
-                                      action: 'promote',
-                                      newClass: String(parseInt(s.class) + 1),
-                                      newSession: getNextSession(s.session || getCurrentSession())
-                                    });
-                                    setShowPromoteModal(true);
-                                  }} title="Promote / Retain">
-                                    <GraduationCap size={16} />
-                                  </button>
-                                  <Link to={`/teacher/students/${s.id}`} className="icon-btn" title="View">
-                                    <Eye size={16} />
-                                  </Link>
-                                </div>
-                              </td>
+                                    <button className="icon-btn text-blue" onClick={() => {
+                                      setPromotingStudent(s);
+                                      setPromoteForm({
+                                        action: 'promote',
+                                        newClass: String(parseInt(s.class) + 1),
+                                        newSession: getNextSession(s.session || getCurrentSession())
+                                      });
+                                      setShowPromoteModal(true);
+                                    }} title="Promote / Retain">
+                                      <GraduationCap size={16} />
+                                    </button>
+                                    <Link to={`/teacher/students/${s.id}`} className="icon-btn" title="View">
+                                      <Eye size={16} />
+                                    </Link>
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
