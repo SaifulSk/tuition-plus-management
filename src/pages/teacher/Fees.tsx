@@ -5,7 +5,7 @@ import {
 import { db } from '../../firebase/config';
 import type { Student, FeePayment, PaymentMode } from '../../types';
 import { getFeeForMonth } from '../../utils/feeUtils';
-import { Plus, X, Printer, Share2, Receipt, Pencil, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, X, Printer, Share2, Receipt, Pencil, Eye, EyeOff, ChevronDown, ChevronRight, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import html2canvas from 'html2canvas';
@@ -309,16 +309,21 @@ export default function Fees() {
                 return classKeys.map(cls => {
                   const isExpanded = expandedClasses[cls] !== false;
                   return (
-                  <div key={cls} style={{ marginBottom: '32px' }}>
-                    <h3 
+                  <div key={cls} className="accordion-item" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
+                    <div 
+                      className="accordion-header" 
                       onClick={() => setExpandedClasses(prev => ({...prev, [cls]: !isExpanded}))}
-                      style={{ margin: '0 0 12px 0', color: 'var(--navy)', borderBottom: '2px solid var(--border)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                      style={{ padding: '16px', background: isExpanded ? 'var(--bg)' : 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}
                     >
-                      {isExpanded ? <ChevronDown size={20}/> : <ChevronRight size={20}/>}
-                      Class {cls}
-                    </h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Users size={18} color="var(--navy)" />
+                        Class {cls}
+                      </div>
+                      {isExpanded ? <ChevronDown size={20} className="text-muted" /> : <ChevronRight size={20} className="text-muted" />}
+                    </div>
                     {isExpanded && (
-                    <div className="table-wrap">
+                    <div className="accordion-body" style={{ padding: '16px', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
+                    <div className="table-wrap" style={{ border: '1px solid var(--border-light)', borderRadius: 8 }}>
                       <table className="data-table">
                         <thead>
                           <tr>
@@ -393,6 +398,7 @@ export default function Fees() {
                           ))}
                         </tbody>
                       </table>
+                    </div>
                     </div>
                     )}
                   </div>

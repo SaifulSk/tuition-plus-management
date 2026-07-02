@@ -6,7 +6,7 @@ import {
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { db, secondaryAuth } from '../../firebase/config';
 import { setDoc } from 'firebase/firestore';
-import { Search, Eye, EyeOff, X, UserPlus, ChevronDown, ChevronRight, Pencil, Copy } from 'lucide-react';
+import { Search, Eye, EyeOff, X, UserPlus, ChevronDown, ChevronRight, Pencil, Copy, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import type { Student } from '../../types';
@@ -362,22 +362,25 @@ export default function Students() {
         ) : (
           <div className="accordion-container">
             {sortedClasses.map(cls => (
-              <div key={cls} className="accordion-class-group">
+              <div key={cls} className="accordion-item" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
                 <div 
                   className="accordion-header" 
                   onClick={() => toggleClass(cls)}
-                  style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', cursor: 'pointer', borderBottom: '1px solid var(--border-light)', background: 'var(--surface-2)', fontWeight: 700 }}
+                  style={{ padding: '16px', background: expandedClasses[cls] ? 'var(--bg)' : 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}
                 >
-                  {expandedClasses[cls] ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                  <span style={{ marginLeft: 8 }}>Class {cls}</span>
-                  <span className="badge badge-gray ml-auto">
-                    {groupedByClass[cls].length} students
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Users size={18} color="var(--navy)" />
+                    Class {cls}
+                    <span className="badge badge-gray ml-auto" style={{ marginLeft: 8 }}>
+                      {groupedByClass[cls].length} students
+                    </span>
+                  </div>
+                  {expandedClasses[cls] ? <ChevronDown size={20} className="text-muted" /> : <ChevronRight size={20} className="text-muted" />}
                 </div>
                 
                 {expandedClasses[cls] && (
-                  <div className="accordion-class-content" style={{ padding: '0' }}>
-                    <div className="table-wrap" style={{ borderBottom: '1px solid var(--border-light)' }}>
+                  <div className="accordion-body" style={{ padding: '16px', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
+                    <div className="table-wrap" style={{ border: '1px solid var(--border-light)', borderRadius: 8 }}>
                       <table className="data-table">
                         <thead>
                           <tr>
