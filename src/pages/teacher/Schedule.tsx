@@ -27,6 +27,7 @@ export default function Schedule() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState('');
   const [modalStudentId, setModalStudentId] = useState('');
+  const [isStudentLocked, setIsStudentLocked] = useState(false);
   const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
   const [selectedDays, setSelectedDays] = useState<string[]>(DAYS);
   const [hideEmptyDays, setHideEmptyDays] = useState(false);
@@ -83,6 +84,7 @@ export default function Schedule() {
   const openEditModal = (s: ScheduleSlot, studentId: string) => {
     setEditingSlotId(s.id);
     setModalStudentId(studentId);
+    setIsStudentLocked(true);
     setForm({
       day: s.day || 'Monday',
       startTime: s.startTime || '16:00',
@@ -163,7 +165,9 @@ export default function Schedule() {
           <p className="page-sub">Manage teaching slots per student</p>
         </div>
         <button className="btn-primary" onClick={() => { 
-          setModalStudentId(viewMode === 'student' ? selectedStudent : '');
+          const isStudentView = viewMode === 'student' && !!selectedStudent;
+          setModalStudentId(isStudentView ? selectedStudent : '');
+          setIsStudentLocked(isStudentView);
           setEditingSlotId(null); 
           setForm({ day: 'Monday', startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' }); 
           setSubjects([]); 
@@ -225,6 +229,7 @@ export default function Schedule() {
                     <button className="btn-ghost btn-sm" style={{ padding: '4px 8px', fontSize: '12px', color: 'var(--primary)' }} onClick={() => {
                       setEditingSlotId(null);
                       setModalStudentId('');
+                      setIsStudentLocked(false);
                       setForm({ day: day as DayOfWeek, startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' });
                       setSubjects([]);
                       setShowModal(true);
@@ -261,6 +266,7 @@ export default function Schedule() {
                         <button className="btn-ghost btn-sm" style={{ alignSelf: 'flex-start', marginTop: '4px', padding: '4px 8px', fontSize: '12px', color: 'var(--primary)' }} onClick={() => {
                           setEditingSlotId(null);
                           setModalStudentId('');
+                          setIsStudentLocked(false);
                           setForm({ day: day as DayOfWeek, startTime: slotInfo.startTime, endTime: slotInfo.endTime, type: slotInfo.type, notes: '' });
                           setSubjects([]);
                           setShowModal(true);
@@ -380,7 +386,7 @@ export default function Schedule() {
               <div className="form-grid-2">
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label>Select Student *</label>
-                  {modalStudentId ? (
+                  {isStudentLocked ? (
                     <div className="fw-600" style={{ fontSize: 15, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
                       {students.find(s => s.id === modalStudentId)?.name || '—'} 
                       <span style={{color: 'var(--text-muted)', fontSize: 13, marginLeft: 8}}>

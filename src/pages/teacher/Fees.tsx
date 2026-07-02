@@ -38,6 +38,7 @@ export default function Fees() {
   const [showConfirmed, setShowConfirmed] = useState(false);
   const [showPaymentAmounts, setShowPaymentAmounts] = useState<Record<string, boolean>>({});
   const [showDueModal, setShowDueModal] = useState(false);
+  const [isStudentLocked, setIsStudentLocked] = useState(false);
 
   const [viewMode, setViewMode] = useState<'student' | 'master' | 'history'>('master');
   const [historyMonth, setHistoryMonth] = useState<string>(new Date().toISOString().slice(0, 7));
@@ -111,6 +112,7 @@ export default function Fees() {
 
   const openEditModal = (p: FeePayment) => {
     setSelectedStudent(p.studentId);
+    setIsStudentLocked(true);
     setEditingPaymentId(p.id);
     setTransactions([{
       id: p.id,
@@ -248,7 +250,9 @@ export default function Fees() {
           <p className="page-sub">Track payments and generate receipts</p>
         </div>
         <button className="btn-primary" onClick={() => { 
-          if (viewMode !== 'student') setSelectedStudent(''); 
+          const isStudentView = viewMode === 'student' && !!selectedStudent;
+          if (!isStudentView) setSelectedStudent(''); 
+          setIsStudentLocked(isStudentView);
           setEditingPaymentId(null); 
           setTransactions([{ id: Date.now().toString(), mode:'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] }]); 
           setShowModal(true); 
@@ -529,7 +533,7 @@ export default function Fees() {
             <form onSubmit={handleSave} className="modal-body">
               <div className="form-group">
                 <label>Student *</label>
-                {selectedStudent ? (
+                {isStudentLocked ? (
                   <div className="fw-600" style={{ fontSize: 15, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
                     {students.find(s => s.id === selectedStudent)?.name || '—'} 
                     <span style={{color: 'var(--text-muted)', fontSize: 13, marginLeft: 8}}>
