@@ -7,9 +7,10 @@ interface MultiSelectProps {
   onChange: (selected: string[]) => void;
   placeholder?: string;
   required?: boolean;
+  showSelectAll?: boolean;
 }
 
-export default function MultiSelect({ options, selected, onChange, placeholder = 'Select options', required = false }: MultiSelectProps) {
+export default function MultiSelect({ options, selected, onChange, placeholder = 'Select options', required = false, showSelectAll = false }: MultiSelectProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -83,7 +84,44 @@ export default function MultiSelect({ options, selected, onChange, placeholder =
           {options.length === 0 ? (
             <div style={{ padding: '10px 14px', fontSize: '13px', color: 'var(--text-muted)' }}>No options available</div>
           ) : (
-            options.map(option => {
+            <>
+              {showSelectAll && (
+                <div 
+                  onClick={() => {
+                    if (selected.length === options.length) {
+                      onChange([]);
+                    } else {
+                      onChange([...options]);
+                    }
+                  }}
+                  style={{
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    cursor: 'pointer',
+                    background: selected.length === options.length ? 'rgba(30,58,95,0.05)' : 'transparent',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    color: 'var(--text)',
+                    borderBottom: '1px solid var(--border-light)'
+                  }}
+                >
+                  <div style={{
+                    width: '18px', height: '18px',
+                    borderRadius: '4px',
+                    border: '1.5px solid var(--navy)',
+                    background: selected.length === options.length ? 'var(--navy)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff',
+                    flexShrink: 0
+                  }}>
+                    {selected.length === options.length && <Check size={12} />}
+                  </div>
+                  All Options
+                </div>
+              )}
+              {options.map(option => {
               const isSelected = selected.includes(option);
               return (
                 <div 
@@ -116,7 +154,8 @@ export default function MultiSelect({ options, selected, onChange, placeholder =
                   {option}
                 </div>
               );
-            })
+            })}
+            </>
           )}
         </div>
       )}

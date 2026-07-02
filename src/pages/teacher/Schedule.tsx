@@ -28,6 +28,7 @@ export default function Schedule() {
   const [selectedStudent, setSelectedStudent] = useState('');
   const [modalStudentId, setModalStudentId] = useState('');
   const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
+  const [selectedDays, setSelectedDays] = useState<string[]>(DAYS);
     const [slots, setSlots] = useState<ScheduleSlot[]>([]);
   const [allSlots, setAllSlots] = useState<ScheduleSlot[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -180,13 +181,25 @@ export default function Schedule() {
             Student View
           </button>
         </div>
+        
+        {viewMode === 'master' && (
+          <div style={{ width: '220px', marginLeft: 'auto' }}>
+            <MultiSelect 
+              options={DAYS} 
+              selected={selectedDays} 
+              onChange={setSelectedDays} 
+              placeholder="Select days"
+              showSelectAll
+            />
+          </div>
+        )}
       </div>
 
       {viewMode === 'master' && (
         <div className="card mt-16" style={{ overflowX: 'auto', background: 'var(--surface)' }}>
           
           <div style={{ display: 'flex', gap: '16px', minWidth: '900px', padding: '8px' }}>
-            {DAYS.map(day => (
+            {DAYS.filter(d => selectedDays.includes(d)).map(day => (
               <div key={day} style={{ flex: 1, minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ padding: '12px', background: 'var(--surface-2)', borderRadius: '8px', borderTop: '4px solid var(--primary)', fontWeight: 700, textAlign: 'center', boxShadow: 'var(--shadow-sm)' }}>
                   {day}
