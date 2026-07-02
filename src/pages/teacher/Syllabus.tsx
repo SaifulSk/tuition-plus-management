@@ -378,9 +378,9 @@ export default function Syllabus() {
           ) : Object.keys(masterData).length === 0 ? (
             <div className="empty-state"><BookOpen size={48} /><p>No syllabus data found. Add topics in Student View first.</p></div>
           ) : (
-            <div>
-
-
+            <div className="card mb-16">
+              <h2 className="section-title mb-16">Class-wise Syllabus Progress</h2>
+              <div className="accordion-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {Object.entries(masterData)
                 .sort(([a], [b]) => Number(a) - Number(b) || a.localeCompare(b))
                 .map(([cls, classData]) => {
@@ -582,6 +582,7 @@ export default function Syllabus() {
                     </div>
                   );
                 })}
+              </div>
             </div>
           )}
         </>

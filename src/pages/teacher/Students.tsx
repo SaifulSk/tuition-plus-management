@@ -351,7 +351,8 @@ export default function Students() {
       </div>
 
       {/* Accordion List */}
-      <div className="card" style={{ padding: '0' }}>
+      <div className="card mb-16">
+        <h2 className="section-title mb-16">Class-wise Students</h2>
         {loading ? (
           <div className="skeleton-list" style={{ padding: 24 }}>{[1,2,3,4,5].map(i=><div key={i} className="skeleton-row tall"/>)}</div>
         ) : filtered.length === 0 ? (
@@ -360,7 +361,7 @@ export default function Students() {
             <p>No students found</p>
           </div>
         ) : (
-          <div className="accordion-container">
+          <div className="accordion-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {sortedClasses.map(cls => (
               <div key={cls} className="accordion-item" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
                 <div 
