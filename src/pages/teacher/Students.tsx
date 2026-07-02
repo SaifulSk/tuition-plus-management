@@ -290,7 +290,11 @@ export default function Students() {
   const toggleActive = async (s: Student) => {
     await updateDoc(doc(db, 'students', s.id), { active: !s.active });
     loadStudents();
-    toast.success(`${s.name} marked ${!s.active ? 'active' : 'inactive'}`);
+    if (!s.active) {
+      toast.success(`${s.name} unarchived! Reminder: Go to the Fees page and mark their gap months as 'Waived / Leave' so they don't show as Due.`, { duration: 8000 });
+    } else {
+      toast.success(`${s.name} archived. Future fee months will be auto-greyed out.`);
+    }
   };
 
   const handlePromote = async (e: React.FormEvent) => {

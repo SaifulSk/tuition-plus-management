@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import html2canvas from 'html2canvas';
 import logo from '../../assets/logo.png';
 
-const PAYMENT_MODES: PaymentMode[] = ['Cash', 'PhonePe', 'Google Pay', 'Paytm', 'Online'];
+const PAYMENT_MODES: PaymentMode[] = ['Cash', 'PhonePe', 'Google Pay', 'Paytm', 'Online', 'Waived / Leave'];
 
 function formatMonthLabel(m: string) {
   const [y, mo] = m.split('-');
@@ -363,21 +363,36 @@ export default function Fees() {
 
                                 if (!isBeforeJoining) {
                                   if (matchingPayment) {
-                                    text = matchingPayment.datePaid ? format(matchingPayment.datePaid.toDate(), 'dd-MMM') : 'Paid';
-                                    subText = matchingPayment.mode;
-                                    bgColor = matchingPayment.mode === 'Cash' ? '#10b981' : '#6366f1'; // Emerald-500 / Indigo-500
-                                    color = '#ffffff';
+                                    if (matchingPayment.mode === 'Waived / Leave') {
+                                      bgColor = '#e2e8f0'; // Slate-200
+                                      text = 'Leave';
+                                      subText = '';
+                                      color = '#64748b'; // Slate-500
+                                      isDue = false;
+                                    } else {
+                                      text = matchingPayment.datePaid ? format(matchingPayment.datePaid.toDate(), 'dd-MMM') : 'Paid';
+                                      subText = matchingPayment.mode;
+                                      bgColor = matchingPayment.mode === 'Cash' ? '#10b981' : '#6366f1';
+                                      color = '#ffffff';
+                                    }
                                   } else {
-                                    bgColor = '#ef4444'; // Red-500 (Due)
-                                    color = '#ffffff';
-                                    isDue = true;
                                     const now = new Date();
                                     const currYear = now.getFullYear();
                                     const currMonth = now.getMonth() + 1;
-                                    if (cellYear > currYear || (cellYear === currYear && cellMonth >= currMonth)) {
+                                    const isFuture = cellYear > currYear || (cellYear === currYear && cellMonth >= currMonth);
+
+                                    if (s.active === false && isFuture) {
+                                      bgColor = '#e2e8f0'; // Slate-200 (Archived)
+                                      color = 'transparent';
+                                      isDue = false;
+                                    } else if (isFuture) {
                                       bgColor = '#bae6fd'; // Sky-200 (Upcoming)
                                       color = '#0f172a';
                                       isDue = false;
+                                    } else {
+                                      bgColor = '#ef4444'; // Red-500 (Due)
+                                      color = '#ffffff';
+                                      isDue = true;
                                     }
                                   }
                                 }

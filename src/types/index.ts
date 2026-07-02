@@ -51,7 +51,7 @@ export interface ScheduleSlot {
 }
 
 // ─── Fees ──────────────────────────────────────────────────────────────────
-export type PaymentMode = 'Cash' | 'PhonePe' | 'Google Pay' | 'Paytm' | 'Online';
+export type PaymentMode = 'Cash' | 'PhonePe' | 'Google Pay' | 'Paytm' | 'Online' | 'Waived / Leave';
 
 export interface FeePayment {
   id: string;
