@@ -160,11 +160,15 @@ export default function Schedule() {
           <h1 className="page-title">Weekly Schedule</h1>
           <p className="page-sub">Manage teaching slots per student</p>
         </div>
-        {selectedStudent && (
-          <button className="btn-primary" onClick={() => { setEditingSlotId(null); setForm({ day: 'Monday', startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' }); setSubjects([]); setShowModal(true); }}>
-            <Plus size={18} /> Add Slot
-          </button>
-        )}
+        <button className="btn-primary" onClick={() => { 
+          setModalStudentId(viewMode === 'student' ? selectedStudent : '');
+          setEditingSlotId(null); 
+          setForm({ day: 'Monday', startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' }); 
+          setSubjects([]); 
+          setShowModal(true); 
+        }}>
+          <Plus size={18} /> Add Slot
+        </button>
       </div>
 
       <div className="filter-bar" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
