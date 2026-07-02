@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy, collectionGroup } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy, collectionGroup, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, ScheduleSlot, DayOfWeek } from '../../types';
-import { Plus, X, Clock, Trash2, Pencil } from 'lucide-react';
+import { Plus, X, Clock, Trash2, Pencil, Settings2, ChevronDown, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MultiSelect from '../../components/common/MultiSelect';
 import { useConfirm } from '../../hooks/useConfirm';
+import { getCurrentSession } from '../../utils/dateUtils';
 
 const DAYS: DayOfWeek[] = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
@@ -23,18 +24,48 @@ const formatTime12h = (time24: string) => {
   return `${h12}:${m} ${suffix}`;
 };
 
+type TimeBlock = { start: string, end: string };
+type OperatingHours = Record<string, TimeBlock[]>;
+
+const DEFAULT_OPERATING_HOURS: OperatingHours = {
+  Monday: [{ start: '15:30', end: '21:30' }],
+  Tuesday: [{ start: '15:30', end: '21:30' }],
+  Wednesday: [{ start: '15:30', end: '21:30' }],
+  Thursday: [{ start: '15:30', end: '21:30' }],
+  Friday: [{ start: '15:30', end: '21:30' }],
+  Saturday: [{ start: '08:30', end: '13:30' }, { start: '15:00', end: '21:30' }],
+  Sunday: [{ start: '08:30', end: '13:30' }],
+};
+
+const timeToMins = (t: string) => {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+};
+
+const minsToTime = (m: number) => {
+  const h = Math.floor(m / 60);
+  const mins = m % 60;
+  return `${h.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+};
+
 export default function Schedule() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState('');
   const [modalStudentId, setModalStudentId] = useState('');
   const [isStudentLocked, setIsStudentLocked] = useState(false);
-  const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
+  const [viewMode, setViewMode] = useState<'master' | 'student' | 'free_slots'>('master');
   const [selectedDays, setSelectedDays] = useState<string[]>(DAYS);
   const [hideEmptyDays, setHideEmptyDays] = useState(true);
   const [slots, setSlots] = useState<ScheduleSlot[]>([]);
   const [allSlots, setAllSlots] = useState<ScheduleSlot[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
+  
+  // Operating Hours State
+  const [operatingHours, setOperatingHours] = useState<OperatingHours>(DEFAULT_OPERATING_HOURS);
+  const [showOpsModal, setShowOpsModal] = useState(false);
+  const [opsForm, setOpsForm] = useState<OperatingHours>(DEFAULT_OPERATING_HOURS);
+
   const [form, setForm] = useState({
     day: 'Monday' as DayOfWeek,
     startTime: '16:00',
@@ -47,12 +78,21 @@ export default function Schedule() {
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
   const { confirm, ConfirmDialog } = useConfirm();
 
+  // Accordion for free slots
+  const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
       setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false));
     });
     getDocs(collection(db, 'subjects')).then(snap => {
       setMasterSubjects(snap.docs.map(d => d.data().name));
+    });
+    getDocs(doc(db, 'settings', 'operatingHours')).then(snap => {
+      if (snap.exists()) {
+        setOperatingHours(snap.data() as OperatingHours);
+        setOpsForm(snap.data() as OperatingHours);
+      }
     });
   }, []);
 
@@ -111,9 +151,8 @@ export default function Schedule() {
     try {
       const payload = { ...form, subjects, studentId: modalStudentId };
       if (editingSlotId) {
-        import('firebase/firestore').then(({ updateDoc, doc }) => {
-           updateDoc(doc(db, 'schedules', modalStudentId, 'slots', editingSlotId), payload);
-        });
+        const { updateDoc } = await import('firebase/firestore');
+        await updateDoc(doc(db, 'schedules', modalStudentId, 'slots', editingSlotId), payload);
         toast.success('Slot updated!');
       } else {
         await addDoc(collection(db,'schedules',modalStudentId,'slots'), payload);
@@ -122,6 +161,8 @@ export default function Schedule() {
       closeModal();
       loadAllSlots();
       if (selectedStudent === modalStudentId) loadSlots(modalStudentId);
+    } catch(err: any) {
+      toast.error(err.message);
     } finally { setSaving(false); }
   };
 
@@ -134,6 +175,19 @@ export default function Schedule() {
     });
   };
 
+  const handleSaveOps = async () => {
+    setSaving(true);
+    try {
+      await setDoc(doc(db, 'settings', 'operatingHours'), opsForm);
+      setOperatingHours(opsForm);
+      toast.success('Operating hours updated!');
+      setShowOpsModal(false);
+    } catch (e) {
+      toast.error('Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
   
   // Grouped data for Master View
   const groupedMaster = DAYS.reduce((acc, day) => {
@@ -155,6 +209,68 @@ export default function Schedule() {
     return acc;
   }, {} as Record<string, any[]>);
 
+  // Grouped data for Free Slots View
+  const computeFreeSlots = () => {
+    const sessionStudents = students.filter(s => (s.session || getCurrentSession()) === getCurrentSession());
+    const classes = Array.from(new Set(sessionStudents.map(s => s.class))).filter(Boolean).sort();
+    
+    const freeSlotsByClass = classes.map(cls => {
+      const classStudents = sessionStudents.filter(s => s.class === cls);
+      const studentIds = new Set(classStudents.map(s => s.id));
+      
+      const freeSlotsPerDay = DAYS.map(day => {
+        const busySlots = allSlots.filter(s => s.day === day && s.type === 'other_tuition' && studentIds.has(s.studentId));
+        const busyIntervals = busySlots.map(s => [timeToMins(s.startTime), timeToMins(s.endTime)]);
+        
+        // merge busy intervals
+        busyIntervals.sort((a, b) => a[0] - b[0]);
+        const mergedBusy: number[][] = [];
+        for (const interval of busyIntervals) {
+          if (!mergedBusy.length) mergedBusy.push(interval);
+          else {
+            const last = mergedBusy[mergedBusy.length - 1];
+            if (interval[0] <= last[1]) {
+              last[1] = Math.max(last[1], interval[1]);
+            } else {
+              mergedBusy.push(interval);
+            }
+          }
+        }
+        
+        // subtract from operating hours
+        const baseHours = operatingHours[day] || [];
+        const freeIntervals: TimeBlock[] = [];
+        
+        baseHours.forEach(block => {
+          if (!block.start || !block.end) return;
+          let currentStart = timeToMins(block.start);
+          const blockEnd = timeToMins(block.end);
+          
+          for (const busy of mergedBusy) {
+            if (busy[1] <= currentStart) continue;
+            if (busy[0] >= blockEnd) break;
+            
+            if (busy[0] > currentStart) {
+              freeIntervals.push({ start: minsToTime(currentStart), end: minsToTime(busy[0]) });
+            }
+            currentStart = Math.max(currentStart, busy[1]);
+          }
+          if (currentStart < blockEnd) {
+            freeIntervals.push({ start: minsToTime(currentStart), end: minsToTime(blockEnd) });
+          }
+        });
+        
+        return { day, freeIntervals };
+      });
+      
+      return { class: cls, studentCount: classStudents.length, days: freeSlotsPerDay };
+    });
+    
+    return freeSlotsByClass;
+  };
+  
+  const freeSlotsData = viewMode === 'free_slots' ? computeFreeSlots() : [];
+
   const student = students.find(s => s.id === selectedStudent);
 
   return (
@@ -164,23 +280,31 @@ export default function Schedule() {
           <h1 className="page-title">Weekly Schedule</h1>
           <p className="page-sub">Manage teaching slots per student</p>
         </div>
-        <button className="btn-primary" onClick={() => { 
-          const isStudentView = viewMode === 'student' && !!selectedStudent;
-          setModalStudentId(isStudentView ? selectedStudent : '');
-          setIsStudentLocked(isStudentView);
-          setEditingSlotId(null); 
-          setForm({ day: 'Monday', startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' }); 
-          setSubjects([]); 
-          setShowModal(true); 
-        }}>
-          <Plus size={18} /> Add Slot
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn-ghost" onClick={() => setShowOpsModal(true)}>
+            <Settings2 size={18} /> Configure Hours
+          </button>
+          <button className="btn-primary" onClick={() => { 
+            const isStudentView = viewMode === 'student' && !!selectedStudent;
+            setModalStudentId(isStudentView ? selectedStudent : '');
+            setIsStudentLocked(isStudentView);
+            setEditingSlotId(null); 
+            setForm({ day: 'Monday', startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' }); 
+            setSubjects([]); 
+            setShowModal(true); 
+          }}>
+            <Plus size={18} /> Add Slot
+          </button>
+        </div>
       </div>
 
       <div className="filter-bar" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
         <div className="tabs" style={{ marginBottom: 0 }}>
           <button className={`tab-btn ${viewMode === 'master' ? 'active' : ''}`} onClick={() => setViewMode('master')}>
             Master View
+          </button>
+          <button className={`tab-btn ${viewMode === 'free_slots' ? 'active' : ''}`} onClick={() => setViewMode('free_slots')}>
+            Free Slots
           </button>
           <button className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`} onClick={() => setViewMode('student')}>
             Student View
@@ -280,6 +404,59 @@ export default function Schedule() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {viewMode === 'free_slots' && (
+        <div className="mt-16" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {freeSlotsData.length === 0 ? (
+             <div className="card empty-state"><Clock size={48}/><p>No active students in the current session.</p></div>
+          ) : (
+            freeSlotsData.map(classData => (
+              <div key={classData.class} className="card p-0" style={{ overflow: 'hidden' }}>
+                <div 
+                  className="accordion-header"
+                  onClick={() => setExpandedClasses(p => ({ ...p, [classData.class]: !p[classData.class] }))}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', cursor: 'pointer', background: expandedClasses[classData.class] ? 'var(--surface-2)' : 'var(--surface)', borderBottom: expandedClasses[classData.class] ? '1px solid var(--border)' : 'none' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ background: 'var(--primary)', color: 'white', width: 36, height: 36, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                      {classData.class}
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '16px' }}>Class {classData.class}</h3>
+                      <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>{classData.studentCount} students</p>
+                    </div>
+                  </div>
+                  {expandedClasses[classData.class] ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                </div>
+                
+                {expandedClasses[classData.class] && (
+                  <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', background: 'var(--surface)' }}>
+                    {classData.days.map(dayData => (
+                      <div key={dayData.day} style={{ background: 'var(--bg)', borderRadius: '8px', padding: '12px', border: '1px solid var(--border-light)' }}>
+                        <div className="fw-700" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '12px' }}>{dayData.day}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {(!operatingHours[dayData.day] || operatingHours[dayData.day].length === 0) ? (
+                             <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>No hours set.</div>
+                          ) : dayData.freeIntervals.length === 0 ? (
+                             <div style={{ fontSize: '13px', color: 'var(--danger)', fontWeight: 500 }}>No common free time.</div>
+                          ) : (
+                            dayData.freeIntervals.map((interval, i) => (
+                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', background: 'var(--success-light)', color: 'var(--success-dark)', padding: '6px 10px', borderRadius: '6px', fontWeight: 600 }}>
+                                <Clock size={14} />
+                                {formatTime12h(interval.start)} – {formatTime12h(interval.end)}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       )}
 
@@ -449,6 +626,74 @@ export default function Schedule() {
           </div>
         </div>
       )}
+
+      {/* Operating Hours Modal */}
+      {showOpsModal && (
+        <div className="modal-overlay" onClick={() => setShowOpsModal(false)}>
+          <div className="modal" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Configure Operating Hours</h2>
+              <button className="modal-close" onClick={() => setShowOpsModal(false)}><X size={20}/></button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '16px' }}>
+                Define your general working hours for each day. These hours are used to calculate the available free slots for your classes.
+              </p>
+              {DAYS.map(day => (
+                <div key={day} style={{ marginBottom: '16px', background: 'var(--surface-2)', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span className="fw-600">{day}</span>
+                    <button className="btn-ghost btn-sm" onClick={() => {
+                      setOpsForm(p => ({
+                        ...p,
+                        [day]: [...(p[day] || []), { start: '16:00', end: '18:00' }]
+                      }));
+                    }}>
+                      <Plus size={14} /> Add Block
+                    </button>
+                  </div>
+                  {(!opsForm[day] || opsForm[day].length === 0) ? (
+                    <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>No hours set.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {opsForm[day].map((block, i) => (
+                        <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <input type="time" value={block.start} onChange={e => {
+                            const newForm = { ...opsForm };
+                            newForm[day][i].start = e.target.value;
+                            setOpsForm(newForm);
+                          }} />
+                          <span>to</span>
+                          <input type="time" value={block.end} onChange={e => {
+                            const newForm = { ...opsForm };
+                            newForm[day][i].end = e.target.value;
+                            setOpsForm(newForm);
+                          }} />
+                          <button className="icon-btn danger" type="button" style={{ marginLeft: 'auto' }} onClick={() => {
+                            const newForm = { ...opsForm };
+                            newForm[day].splice(i, 1);
+                            setOpsForm(newForm);
+                          }}>
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-ghost" onClick={() => setShowOpsModal(false)}>Cancel</button>
+              <button className="btn-primary" onClick={handleSaveOps} disabled={saving}>
+                {saving ? <span className="btn-spinner"/> : <Settings2 size={16}/>}
+                Save Configuration
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {ConfirmDialog}
     </div>
   );
