@@ -405,10 +405,9 @@ export default function Students() {
                               <td>{s.section || '—'}</td>
                               <td>
                                 <div className="subject-chips">
-                                  {s.subjects?.slice(0,3).map(sub => (
+                                  {s.subjects?.map(sub => (
                                     <span key={sub} className="chip">{sub}</span>
                                   ))}
-                                  {s.subjects?.length > 3 && <span className="chip muted">+{s.subjects.length-3}</span>}
                                 </div>
                               </td>
                               <td>
