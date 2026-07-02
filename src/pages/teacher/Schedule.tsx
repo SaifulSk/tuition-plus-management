@@ -49,7 +49,7 @@ export default function Schedule() {
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
-      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student));
+      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false));
     });
     getDocs(collection(db, 'subjects')).then(snap => {
       setMasterSubjects(snap.docs.map(d => d.data().name));

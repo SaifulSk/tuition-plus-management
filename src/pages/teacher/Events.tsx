@@ -34,7 +34,7 @@ export default function Events() {
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
-      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student));
+      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false));
     });
     loadEvents();
   }, []);

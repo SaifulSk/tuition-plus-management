@@ -32,7 +32,7 @@ export default function HomeworkPage() {
       setHomeworks(hwSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Homework));
       
       const stSnap = await getDocs(collection(db, 'students'));
-      setStudents(stSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Student));
+      setStudents(stSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false));
       
       const subSnap = await getDocs(collection(db, 'subjects'));
       setSubjects(subSnap.docs.map(d => d.data().name));

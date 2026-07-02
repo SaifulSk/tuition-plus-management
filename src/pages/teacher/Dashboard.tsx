@@ -37,7 +37,7 @@ export default function TeacherDashboard() {
       try {
         // Students
         const studSnap = await getDocs(query(collection(db, 'students')));
-        const studs = studSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Student);
+        const studs = studSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false);
         
         // Sort students by joiningDate descending for the Recent Students view
         studs.sort((a, b) => {

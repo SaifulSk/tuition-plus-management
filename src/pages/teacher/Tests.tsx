@@ -33,7 +33,7 @@ export default function Tests() {
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student);
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false);
       setStudents(data);
       const initMarks: Record<string, string> = {};
       data.forEach(s => { initMarks[s.id] = ''; });
@@ -151,7 +151,9 @@ export default function Tests() {
               </thead>
               <tbody>
                 {tests.map(t => {
-                  const marked = Object.values(t.studentMarks || {});
+                  const marked = Object.entries(t.studentMarks || {})
+                    .filter(([sid]) => students.some(s => s.id === sid))
+                    .map(([_, m]) => m);
                   const avg = marked.length ? Math.round(marked.reduce((a,b)=>a+b,0) / marked.length) : null;
                   return (
                     <tr key={t.id}>

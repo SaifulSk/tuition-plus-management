@@ -74,7 +74,7 @@ export default function Fees() {
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
-      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student));
+      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false));
     });
   }, []);
 
@@ -651,7 +651,11 @@ export default function Fees() {
                 </thead>
                 <tbody>
                   {(() => {
-                    const filtered = Object.values(allPayments).flat().filter(p => {
+                    const activePayments = Object.entries(allPayments)
+                      .filter(([sid]) => students.some(s => s.id === sid))
+                      .flatMap(([_, pmts]) => pmts);
+
+                    const filtered = activePayments.filter(p => {
                       if (!p.datePaid) return false;
                       const d = p.datePaid.toDate();
                       const yyyy = d.getFullYear();
