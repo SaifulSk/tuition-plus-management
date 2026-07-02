@@ -29,7 +29,8 @@ export default function Schedule() {
   const [modalStudentId, setModalStudentId] = useState('');
   const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
   const [selectedDays, setSelectedDays] = useState<string[]>(DAYS);
-    const [slots, setSlots] = useState<ScheduleSlot[]>([]);
+  const [hideEmptyDays, setHideEmptyDays] = useState(false);
+  const [slots, setSlots] = useState<ScheduleSlot[]>([]);
   const [allSlots, setAllSlots] = useState<ScheduleSlot[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
@@ -190,6 +191,11 @@ export default function Schedule() {
               onChange={setSelectedDays} 
               placeholder="All Days"
               showSelectAll
+              extraToggle={{
+                label: 'Hide Days with No Slots',
+                checked: hideEmptyDays,
+                onChange: setHideEmptyDays
+              }}
             />
           </div>
         )}
@@ -199,7 +205,9 @@ export default function Schedule() {
         <div className="card mt-16" style={{ overflowX: 'auto', background: 'var(--surface)' }}>
           
           <div style={{ display: 'flex', gap: '16px', padding: '8px', width: 'fit-content' }}>
-            {(selectedDays.length === 0 ? DAYS : DAYS.filter(d => selectedDays.includes(d))).map(day => (
+            {(selectedDays.length === 0 ? DAYS : DAYS.filter(d => selectedDays.includes(d)))
+              .filter(d => !hideEmptyDays || groupedMaster[d].length > 0)
+              .map(day => (
               <div key={day} style={{ width: '260px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ padding: '12px', background: 'var(--surface-2)', borderRadius: '8px', borderTop: '4px solid var(--primary)', fontWeight: 700, textAlign: 'center', boxShadow: 'var(--shadow-sm)' }}>
                   {day}

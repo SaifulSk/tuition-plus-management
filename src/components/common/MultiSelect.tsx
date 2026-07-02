@@ -8,9 +8,14 @@ interface MultiSelectProps {
   placeholder?: string;
   required?: boolean;
   showSelectAll?: boolean;
+  extraToggle?: {
+    label: string;
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+  };
 }
 
-export default function MultiSelect({ options, selected, onChange, placeholder = 'Select options', required = false, showSelectAll = false }: MultiSelectProps) {
+export default function MultiSelect({ options, selected, onChange, placeholder = 'Select options', required = false, showSelectAll = false, extraToggle }: MultiSelectProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -155,6 +160,39 @@ export default function MultiSelect({ options, selected, onChange, placeholder =
                 </div>
               );
             })}
+              {extraToggle && (
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    extraToggle.onChange(!extraToggle.checked);
+                  }}
+                  style={{
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    cursor: 'pointer',
+                    background: extraToggle.checked ? 'rgba(30,58,95,0.05)' : 'transparent',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: 'var(--text)',
+                    borderTop: '1px solid var(--border-light)'
+                  }}
+                >
+                  <div style={{
+                    width: '18px', height: '18px',
+                    borderRadius: '4px',
+                    border: '1.5px solid var(--navy)',
+                    background: extraToggle.checked ? 'var(--navy)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff',
+                    flexShrink: 0
+                  }}>
+                    {extraToggle.checked && <Check size={12} />}
+                  </div>
+                  {extraToggle.label}
+                </div>
+              )}
             </>
           )}
         </div>
