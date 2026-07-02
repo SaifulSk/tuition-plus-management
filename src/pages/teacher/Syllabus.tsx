@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, SyllabusTopic, SyllabusStatus } from '../../types';
-import { Plus, X, BookOpen, Trash2, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, X, BookOpen, Trash2, Pencil, ChevronDown, ChevronRight, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Timestamp } from 'firebase/firestore';
 import MultiSelect from '../../components/common/MultiSelect';
@@ -388,25 +388,22 @@ export default function Syllabus() {
 
 
                   return (
-                    <div key={cls} className="card mb-16" style={{ padding: 0, overflow: 'hidden' }}>
+                    <div key={cls} className="accordion-item" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
                       {/* Class accordion header */}
-                      <div
+                      <div 
+                        className="accordion-header" 
                         onClick={() => toggleClass(cls)}
-                        style={{
-                          width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-                          padding: '16px 20px', background: 'var(--surface-2)',
-                          border: 'none', cursor: 'pointer', textAlign: 'left',
-                          borderBottom: classExpanded ? '1px solid var(--border-light)' : 'none',
-                        }}
+                        style={{ padding: '16px', background: classExpanded ? 'var(--bg)' : 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}
                       >
-                        {classExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 700, fontSize: 16 }}>Class {cls}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Users size={18} color="var(--navy)" />
+                          Class {cls}
                         </div>
+                        {classExpanded ? <ChevronDown size={20} className="text-muted" /> : <ChevronRight size={20} className="text-muted" />}
                       </div>
 
                       {classExpanded && (
-                        <div style={{ padding: '16px 20px 20px' }}>
+                        <div className="accordion-body" style={{ padding: '16px', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
                           {Object.keys(classData.schools).length === 0 ? (
                             <p className="text-muted text-sm">No schools recorded for students in this class yet.</p>
                           ) : (
