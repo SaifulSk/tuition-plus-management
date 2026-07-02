@@ -396,7 +396,6 @@ export default function Syllabus() {
                         style={{ padding: '16px', background: classExpanded ? 'var(--bg)' : 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Users size={18} color="var(--navy)" />
                           Class {cls}
                         </div>
                         {classExpanded ? <ChevronDown size={20} className="text-muted" /> : <ChevronRight size={20} className="text-muted" />}

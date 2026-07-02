@@ -369,7 +369,6 @@ export default function Students() {
                   style={{ padding: '16px', background: expandedClasses[cls] ? 'var(--bg)' : 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 600 }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Users size={18} color="var(--navy)" />
                     Class {cls}
                     <span className="badge badge-gray ml-auto" style={{ marginLeft: 8 }}>
                       {groupedByClass[cls].length} students
