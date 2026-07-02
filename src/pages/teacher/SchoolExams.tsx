@@ -54,7 +54,7 @@ export default function SchoolExams() {
   const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
-  const [masterExamNames, setMasterExamNames] = useState<string[]>([]);
+  const [availableExamNames, setAvailableExamNames] = useState<string[]>([]);
   const { confirm, ConfirmDialog } = useConfirm();
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export default function SchoolExams() {
       setMasterSubjects(snap.docs.map(d => d.data().name));
     });
     getDocs(collection(db, 'examNames')).then(snap => {
-      setMasterExamNames(snap.docs.map(d => d.data().name));
+      setAvailableExamNames(snap.docs.map(d => d.data().name));
     });
   }, []);
 
@@ -506,7 +506,7 @@ export default function SchoolExams() {
                   <label>Exam Name *</label>
                   <select value={form.examName} onChange={e => setForm(f=>({...f,examName:e.target.value}))} required>
                     <option value="" disabled>Select exam...</option>
-                    {masterExamNames.map(n => <option key={n} value={n}>{n}</option>)}
+                    {availableExamNames.map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
