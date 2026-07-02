@@ -30,7 +30,7 @@ export default function Schedule() {
   const [isStudentLocked, setIsStudentLocked] = useState(false);
   const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
   const [selectedDays, setSelectedDays] = useState<string[]>(DAYS);
-  const [hideEmptyDays, setHideEmptyDays] = useState(false);
+  const [hideEmptyDays, setHideEmptyDays] = useState(true);
   const [slots, setSlots] = useState<ScheduleSlot[]>([]);
   const [allSlots, setAllSlots] = useState<ScheduleSlot[]>([]);
   const [showModal, setShowModal] = useState(false);
