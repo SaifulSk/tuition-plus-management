@@ -19,6 +19,7 @@ import Events from './pages/teacher/Events';
 import SubjectsMaster from './pages/teacher/SubjectsMaster';
 import SchoolsMaster from './pages/teacher/SchoolsMaster';
 import ExamNamesMaster from './pages/teacher/ExamNamesMaster';
+import SectionMaster from './pages/teacher/SectionMaster';
 
 // Student pages
 import StudentDashboard from './pages/student/Dashboard';
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="subjects" element={<SubjectsMaster />} />
             <Route path="schools" element={<SchoolsMaster />} />
             <Route path="exam-names" element={<ExamNamesMaster />} />
+            <Route path="sections" element={<SectionMaster />} />
           </Route>
 
           {/* Student routes */}

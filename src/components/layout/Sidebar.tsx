@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CalendarDays, Wallet, BookOpen,
   ClipboardList, BarChart3, PartyPopper, LogOut, GraduationCap,
-  Menu, ChevronRight, Building, FileText, Key, X
+  Menu, ChevronRight, Building, FileText, Key, X, Settings, ChevronDown
 } from 'lucide-react';
 import { signOut, changeUserPassword } from '../../firebase/auth';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,9 +20,15 @@ const teacherLinks = [
   { to: '/teacher/exams', label: 'School Exams', icon: FileText },
   { to: '/teacher/homework', label: 'Homework', icon: BookOpen },
   { to: '/teacher/events', label: 'Events', icon: PartyPopper },
-  { to: '/teacher/subjects', label: 'Subjects Master', icon: BookOpen },
-  { to: '/teacher/schools', label: 'Schools Master', icon: Building },
-  { to: '/teacher/exam-names', label: 'Exam Names Master', icon: FileText },
+  {
+    to: '#', label: 'Masters', icon: Settings,
+    subLinks: [
+      { to: '/teacher/subjects', label: 'Subjects' },
+      { to: '/teacher/schools', label: 'Schools' },
+      { to: '/teacher/exam-names', label: 'Exam Names' },
+      { to: '/teacher/sections', label: 'Sections' },
+    ]
+  }
 ];
 
 const studentLinks = [
@@ -46,6 +52,7 @@ export default function Sidebar({ role }: SidebarProps) {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [mastersOpen, setMastersOpen] = useState(false);
   const links = role === 'teacher' ? teacherLinks : studentLinks;
 
   useEffect(() => {
@@ -135,20 +142,60 @@ export default function Sidebar({ role }: SidebarProps) {
 
         {/* Nav links */}
         <nav className="sidebar-nav">
-          {links.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              onClick={closeMobile}
-              className={({ isActive }) =>
-                `sidebar-link ${isActive ? 'active' : ''} ${collapsed && !mobileOpen ? 'collapsed' : ''}`
-              }
-            >
-              <Icon size={20} className="sidebar-icon" />
-              {(!collapsed || mobileOpen) && <span>{label}</span>}
-            </NavLink>
-          ))}
+          {links.map((link: any) => {
+            const { to, label, icon: Icon, end, subLinks } = link;
+            if (subLinks) {
+              return (
+                <div key={label} className="sidebar-group">
+                  <div
+                    className={`sidebar-link ${collapsed && !mobileOpen ? 'collapsed' : ''}`}
+                    onClick={() => {
+                      setMastersOpen(!mastersOpen);
+                      if (collapsed) setCollapsed(false);
+                    }}
+                    style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <Icon size={20} className="sidebar-icon" />
+                      {(!collapsed || mobileOpen) && <span>{label}</span>}
+                    </div>
+                    {(!collapsed || mobileOpen) && (
+                      <ChevronDown size={16} style={{ transform: mastersOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s' }} />
+                    )}
+                  </div>
+                  {mastersOpen && (!collapsed || mobileOpen) && (
+                    <div style={{ paddingLeft: '32px', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                      {subLinks.map((sub: any) => (
+                        <NavLink
+                          key={sub.to}
+                          to={sub.to}
+                          onClick={closeMobile}
+                          className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                          style={{ padding: '8px 12px', fontSize: '13px', minHeight: '36px' }}
+                        >
+                          <span>{sub.label}</span>
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                onClick={closeMobile}
+                className={({ isActive }) =>
+                  `sidebar-link ${isActive ? 'active' : ''} ${collapsed && !mobileOpen ? 'collapsed' : ''}`
+                }
+              >
+                <Icon size={20} className="sidebar-icon" />
+                {(!collapsed || mobileOpen) && <span>{label}</span>}
+              </NavLink>
+            );
+          })}
         </nav>
 
         {/* Footer */}

@@ -37,6 +37,7 @@ export default function Students() {
   const [subjects, setSubjects] = useState<string[]>([]);
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
   const [masterSchools, setMasterSchools] = useState<string[]>([]);
+  const [masterSections, setMasterSections] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -78,6 +79,9 @@ export default function Students() {
     });
     getDocs(collection(db, 'schools')).then(snap => {
       setMasterSchools(snap.docs.map(d => d.data().name));
+    });
+    getDocs(collection(db, 'sections')).then(snap => {
+      setMasterSections(snap.docs.map(d => d.data().name));
     });
   }, []);
 
@@ -538,7 +542,10 @@ export default function Students() {
                 </div>
                 <div className="form-group">
                   <label>Section</label>
-                  <input type="text" placeholder="A / B / C" value={form.section} onChange={set('section')} />
+                  <select value={form.section} onChange={set('section')}>
+                    <option value="">No section</option>
+                    {masterSections.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Session</label>
