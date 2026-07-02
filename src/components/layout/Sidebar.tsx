@@ -21,7 +21,7 @@ const teacherLinks = [
   { to: '/teacher/homework', label: 'Homework', icon: BookOpen },
   { to: '/teacher/events', label: 'Events', icon: PartyPopper },
   {
-    to: '#', label: 'Masters', icon: Settings,
+    to: '#', label: 'Master Tables', icon: Settings,
     subLinks: [
       { to: '/teacher/subjects', label: 'Subjects' },
       { to: '/teacher/schools', label: 'Schools' },

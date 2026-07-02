@@ -660,13 +660,13 @@ export default function Schedule() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {opsForm[day].map((block, i) => (
                         <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input type="time" value={block.start} onChange={e => {
+                          <input type="time" className="input" style={{ flex: 1 }} value={block.start} onChange={e => {
                             const newForm = { ...opsForm };
                             newForm[day][i].start = e.target.value;
                             setOpsForm(newForm);
                           }} />
-                          <span>to</span>
-                          <input type="time" value={block.end} onChange={e => {
+                          <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>to</span>
+                          <input type="time" className="input" style={{ flex: 1 }} value={block.end} onChange={e => {
                             const newForm = { ...opsForm };
                             newForm[day][i].end = e.target.value;
                             setOpsForm(newForm);
