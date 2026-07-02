@@ -88,11 +88,13 @@ export default function Schedule() {
     getDocs(collection(db, 'subjects')).then(snap => {
       setMasterSubjects(snap.docs.map(d => d.data().name));
     });
-    getDocs(doc(db, 'settings', 'operatingHours')).then(snap => {
-      if (snap.exists()) {
-        setOperatingHours(snap.data() as OperatingHours);
-        setOpsForm(snap.data() as OperatingHours);
-      }
+    import('firebase/firestore').then(({ getDoc }) => {
+      getDoc(doc(db, 'settings', 'operatingHours')).then(snap => {
+        if (snap.exists()) {
+          setOperatingHours(snap.data() as OperatingHours);
+          setOpsForm(snap.data() as OperatingHours);
+        }
+      });
     });
   }, []);
 
