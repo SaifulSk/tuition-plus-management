@@ -511,13 +511,20 @@ export default function Syllabus() {
                                             </tr>
                                           </thead>
                                           <tbody>
-                                            {topicEntries
-                                              .sort(([a], [b]) => {
-                                                // Sort by chapter first, then topic name
-                                                const chA = sd.topicMap[a].chapter;
-                                                const chB = sd.topicMap[b].chapter;
-                                                if (chA !== chB) return chA.localeCompare(chB);
-                                                return a.localeCompare(b);
+                                            {topicEntries.length === 0 ? (
+                                              <tr>
+                                                <td colSpan={2 + studentsForSubject.length} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                                  No topics recorded for this subject yet.
+                                                </td>
+                                              </tr>
+                                            ) : 
+                                              topicEntries
+                                                .sort(([a], [b]) => {
+                                                  // Sort by chapter first, then topic name
+                                                  const chA = sd.topicMap[a].chapter;
+                                                  const chB = sd.topicMap[b].chapter;
+                                                  if (chA !== chB) return chA.localeCompare(chB);
+                                                  return a.localeCompare(b);
                                               })
                                               .map(([topicName, topicData], rowIdx) => (
                                                 <tr key={topicName} style={{ background: rowIdx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)' }}>
