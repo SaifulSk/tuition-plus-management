@@ -184,19 +184,25 @@ export default function Schedule() {
         </div>
         
         {viewMode === 'master' && (
-          <div style={{ width: '220px', marginLeft: 'auto' }}>
-            <MultiSelect 
-              options={DAYS} 
-              selected={selectedDays} 
-              onChange={setSelectedDays} 
-              placeholder="All Days"
-              showSelectAll
-              extraToggle={{
-                label: 'Hide Days with No Slots',
-                checked: hideEmptyDays,
-                onChange: setHideEmptyDays
-              }}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
+              <input 
+                type="checkbox" 
+                checked={hideEmptyDays} 
+                onChange={e => setHideEmptyDays(e.target.checked)} 
+                style={{ cursor: 'pointer' }}
+              />
+              Hide Empty Days
+            </label>
+            <div style={{ width: '220px' }}>
+              <MultiSelect 
+                options={DAYS} 
+                selected={selectedDays} 
+                onChange={setSelectedDays} 
+                placeholder="All Days"
+                showSelectAll
+              />
+            </div>
           </div>
         )}
       </div>
