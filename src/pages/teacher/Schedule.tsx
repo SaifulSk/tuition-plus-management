@@ -218,7 +218,7 @@ export default function Schedule() {
             {(selectedDays.length === 0 ? DAYS : DAYS.filter(d => selectedDays.includes(d)))
               .filter(d => !hideEmptyDays || groupedMaster[d].length > 0)
               .map(day => (
-              <div key={day} style={{ width: '260px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div key={day} style={{ width: '208px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ padding: '12px', background: 'var(--surface-2)', borderRadius: '8px', borderTop: '4px solid var(--primary)', fontWeight: 700, textAlign: 'center', boxShadow: 'var(--shadow-sm)' }}>
                   {day}
                 </div>
