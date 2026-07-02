@@ -68,12 +68,13 @@ export default function StudentDetail() {
     if (!id) return;
     async function load() {
       const sSnap = await getDoc(doc(db, 'students', id!));
+      let studentData: Student | null = null;
       if (sSnap.exists()) {
-        const data = { id: sSnap.id, ...sSnap.data() } as Student;
-        setStudent(data);
-        setSelectedSession(data.session || getCurrentSession());
+        studentData = { id: sSnap.id, ...sSnap.data() } as Student;
+        setStudent(studentData);
+        setSelectedSession(studentData.session || getCurrentSession());
         // pre-fill new subjects with the student's current subjects
-        setNewFeeSubjects(data.subjects || []);
+        setNewFeeSubjects(studentData.subjects || []);
       }
 
       const fSnap = await getDocs(query(collection(db, 'fees', id!, 'payments'), orderBy('datePaid', 'desc')));
@@ -95,10 +96,10 @@ export default function StudentDetail() {
         .filter(t => t.studentMarks && t.studentMarks[id!] !== undefined));
 
       // Fetch Global Homework and filter
-      if (data) {
+      if (studentData) {
         const hwSnap = await getDocs(query(collection(db, 'homework'), orderBy('dueDate', 'desc')));
         const allHw = hwSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Homework);
-        setHomeworks(allHw.filter(h => h.targetClass === data.class && data.subjects?.includes(h.subject)));
+        setHomeworks(allHw.filter(h => h.targetClass === studentData!.class && studentData!.subjects?.includes(h.subject)));
       }
 
       // Fetch Global Events
