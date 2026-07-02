@@ -214,7 +214,7 @@ export default function Schedule() {
   // Grouped data for Free Slots View
   const computeFreeSlots = () => {
     const sessionStudents = students.filter(s => (s.session || getCurrentSession()) === getCurrentSession());
-    const classes = Array.from(new Set(sessionStudents.map(s => s.class))).filter(Boolean).sort();
+    const classes = Array.from(new Set(sessionStudents.map(s => s.class))).filter(Boolean).sort((a,b) => parseInt(a) - parseInt(b));
     
     const freeSlotsByClass = classes.map(cls => {
       const classStudents = sessionStudents.filter(s => s.class === cls);
