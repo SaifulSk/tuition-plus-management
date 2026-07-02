@@ -88,7 +88,14 @@ export default function StudentDetail() {
 
       // Fetch Schedule
       const slotSnap = await getDocs(collection(db, 'schedules', id!, 'slots'));
-      setSlots(slotSnap.docs.map(d => ({ id: d.id, ...d.data() }) as ScheduleSlot));
+      const DAYS_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      const fetchedSlots = slotSnap.docs.map(d => ({ id: d.id, ...d.data() }) as ScheduleSlot);
+      fetchedSlots.sort((a, b) => {
+        const diff = DAYS_ORDER.indexOf(a.day) - DAYS_ORDER.indexOf(b.day);
+        if (diff !== 0) return diff;
+        return a.startTime.localeCompare(b.startTime);
+      });
+      setSlots(fetchedSlots);
 
       // Fetch Global Tuition Tests and filter
       const testSnap = await getDocs(query(collection(db, 'tests'), orderBy('date', 'desc')));
