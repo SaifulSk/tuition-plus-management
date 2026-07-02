@@ -5,6 +5,7 @@ import {
 import { db } from '../../firebase/config';
 import type { Student, FeePayment, PaymentMode } from '../../types';
 import { getFeeForMonth } from '../../utils/feeUtils';
+import { getCurrentSession } from '../../utils/dateUtils';
 import { Plus, X, Printer, Share2, Receipt, Pencil, Eye, EyeOff, ChevronDown, ChevronRight, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -74,7 +75,10 @@ export default function Fees() {
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
-      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student));
+      const currentSess = getCurrentSession();
+      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => 
+        s.active !== false || (s.session || currentSess) === currentSess
+      ));
     });
   }, []);
 
