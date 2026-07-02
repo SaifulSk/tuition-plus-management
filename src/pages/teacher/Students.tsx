@@ -362,14 +362,6 @@ export default function Students() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        {showArchived && (
-          <select className="input" style={{ width: 'auto' }} value={archivedSessionFilter} onChange={e => setArchivedSessionFilter(e.target.value)}>
-            <option value="">All Sessions</option>
-            {distinctArchivedSessions.map(sess => (
-              <option key={sess} value={sess}>{sess}</option>
-            ))}
-          </select>
-        )}
         <div className="tabs" style={{ marginBottom: 0 }}>
           <button className={`tab-btn ${!showArchived ? 'active' : ''}`} onClick={() => setShowArchived(false)}>
             Active
@@ -382,7 +374,17 @@ export default function Students() {
 
       {/* Accordion List */}
       <div className="card mb-16">
-        <h2 className="section-title mb-16">Class-wise Students</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 className="section-title mb-0">Class-wise Students</h2>
+          {showArchived && (
+            <select className="input" style={{ width: 'auto', padding: '6px 12px', fontSize: '0.9rem' }} value={archivedSessionFilter} onChange={e => setArchivedSessionFilter(e.target.value)}>
+              <option value="">All Sessions</option>
+              {distinctArchivedSessions.map(sess => (
+                <option key={sess} value={sess}>{sess}</option>
+              ))}
+            </select>
+          )}
+        </div>
         {loading ? (
           <div className="skeleton-list" style={{ padding: 24 }}>{[1,2,3,4,5].map(i=><div key={i} className="skeleton-row tall"/>)}</div>
         ) : filtered.length === 0 ? (
