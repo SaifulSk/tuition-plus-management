@@ -247,11 +247,14 @@ export default function Fees() {
           </h1>
           <p className="page-sub">Track payments and generate receipts</p>
         </div>
-        {viewMode === 'student' && selectedStudent && (
-          <button className="btn-primary" onClick={() => { setEditingPaymentId(null); setTransactions([{ id: Date.now().toString(), mode:'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] }]); setShowModal(true); }}>
-            <Plus size={18}/> Record Payment
-          </button>
-        )}
+        <button className="btn-primary" onClick={() => { 
+          if (viewMode !== 'student') setSelectedStudent(''); 
+          setEditingPaymentId(null); 
+          setTransactions([{ id: Date.now().toString(), mode:'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] }]); 
+          setShowModal(true); 
+        }}>
+          <Plus size={18}/> Record Payment
+        </button>
       </div>
 
       <div className="filter-bar" style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: 16 }}>
@@ -524,6 +527,29 @@ export default function Fees() {
               <button className="modal-close" onClick={closeModal}><X size={20}/></button>
             </div>
             <form onSubmit={handleSave} className="modal-body">
+              <div className="form-group">
+                <label>Student *</label>
+                {selectedStudent ? (
+                  <div className="fw-600" style={{ fontSize: 15, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    {students.find(s => s.id === selectedStudent)?.name || '—'} 
+                    <span style={{color: 'var(--text-muted)', fontSize: 13, marginLeft: 8}}>
+                      (Class {students.find(s => s.id === selectedStudent)?.class || '—'})
+                    </span>
+                  </div>
+                ) : (
+                  <select 
+                    className="input" 
+                    value={selectedStudent} 
+                    onChange={e => setSelectedStudent(e.target.value)}
+                    required
+                  >
+                    <option value="">Select a student...</option>
+                    {students.map(s => (
+                      <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                    ))}
+                  </select>
+                )}
+              </div>
               {transactions.map((t, idx) => (
                 <div key={t.id} style={{ marginBottom: transactions.length > 1 ? 24 : 0, paddingBottom: transactions.length > 1 ? 24 : 0, borderBottom: transactions.length > 1 && idx < transactions.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
                   {transactions.length > 1 && (
