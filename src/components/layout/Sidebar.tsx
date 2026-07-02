@@ -22,6 +22,7 @@ const teacherLinks = [
   { to: '/teacher/events', label: 'Events', icon: PartyPopper },
   { to: '/teacher/subjects', label: 'Subjects Master', icon: BookOpen },
   { to: '/teacher/schools', label: 'Schools Master', icon: Building },
+  { to: '/teacher/exam-names', label: 'Exam Names Master', icon: FileText },
 ];
 
 const studentLinks = [

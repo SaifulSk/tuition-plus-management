@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy, Timestamp, collectionGroup } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, updateDoc, doc, query, orderBy, Timestamp, collectionGroup } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, SchoolExam } from '../../types';
 import { Plus, X, BarChart3, Trash2, Pencil, ChevronDown, ChevronRight, Users } from 'lucide-react';
@@ -13,7 +13,7 @@ import MultiSelect from '../../components/common/MultiSelect';
 import { useConfirm } from '../../hooks/useConfirm';
 import { getCurrentSession } from '../../utils/dateUtils';
 
-const EXAM_NAMES = ['Unit Test 1', 'Unit Test 2', 'Midterm', 'SA1', 'SA2', 'Final Exam'];
+
 const getMarksBadgeClass = (pct: number) => {
   if (pct >= 90) return 'badge-excel-dark-green';
   if (pct >= 71) return 'badge-excel-light-green';
@@ -54,6 +54,7 @@ export default function SchoolExams() {
   const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
+  const [masterExamNames, setMasterExamNames] = useState<string[]>([]);
   const { confirm, ConfirmDialog } = useConfirm();
 
   useEffect(() => {
@@ -65,6 +66,9 @@ export default function SchoolExams() {
     });
     getDocs(collection(db, 'subjects')).then(snap => {
       setMasterSubjects(snap.docs.map(d => d.data().name));
+    });
+    getDocs(collection(db, 'examNames')).then(snap => {
+      setMasterExamNames(snap.docs.map(d => d.data().name));
     });
   }, []);
 
@@ -152,9 +156,7 @@ export default function SchoolExams() {
       };
 
       if (editingExamId) {
-        import('firebase/firestore').then(({ updateDoc, doc }) => {
-           updateDoc(doc(db, 'schoolExams', selectedStudent, 'exams', editingExamId), payload);
-        });
+        await updateDoc(doc(db, 'schoolExams', selectedStudent, 'exams', editingExamId), payload);
         toast.success('Exam result updated!');
       } else {
         await addDoc(collection(db,'schoolExams',selectedStudent,'exams'), payload);
@@ -163,6 +165,8 @@ export default function SchoolExams() {
 
       closeModal();
       loadExams(selectedStudent);
+      setMasterExpandedClass(null);
+      setMasterClassExams([]);
     } finally { setSaving(false); }
   };
 
@@ -170,6 +174,8 @@ export default function SchoolExams() {
     confirm('Are you sure you want to delete this result?', async () => {
       await deleteDoc(doc(db,'schoolExams',selectedStudent,'exams',id));
       loadExams(selectedStudent);
+      setMasterExpandedClass(null);
+      setMasterClassExams([]);
       toast.success('Result deleted');
     });
   };
@@ -498,8 +504,10 @@ export default function SchoolExams() {
               <div className="form-grid-2">
                 <div className="form-group">
                   <label>Exam Name *</label>
-                  <input type="text" list="exam-names" placeholder="e.g. SA1" value={form.examName} onChange={e => setForm(f=>({...f,examName:e.target.value}))} required />
-                  <datalist id="exam-names">{EXAM_NAMES.map(n => <option key={n} value={n}/>)}</datalist>
+                  <select value={form.examName} onChange={e => setForm(f=>({...f,examName:e.target.value}))} required>
+                    <option value="" disabled>Select exam...</option>
+                    {masterExamNames.map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Subjects *</label>
