@@ -38,6 +38,8 @@ export default function Syllabus() {
   const [selectedStudent, setSelectedStudent] = useState('');
   const [topics, setTopics] = useState<SyllabusTopic[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [modalStudentId, setModalStudentId] = useState('');
+  const [isStudentLocked, setIsStudentLocked] = useState(false);
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
   const [form, setForm] = useState({ chapter: '', topic: '', status: 'not_started' as SyllabusStatus });
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -108,40 +110,50 @@ export default function Syllabus() {
   const completed = topics.filter(t => t.status === 'completed').length;
   const progress = topics.length ? Math.round((completed / topics.length) * 100) : 0;
 
-  const openEditModal = (t: SyllabusTopic) => {
+  const openEditModal = (t: SyllabusTopic, studentId?: string) => {
     setEditingTopicId(t.id);
     setForm({ chapter: t.chapter || '', topic: t.topic || '', status: t.status || 'not_started' });
     setSubjects(t.subjects || []);
+    if (studentId) {
+      setModalStudentId(studentId);
+      setIsStudentLocked(true);
+    }
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingTopicId(null);
+    setModalStudentId('');
+    setIsStudentLocked(false);
     setForm({ chapter: '', topic: '', status: 'not_started' });
     setSubjects([]);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudent || subjects.length === 0 || !form.topic) { toast.error('Fill required fields'); return; }
+    if (!modalStudentId || subjects.length === 0 || !form.topic) { toast.error('Fill required fields'); return; }
     setSaving(true);
     try {
-      const payload: any = { ...form, subjects, studentId: selectedStudent };
+      const payload: any = { ...form, subjects, studentId: modalStudentId };
       if (form.status === 'completed') payload.completedDate = Timestamp.now();
       else payload.completedDate = null;
 
       if (editingTopicId) {
         import('firebase/firestore').then(({ updateDoc, doc }) => {
-          updateDoc(doc(db, 'syllabus', selectedStudent, 'topics', editingTopicId), payload);
+          updateDoc(doc(db, 'syllabus', modalStudentId, 'topics', editingTopicId), payload);
         });
         toast.success('Topic updated!');
       } else {
-        await addDoc(collection(db, 'syllabus', selectedStudent, 'topics'), payload);
+        await addDoc(collection(db, 'syllabus', modalStudentId, 'topics'), payload);
         toast.success('Topic added!');
       }
       closeModal();
-      loadTopics(selectedStudent);
+      if (viewMode === 'master') {
+        loadMasterData();
+      } else {
+        loadTopics(modalStudentId);
+      }
     } finally { setSaving(false); }
   };
 
@@ -272,11 +284,17 @@ export default function Syllabus() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {viewMode === 'student' && selectedStudent && (
-            <button className="btn-primary" onClick={() => { setEditingTopicId(null); setForm({ chapter: '', topic: '', status: 'not_started' }); setSubjects([]); setShowModal(true); }}>
-              <Plus size={18} /> Add Topic
-            </button>
-          )}
+          <button className="btn-primary" onClick={() => { 
+            const isStudentView = viewMode === 'student' && !!selectedStudent;
+            setModalStudentId(isStudentView ? selectedStudent : '');
+            setIsStudentLocked(isStudentView);
+            setEditingTopicId(null); 
+            setForm({ chapter: '', topic: '', status: 'not_started' }); 
+            setSubjects([]); 
+            setShowModal(true); 
+          }}>
+            <Plus size={18} /> Add Topic
+          </button>
         </div>
       </div>
 
@@ -334,7 +352,7 @@ export default function Syllabus() {
                           <select value={t.status} onChange={e => updateStatus(t, e.target.value as SyllabusStatus)} className={`status-select ${t.status}`}>
                             {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                           </select>
-                          <button className="icon-btn" onClick={() => openEditModal(t)} title="Edit"><Pencil size={15} /></button>
+                          <button className="icon-btn" onClick={() => openEditModal(t, selectedStudent)} title="Edit"><Pencil size={15} /></button>
                           <button className="icon-btn danger" onClick={() => deleteTopic(t.id)} title="Delete"><Trash2 size={15} /></button>
                         </div>
                       </div>
@@ -582,6 +600,22 @@ export default function Syllabus() {
               <button className="modal-close" onClick={closeModal}><X size={20} /></button>
             </div>
             <form onSubmit={handleSave} className="modal-body">
+              {!isStudentLocked && (
+                <div className="form-group">
+                  <label>Student *</label>
+                  <select
+                    value={modalStudentId}
+                    onChange={e => setModalStudentId(e.target.value)}
+                    required
+                    disabled={isStudentLocked}
+                  >
+                    <option value="">— Select a student —</option>
+                    {students.map(st => (
+                      <option key={st.id} value={st.id}>{st.name} ({st.class})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="form-group">
                 <label>Subjects *</label>
                 <MultiSelect
