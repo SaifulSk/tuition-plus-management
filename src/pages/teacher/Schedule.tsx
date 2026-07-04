@@ -599,7 +599,7 @@ export default function Schedule() {
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 500 }}>
                       <input type="radio" name="slotType" value="other_tuition" checked={form.type === 'other_tuition'} onChange={() => setForm(f => ({ ...f, type: 'other_tuition' }))} />
-                      Student's Other Tuition
+                      Student&apos;s Other Tuition
                     </label>
                   </div>
                 </div>
