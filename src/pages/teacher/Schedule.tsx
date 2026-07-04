@@ -115,6 +115,11 @@ export default function Schedule() {
   const loadSlots = async (studentId: string) => {
     const snap = await getDocs(collection(db,'schedules',studentId,'slots'));
     const data = snap.docs.map(d => ({ id: d.id, ...d.data() }) as ScheduleSlot);
+    data.sort((a, b) => {
+      const dayDiff = DAYS.indexOf(a.day) - DAYS.indexOf(b.day);
+      if (dayDiff !== 0) return dayDiff;
+      return a.startTime.localeCompare(b.startTime);
+    });
     setSlots(data);
   };
 
@@ -505,9 +510,9 @@ export default function Schedule() {
                         <div className="slot-time">{formatTime12h(slot.startTime)} – {formatTime12h(slot.endTime)}</div>
                         <div className="slot-subject">{slot.subjects?.join(', ')}</div>
                         {slot.type === 'other_tuition' && <div className="slot-label">Other Tuition</div>}
-                        <div className="slot-actions" style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 4 }}>
-                          <button className="slot-delete" style={{background:'white', color:'var(--text)', border:'none', borderRadius:4, padding:2, cursor:'pointer'}} onClick={() => openEditModal(slot, selectedStudent)}><Pencil size={12}/></button>
-                          <button className="slot-delete" style={{background:'var(--danger)', color:'white', border:'none', borderRadius:4, padding:2, cursor:'pointer'}} onClick={() => deleteSlot(slot.id, selectedStudent)}><Trash2 size={12}/></button>
+                        <div className="slot-actions">
+                          <button className="slot-action-btn" title="Edit" onClick={() => openEditModal(slot, selectedStudent)}><Pencil size={14}/></button>
+                          <button className="slot-action-btn" title="Delete" style={{ color: 'var(--red)' }} onClick={() => deleteSlot(slot.id, selectedStudent)}><Trash2 size={14}/></button>
                         </div>
                       </div>
                     ))}
