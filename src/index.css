@@ -936,21 +936,19 @@ img { max-width: 100%; }
 .schedule-day-body { padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 100px; }
 .schedule-slot {
   border-radius: 8px;
-  padding: 8px;
+  padding: 8px 52px 8px 8px; /* Extra right padding so text doesn't overlap actions */
   font-size: 12px;
   position: relative;
 }
 .slot-tuition { background: rgba(30,58,95,0.1); border-left: 3px solid var(--navy); }
 .slot-other { background: rgba(245,158,11,0.1); border-left: 3px solid #f59e0b; }
-.slot-time { font-weight: 700; color: var(--text); font-size: 11px; }
+.slot-time { font-weight: 700; color: var(--text); font-size: 10px; }
 .slot-subject { color: var(--text); font-weight: 600; }
 .slot-label { font-size: 10px; color: var(--text-muted); }
 .slot-actions {
   position: absolute; top: 4px; right: 4px;
   display: flex; gap: 4px;
-  opacity: 0; transition: opacity var(--transition);
 }
-.schedule-slot:hover .slot-actions { opacity: 1; }
 .slot-action-btn {
   background: none; border: none; color: var(--text-light);
   cursor: pointer; padding: 4px; border-radius: 4px; display: inline-flex; transition: all 0.2s;
