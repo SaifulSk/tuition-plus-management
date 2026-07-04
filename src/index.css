@@ -946,7 +946,7 @@ img { max-width: 100%; }
 .slot-subject { color: var(--text); font-weight: 600; }
 .slot-label { font-size: 10px; color: var(--text-muted); }
 .slot-actions {
-  position: absolute; bottom: 4px; right: 4px;
+  position: absolute; top: 4px; right: 4px;
   display: flex; gap: 4px;
 }
 .slot-action-btn {
