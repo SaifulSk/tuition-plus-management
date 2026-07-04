@@ -127,7 +127,7 @@ export default function TeacherDashboard() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">{greeting}, {appUser?.name?.split(' ')[0]} 👋</h1>
+          <h1 className="page-title">{greeting}, {appUser?.name?.split(' ')[0]} !!</h1>
           <p className="page-sub">Here's what's happening at Tuition Plus today</p>
         </div>
         <div className="page-date">

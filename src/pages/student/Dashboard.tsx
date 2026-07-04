@@ -56,7 +56,7 @@ export default function StudentDashboard() {
     <div className="page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">{greeting}, {student.name.split(' ')[0]} 👋</h1>
+          <h1 className="page-title">{greeting}, {student.name.split(' ')[0]} !!</h1>
           <p className="page-sub">Here's your learning overview</p>
         </div>
         <div className="page-date">
