@@ -510,9 +510,9 @@ export default function Schedule() {
                         <div className="slot-time">{formatTime12h(slot.startTime)} – {formatTime12h(slot.endTime)}</div>
                         <div className="slot-subject">{slot.subjects?.join(', ')}</div>
                         {slot.type === 'other_tuition' && <div className="slot-label">Other Tuition</div>}
+                        <button className="slot-remove-btn" title="Delete" onClick={() => deleteSlot(slot.id, selectedStudent)}><X size={14}/></button>
                         <div className="slot-actions">
                           <button className="slot-action-btn" title="Edit" onClick={() => openEditModal(slot, selectedStudent)}><Pencil size={14}/></button>
-                          <button className="slot-action-btn" title="Delete" style={{ color: 'var(--red)' }} onClick={() => deleteSlot(slot.id, selectedStudent)}><Trash2 size={14}/></button>
                         </div>
                       </div>
                     ))}
