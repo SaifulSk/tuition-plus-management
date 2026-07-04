@@ -592,10 +592,16 @@ export default function Schedule() {
                 </div>
                 <div className="form-group">
                   <label>Type</label>
-                  <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as 'tuition'|'other_tuition' }))}>
-                    <option value="tuition">My Teaching Slot</option>
-                    <option value="other_tuition">Student's Other Tuition</option>
-                  </select>
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginTop: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 500 }}>
+                      <input type="radio" name="slotType" value="tuition" checked={form.type === 'tuition'} onChange={() => setForm(f => ({ ...f, type: 'tuition' }))} />
+                      My Teaching Slot
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 500 }}>
+                      <input type="radio" name="slotType" value="other_tuition" checked={form.type === 'other_tuition'} onChange={() => setForm(f => ({ ...f, type: 'other_tuition' }))} />
+                      Student's Other Tuition
+                    </label>
+                  </div>
                 </div>
                 <div className="form-group">
                   <label>Start Time</label>
