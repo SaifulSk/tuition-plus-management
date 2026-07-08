@@ -779,23 +779,23 @@ export default function Schedule() {
               {(() => {
                 const classStudents = students.filter(s => s.class === showClassTuitions.class && (s.session || getCurrentSession()) === getCurrentSession());
                 if (classStudents.length === 0) return <p>No active students in this class.</p>;
-                return classStudents.map(st => {
+                const studentsWithOtherTuitions = classStudents.filter(st => allSlots.some(s => s.studentId === st.id && s.day === showClassTuitions.day && s.type === 'other_tuition'));
+                
+                if (studentsWithOtherTuitions.length === 0) return <p className="text-muted" style={{ padding: '16px' }}>No students have other tuitions on this day.</p>;
+
+                return studentsWithOtherTuitions.map(st => {
                   const otherSlots = allSlots.filter(s => s.studentId === st.id && s.day === showClassTuitions.day && s.type === 'other_tuition');
                   return (
                     <div key={st.id} style={{ marginBottom: '12px', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '12px' }}>
                       <div className="fw-600 mb-8">{st.name}</div>
-                      {otherSlots.length === 0 ? (
-                        <div className="text-muted text-sm">No other tuitions on this day.</div>
-                      ) : (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                          {otherSlots.map(slot => (
-                            <div key={slot.id} className="badge badge-orange" style={{ padding: '4px 8px' }}>
-                              <Clock size={12} style={{ marginRight: '4px' }} />
-                              {formatTime12h(slot.startTime)} - {formatTime12h(slot.endTime)}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {otherSlots.map(slot => (
+                          <div key={slot.id} className="badge badge-orange" style={{ padding: '4px 8px' }}>
+                            <Clock size={12} style={{ marginRight: '4px' }} />
+                            {formatTime12h(slot.startTime)} - {formatTime12h(slot.endTime)}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   );
                 });
