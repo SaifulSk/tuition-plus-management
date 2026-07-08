@@ -650,16 +650,16 @@ export default function Schedule() {
                     {DAYS.map(d => <option key={d}>{d}</option>)}
                   </select>
                 </div>
-                <div className="form-group">
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label>Type</label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontWeight: 500 }}>
-                      <input type="radio" name="slotType" value="tuition" checked={form.type === 'tuition'} onChange={() => setForm(f => ({ ...f, type: 'tuition' }))} style={{ marginTop: '3px' }} />
-                      <span style={{ lineHeight: 1.4 }}>My Teaching Slot</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 500, padding: '12px 16px', background: form.type === 'tuition' ? 'var(--primary-light, #e0f2fe)' : 'var(--surface-2)', borderRadius: '8px', border: form.type === 'tuition' ? '1px solid var(--primary)' : '1px solid var(--border)' }}>
+                      <input type="radio" name="slotType" value="tuition" checked={form.type === 'tuition'} onChange={() => setForm(f => ({ ...f, type: 'tuition' }))} style={{ width: 'auto', margin: 0 }} />
+                      <span style={{ color: form.type === 'tuition' ? 'var(--primary-dark, #0369a1)' : 'var(--text)' }}>My Teaching Slot</span>
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontWeight: 500 }}>
-                      <input type="radio" name="slotType" value="other_tuition" checked={form.type === 'other_tuition'} onChange={() => setForm(f => ({ ...f, type: 'other_tuition' }))} style={{ marginTop: '3px' }} />
-                      <span style={{ lineHeight: 1.4 }}>Student's Other Tuition</span>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 500, padding: '12px 16px', background: form.type === 'other_tuition' ? 'var(--primary-light, #e0f2fe)' : 'var(--surface-2)', borderRadius: '8px', border: form.type === 'other_tuition' ? '1px solid var(--primary)' : '1px solid var(--border)' }}>
+                      <input type="radio" name="slotType" value="other_tuition" checked={form.type === 'other_tuition'} onChange={() => setForm(f => ({ ...f, type: 'other_tuition' }))} style={{ width: 'auto', margin: 0 }} />
+                      <span style={{ color: form.type === 'other_tuition' ? 'var(--primary-dark, #0369a1)' : 'var(--text)' }}>Student's Other Tuition</span>
                     </label>
                   </div>
                 </div>

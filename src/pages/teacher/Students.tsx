@@ -628,14 +628,14 @@ export default function Students() {
               </div>
               <div className="form-group mb-4">
                 <label>Action</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
-                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontWeight: 500 }}>
-                    <input type="radio" name="action" value="promote" checked={promoteForm.action === 'promote'} onChange={() => setPromoteForm({...promoteForm, action: 'promote'})} style={{ marginTop: '3px' }} />
-                    <span style={{ lineHeight: 1.4 }}>Promote to Next Class</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 500, padding: '12px 16px', background: promoteForm.action === 'promote' ? 'var(--primary-light, #e0f2fe)' : 'var(--surface-2)', borderRadius: '8px', border: promoteForm.action === 'promote' ? '1px solid var(--primary)' : '1px solid var(--border)' }}>
+                    <input type="radio" name="action" value="promote" checked={promoteForm.action === 'promote'} onChange={() => setPromoteForm({...promoteForm, action: 'promote'})} style={{ width: 'auto', margin: 0 }} />
+                    <span style={{ color: promoteForm.action === 'promote' ? 'var(--primary-dark, #0369a1)' : 'var(--text)' }}>Promote to Next Class</span>
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontWeight: 500 }}>
-                    <input type="radio" name="action" value="retain" checked={promoteForm.action === 'retain'} onChange={() => setPromoteForm({...promoteForm, action: 'retain'})} style={{ marginTop: '3px' }} />
-                    <span style={{ lineHeight: 1.4 }}>Retain in Same Class</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 500, padding: '12px 16px', background: promoteForm.action === 'retain' ? 'var(--primary-light, #e0f2fe)' : 'var(--surface-2)', borderRadius: '8px', border: promoteForm.action === 'retain' ? '1px solid var(--primary)' : '1px solid var(--border)' }}>
+                    <input type="radio" name="action" value="retain" checked={promoteForm.action === 'retain'} onChange={() => setPromoteForm({...promoteForm, action: 'retain'})} style={{ width: 'auto', margin: 0 }} />
+                    <span style={{ color: promoteForm.action === 'retain' ? 'var(--primary-dark, #0369a1)' : 'var(--text)' }}>Retain in Same Class</span>
                   </label>
                 </div>
               </div>
