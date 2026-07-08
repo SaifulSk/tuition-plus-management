@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy, collectionGroup, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, ScheduleSlot, DayOfWeek } from '../../types';
-import { Plus, X, Clock, Trash2, Pencil, Settings2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, X, Clock, Trash2, Pencil, Settings2, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MultiSelect from '../../components/common/MultiSelect';
 import { useConfirm } from '../../hooks/useConfirm';
+import { useSubjects } from '../../hooks/useSubjects';
 import { getCurrentSession } from '../../utils/dateUtils';
 
 const DAYS: DayOfWeek[] = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -75,18 +76,16 @@ export default function Schedule() {
   });
   const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
-  const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
+  const { masterSubjects, formatSubjects } = useSubjects();
   const { confirm, ConfirmDialog } = useConfirm();
 
   // Accordion for free slots
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
+  const [showClassTuitions, setShowClassTuitions] = useState<{class: string, day: string} | null>(null);
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
       setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false));
-    });
-    getDocs(collection(db, 'subjects')).then(snap => {
-      setMasterSubjects(snap.docs.map(d => d.data().name));
     });
     import('firebase/firestore').then(({ getDoc }) => {
       getDoc(doc(db, 'settings', 'operatingHours')).then(snap => {
@@ -267,7 +266,12 @@ export default function Schedule() {
           }
         });
         
-        return { day, freeIntervals };
+        const myTuitionSlots = allSlots.filter(s => s.day === day && s.type === 'tuition' && studentIds.has(s.studentId));
+        const myTuitionIntervalSet = new Set<string>();
+        myTuitionSlots.forEach(s => myTuitionIntervalSet.add(`${formatTime12h(s.startTime)} – ${formatTime12h(s.endTime)}`));
+        const myTuitionIntervals = Array.from(myTuitionIntervalSet);
+        
+        return { day, freeIntervals, myTuitionIntervals };
       });
       
       return { class: cls, studentCount: classStudents.length, days: freeSlotsPerDay };
@@ -381,7 +385,7 @@ export default function Schedule() {
                               <span 
                                 className="fw-500 hover-primary" 
                                 style={{ cursor: 'pointer', transition: 'color 0.2s' }}
-                                title={st.subjects.join(', ')}
+                                title={formatSubjects(st.subjects)}
                                 onClick={() => { setSelectedStudent(st.id); setViewMode('student'); }}
                                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
                                 onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
@@ -440,7 +444,17 @@ export default function Schedule() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                     {classData.days.map(dayData => (
                       <div key={dayData.day} style={{ background: 'var(--bg)', borderRadius: '8px', padding: '12px', border: '1px solid var(--border-light)' }}>
-                        <div className="fw-700" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '12px' }}>{dayData.day}</div>
+                        <div className="fw-700" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          {dayData.day}
+                          <button className="icon-btn" onClick={(e) => { e.stopPropagation(); setShowClassTuitions({ class: classData.class, day: dayData.day }); }} title="View students other tuitions">
+                            <Info size={16} />
+                          </button>
+                        </div>
+                        {dayData.myTuitionIntervals && dayData.myTuitionIntervals.length > 0 && (
+                          <div style={{ marginBottom: '8px', fontSize: '13px', color: 'var(--primary)', fontWeight: 600 }}>
+                            My Tuition: {dayData.myTuitionIntervals.join(', ')}
+                          </div>
+                        )}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {(!operatingHours[dayData.day] || operatingHours[dayData.day].length === 0) ? (
                              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>No hours set.</div>
@@ -508,7 +522,7 @@ export default function Schedule() {
                     {daySlots.map(slot => (
                       <div key={slot.id} className={`schedule-slot ${COLOR_MAP[slot.type]}`}>
                         <div className="slot-time">{formatTime12h(slot.startTime)} – {formatTime12h(slot.endTime)}</div>
-                        <div className="slot-subject">{slot.subjects?.join(', ')}</div>
+                        <div className="slot-subject">{formatSubjects(slot.subjects)}</div>
                         {slot.type === 'other_tuition' && <div className="slot-label">Other Tuition</div>}
                         <div className="slot-actions">
                           <button className="slot-action-btn" title="Edit" onClick={() => openEditModal(slot, selectedStudent)}><Pencil size={14}/></button>
@@ -702,6 +716,44 @@ export default function Schedule() {
                 {saving ? <span className="btn-spinner"/> : <Settings2 size={16}/>}
                 Save Configuration
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Show Class Tuitions Modal */}
+      {showClassTuitions && (
+        <div className="modal-overlay" onClick={() => setShowClassTuitions(null)}>
+          <div className="modal" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Other Tuitions for Class {showClassTuitions.class} on {showClassTuitions.day}</h2>
+              <button className="modal-close" onClick={() => setShowClassTuitions(null)}><X size={20}/></button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              {(() => {
+                const classStudents = students.filter(s => s.class === showClassTuitions.class && (s.session || getCurrentSession()) === getCurrentSession());
+                if (classStudents.length === 0) return <p>No active students in this class.</p>;
+                return classStudents.map(st => {
+                  const otherSlots = allSlots.filter(s => s.studentId === st.id && s.day === showClassTuitions.day && s.type === 'other_tuition');
+                  return (
+                    <div key={st.id} style={{ marginBottom: '12px', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '12px' }}>
+                      <div className="fw-600 mb-8">{st.name}</div>
+                      {otherSlots.length === 0 ? (
+                        <div className="text-muted text-sm">No other tuitions on this day.</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {otherSlots.map(slot => (
+                            <div key={slot.id} className="badge badge-orange" style={{ padding: '4px 8px' }}>
+                              <Clock size={12} style={{ marginRight: '4px' }} />
+                              {formatTime12h(slot.startTime)} - {formatTime12h(slot.endTime)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>

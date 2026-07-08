@@ -6,7 +6,7 @@ import { db } from '../../firebase/config';
 import type { Student, FeePayment, PaymentMode } from '../../types';
 import { getFeeForMonth } from '../../utils/feeUtils';
 import { getCurrentSession } from '../../utils/dateUtils';
-import { Plus, X, Printer, Share2, Receipt, Pencil, Eye, EyeOff, ChevronDown, ChevronRight, Users } from 'lucide-react';
+import { Plus, X, Printer, Share2, Receipt, Pencil, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import html2canvas from 'html2canvas';

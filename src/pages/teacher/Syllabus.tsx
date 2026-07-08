@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, SyllabusTopic, SyllabusStatus } from '../../types';
-import { Plus, X, BookOpen, Trash2, Pencil, ChevronDown, ChevronRight, Users } from 'lucide-react';
+import { Plus, X, BookOpen, Trash2, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Timestamp } from 'firebase/firestore';
 import MultiSelect from '../../components/common/MultiSelect';
 import { useConfirm } from '../../hooks/useConfirm';
+import { useSubjects } from '../../hooks/useSubjects';
 
 const STATUS_OPTIONS: { value: SyllabusStatus; label: string; color: string }[] = [
   { value: 'not_started', label: 'Not Started', color: 'badge-gray' },
@@ -42,10 +43,10 @@ export default function Syllabus() {
   const [isStudentLocked, setIsStudentLocked] = useState(false);
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
   const [form, setForm] = useState({ chapter: '', topic: '', status: 'not_started' as SyllabusStatus });
+  const { masterSubjects, formatSubjects } = useSubjects();
   const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [subjectFilter, setSubjectFilter] = useState('');
-  const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
 
   // ── View Mode ─────────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
@@ -63,9 +64,6 @@ export default function Syllabus() {
   useEffect(() => {
     getDocs(query(collection(db, 'students'), orderBy('name'))).then(snap => {
       setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false));
-    });
-    getDocs(collection(db, 'subjects')).then(snap => {
-      setMasterSubjects(snap.docs.map(d => d.data().name));
     });
   }, []);
 
@@ -346,7 +344,7 @@ export default function Syllabus() {
                       <div key={t.id} className={`syllabus-item status-${t.status}`}>
                         <div className="syllabus-item-info">
                           <div className="fw-600">{t.topic}</div>
-                          <div className="text-muted text-sm">{t.subjects?.join(', ')}{t.chapter && ` — ${t.chapter}`}</div>
+                          <div className="text-muted text-sm">{formatSubjects(t.subjects || [])}{t.chapter && ` — ${t.chapter}`}</div>
                         </div>
                         <div className="syllabus-item-actions">
                           <select value={t.status} onChange={e => updateStatus(t, e.target.value as SyllabusStatus)} className={`status-select ${t.status}`}>
@@ -475,7 +473,7 @@ export default function Syllabus() {
                                       {subjectExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                                       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 2 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                          <span style={{ fontWeight: 600, fontSize: 14 }}>{subject}</span>
+                                          <span style={{ fontWeight: 600, fontSize: 14 }}>{formatSubjects([subject])}</span>
                                           <span className="badge badge-gray" style={{ marginLeft: 8 }}>
                                             {sd.studentsInSubject.length} students
                                           </span>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, deleteDoc, updateDoc, doc, query, orderBy, Timestamp, collectionGroup } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, SchoolExam } from '../../types';
-import { Plus, X, BarChart3, Trash2, Pencil, ChevronDown, ChevronRight, Users } from 'lucide-react';
+import { Plus, X, BarChart3, Trash2, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import {
@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import MultiSelect from '../../components/common/MultiSelect';
 import { useConfirm } from '../../hooks/useConfirm';
+import { useSubjects } from '../../hooks/useSubjects';
 import { getCurrentSession } from '../../utils/dateUtils';
 
 
@@ -30,7 +31,12 @@ const getMarksColor = (pct: number) => {
   return '#FF5050';
 };
 
-const COLORS = ['#1E3A5F','#C1121F','#10b981','#f59e0b','#8b5cf6','#06b6d4','#ec4899'];
+const COLORS = [
+  '#1E3A5F', '#C1121F', '#10b981', '#f59e0b', '#8b5cf6', 
+  '#06b6d4', '#ec4899', '#f43f5e', '#84cc16', '#14b8a6', 
+  '#6366f1', '#a855f7', '#d946ef', '#ef4444', '#f97316', 
+  '#eab308', '#22c55e', '#0ea5e9', '#3b82f6', '#64748b'
+];
 
 
 
@@ -53,7 +59,7 @@ export default function SchoolExams() {
   });
   const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
-  const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
+  const { masterSubjects, formatSubjects } = useSubjects();
   const [availableExamNames, setAvailableExamNames] = useState<string[]>([]);
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -63,9 +69,6 @@ export default function SchoolExams() {
       setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => 
         s.active !== false || (s.session || currentSess) === currentSess
       ));
-    });
-    getDocs(collection(db, 'subjects')).then(snap => {
-      setMasterSubjects(snap.docs.map(d => d.data().name));
     });
     getDocs(collection(db, 'examNames')).then(snap => {
       setAvailableExamNames(snap.docs.map(d => d.data().name));
@@ -345,7 +348,7 @@ export default function SchoolExams() {
                 <div key={sub} className="stat-card" style={{ '--accent': COLORS[i % COLORS.length] } as React.CSSProperties}>
                   <div className="stat-body">
                     <div className="stat-value" style={{ color: COLORS[i % COLORS.length] }}>{avg}%</div>
-                    <div className="stat-label">{sub}</div>
+                    <div className="stat-label">{formatSubjects([sub])}</div>
                     <div className="stat-sub">{subExams.length} exam(s)</div>
                   </div>
                 </div>
@@ -367,7 +370,7 @@ export default function SchoolExams() {
                     return (
                       <tr key={ex.id}>
                         <td className="fw-600">{ex.examName}</td>
-                        <td>{ex.subjects?.join(', ')}</td>
+                        <td>{formatSubjects(ex.subjects)}</td>
                         <td>{ex.date ? format(ex.date.toDate(),'dd MMM yyyy') : '—'}</td>
                         <td>{ex.marksObtained}</td>
                         <td>{ex.maxMarks}</td>
@@ -433,7 +436,7 @@ export default function SchoolExams() {
                                   <select className="input" value={masterSubject} onChange={e => setMasterSubject(e.target.value)}>
                                     <option value="">— Select Subject —</option>
                                     {[...new Set(masterClassExams.flatMap(e => e.subjects || []))].map(s => (
-                                      <option key={s} value={s}>{s}</option>
+                                      <option key={s} value={s}>{formatSubjects([s])}</option>
                                     ))}
                                   </select>
                                 </div>

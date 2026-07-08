@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import MultiSelectObj from '../../components/common/MultiSelectObj';
 import { useConfirm } from '../../hooks/useConfirm';
+import { useSubjects } from '../../hooks/useSubjects';
 
 const getMarksBadgeClass = (pct: number) => {
   if (pct >= 90) return 'badge-excel-dark-green';
@@ -25,10 +26,10 @@ export default function Tests() {
     title: '', date: new Date().toISOString().split('T')[0],
     maxMarks: '', marks: {} as Record<string, string>,
   });
+  const { masterSubjects, formatSubjects } = useSubjects();
   const [subjects, setSubjects] = useState<string[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
-  const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
   const { confirm, ConfirmDialog } = useConfirm();
 
   useEffect(() => {
@@ -38,9 +39,6 @@ export default function Tests() {
       const initMarks: Record<string, string> = {};
       data.forEach(s => { initMarks[s.id] = ''; });
       setForm(f => ({ ...f, marks: initMarks }));
-    });
-    getDocs(collection(db, 'subjects')).then(snap => {
-      setMasterSubjects(snap.docs.map(d => d.data().name));
     });
     loadTests();
   }, []);
@@ -158,7 +156,7 @@ export default function Tests() {
                   return (
                     <tr key={t.id}>
                       <td className="fw-600">{t.title}</td>
-                      <td>{t.subjects?.join(', ')}</td>
+                      <td>{formatSubjects(t.subjects)}</td>
                       <td>{t.date ? format(t.date.toDate(),'dd MMM yyyy') : '—'}</td>
                       <td>{t.maxMarks}</td>
                       <td>{marked.length} / {students.length}</td>
@@ -187,7 +185,7 @@ export default function Tests() {
       {/* Test detail cards */}
       {tests.map(t => (
         <div key={t.id} className="card mt-16">
-          <h3 className="section-title">{t.title} — {t.subjects?.join(', ')} ({t.date ? format(t.date.toDate(),'dd MMM yyyy') : ''})</h3>
+          <h3 className="section-title">{t.title} — {formatSubjects(t.subjects)} ({t.date ? format(t.date.toDate(),'dd MMM yyyy') : ''})</h3>
           <div className="marks-grid">
             {students.map(s => {
               const mark = t.studentMarks?.[s.id];

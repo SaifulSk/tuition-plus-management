@@ -6,7 +6,7 @@ import {
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { db, secondaryAuth } from '../../firebase/config';
 import { setDoc } from 'firebase/firestore';
-import { Search, Eye, EyeOff, X, UserPlus, ChevronDown, ChevronRight, Pencil, Copy, Users } from 'lucide-react';
+import { Search, Eye, EyeOff, X, UserPlus, ChevronDown, ChevronRight, Pencil, Copy, GraduationCap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import type { Student } from '../../types';
@@ -14,8 +14,8 @@ import { format } from 'date-fns';
 import { Timestamp } from 'firebase/firestore';
 import MultiSelect from '../../components/common/MultiSelect';
 import { useConfirm } from '../../hooks/useConfirm';
+import { useSubjects } from '../../hooks/useSubjects';
 import { getCurrentSession, getNextSession } from '../../utils/dateUtils';
-import { GraduationCap } from 'lucide-react';
 
 const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 
@@ -35,7 +35,7 @@ export default function Students() {
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [subjects, setSubjects] = useState<string[]>([]);
-  const [masterSubjects, setMasterSubjects] = useState<string[]>([]);
+  const { masterSubjects, formatSubjects } = useSubjects();
   const [masterSchools, setMasterSchools] = useState<string[]>([]);
   const [masterSections, setMasterSections] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -74,9 +74,6 @@ export default function Students() {
 
   useEffect(() => {
     loadStudents();
-    getDocs(collection(db, 'subjects')).then(snap => {
-      setMasterSubjects(snap.docs.map(d => d.data().name));
-    });
     getDocs(collection(db, 'schools')).then(snap => {
       setMasterSchools(snap.docs.map(d => d.data().name));
     });
@@ -443,9 +440,9 @@ export default function Students() {
                               </td>
                               <td>{s.section || '—'}</td>
                               <td>
-                                <div className="subject-chips">
+                                <div className="student-subjects mt-8" style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                                   {s.subjects?.map(sub => (
-                                    <span key={sub} className="chip">{sub}</span>
+                                    <span key={sub} className="badge badge-gray">{formatSubjects([sub])}</span>
                                   ))}
                                 </div>
                               </td>
@@ -633,11 +630,11 @@ export default function Students() {
                 <label>Action</label>
                 <div style={{ display: 'flex', gap: '16px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                    <input type="radio" name="action" value="promote" checked={promoteForm.action === 'promote'} onChange={e => setPromoteForm({...promoteForm, action: 'promote'})} />
+                    <input type="radio" name="action" value="promote" checked={promoteForm.action === 'promote'} onChange={() => setPromoteForm({...promoteForm, action: 'promote'})} />
                     Promote to Next Class
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                    <input type="radio" name="action" value="retain" checked={promoteForm.action === 'retain'} onChange={e => setPromoteForm({...promoteForm, action: 'retain'})} />
+                    <input type="radio" name="action" value="retain" checked={promoteForm.action === 'retain'} onChange={() => setPromoteForm({...promoteForm, action: 'retain'})} />
                     Retain in Same Class
                   </label>
                 </div>

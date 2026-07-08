@@ -6,13 +6,14 @@ import { Plus, X, Book, Trash2, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { useConfirm } from '../../hooks/useConfirm';
+import { useSubjects } from '../../hooks/useSubjects';
 
 const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 
 export default function HomeworkPage() {
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  const [subjects, setSubjects] = useState<string[]>([]);
+  const { masterSubjects: subjects, formatSubjects } = useSubjects();
   const [loading, setLoading] = useState(true);
   
   const [showModal, setShowModal] = useState(false);
@@ -33,9 +34,6 @@ export default function HomeworkPage() {
       
       const stSnap = await getDocs(collection(db, 'students'));
       setStudents(stSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false));
-      
-      const subSnap = await getDocs(collection(db, 'subjects'));
-      setSubjects(subSnap.docs.map(d => d.data().name));
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -155,7 +153,7 @@ export default function HomeworkPage() {
                         <div className="fw-600">{hw.title}</div>
                         {hw.description && <div className="text-muted text-sm" style={{ maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hw.description}</div>}
                       </td>
-                      <td><span className="badge badge-gray">{hw.subject}</span></td>
+                      <td><span className="badge badge-gray">{formatSubjects([hw.subject])}</span></td>
                       <td>{hw.targetClass}</td>
                       <td>{hw.assignedDate ? format(hw.assignedDate.toDate(), 'dd MMM yyyy') : '—'}</td>
                       <td>
@@ -207,7 +205,7 @@ export default function HomeworkPage() {
                   <label>Subject *</label>
                   <select className="input" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} required>
                     <option value="">Select subject</option>
-                    {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+                    {subjects.map(s => <option key={s} value={s}>{formatSubjects([s])}</option>)}
                   </select>
                 </div>
                 <div className="form-group">

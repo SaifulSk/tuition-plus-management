@@ -8,13 +8,14 @@ import { useConfirm } from '../../hooks/useConfirm';
 interface SubjectMaster {
   id: string;
   name: string;
+  shortName?: string;
 }
 
 export default function SubjectsMaster() {
   const [subjects, setSubjects] = useState<SubjectMaster[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '' });
+  const [form, setForm] = useState({ name: '', shortName: '' });
   const [saving, setSaving] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -29,14 +30,14 @@ export default function SubjectsMaster() {
 
   const openEditModal = (s: SubjectMaster) => {
     setEditingId(s.id);
-    setForm({ name: s.name });
+    setForm({ name: s.name, shortName: s.shortName || '' });
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingId(null);
-    setForm({ name: '' });
+    setForm({ name: '', shortName: '' });
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -51,10 +52,10 @@ export default function SubjectsMaster() {
     setSaving(true);
     try {
       if (editingId) {
-        await updateDoc(doc(db, 'subjects', editingId), { name: form.name.trim() });
+        await updateDoc(doc(db, 'subjects', editingId), { name: form.name.trim(), shortName: form.shortName.trim() });
         toast.success('Subject updated!');
       } else {
-        await addDoc(collection(db, 'subjects'), { name: form.name.trim() });
+        await addDoc(collection(db, 'subjects'), { name: form.name.trim(), shortName: form.shortName.trim() });
         toast.success('Subject added!');
       }
       closeModal();
@@ -77,7 +78,7 @@ export default function SubjectsMaster() {
           <h1 className="page-title">Subjects Master</h1>
           <p className="page-sub">Manage the master list of subjects used across the app</p>
         </div>
-        <button className="btn-primary" onClick={() => { setEditingId(null); setForm({ name: '' }); setShowModal(true); }}>
+        <button className="btn-primary" onClick={() => { setEditingId(null); setForm({ name: '', shortName: '' }); setShowModal(true); }}>
           <Plus size={18} /> Add Subject
         </button>
       </div>
@@ -88,11 +89,12 @@ export default function SubjectsMaster() {
         ) : (
           <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th>Subject Name</th><th style={{width: 100}}>Actions</th></tr></thead>
+              <thead><tr><th>Subject Name</th><th>Short Name</th><th style={{width: 100}}>Actions</th></tr></thead>
               <tbody>
                 {subjects.map(s => (
                   <tr key={s.id}>
                     <td className="fw-600">{s.name}</td>
+                    <td>{s.shortName || '-'}</td>
                     <td>
                       <div className="action-btns">
                         <button className="icon-btn" onClick={() => openEditModal(s)} title="Edit"><Pencil size={15} /></button>
@@ -117,7 +119,11 @@ export default function SubjectsMaster() {
             <form onSubmit={handleSave} className="modal-body">
               <div className="form-group">
                 <label>Subject Name *</label>
-                <input type="text" placeholder="e.g. Mathematics" value={form.name} onChange={e => setForm({ name: e.target.value })} required autoFocus />
+                <input type="text" placeholder="e.g. Mathematics" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required autoFocus />
+              </div>
+              <div className="form-group">
+                <label>Short Name</label>
+                <input type="text" placeholder="e.g. Math" value={form.shortName} onChange={e => setForm(f => ({ ...f, shortName: e.target.value }))} />
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn-ghost" onClick={closeModal}>Cancel</button>

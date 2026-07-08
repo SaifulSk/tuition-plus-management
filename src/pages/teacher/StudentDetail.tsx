@@ -11,6 +11,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend
 } from 'recharts';
+import { useSubjects } from '../../hooks/useSubjects';
 import { getCurrentSession } from '../../utils/dateUtils';
 
 type Tab = 'overview' | 'fees' | 'syllabus' | 'exams' | 'schedule' | 'tests' | 'homework' | 'events';
@@ -62,7 +63,7 @@ export default function StudentDetail() {
   const [newFeeMonth, setNewFeeMonth] = useState('');
   const [newFeeSubjects, setNewFeeSubjects] = useState<string[]>([]);
   const [newFeeNote, setNewFeeNote] = useState('');
-  const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
+  const { masterSubjects, formatSubjects } = useSubjects();
 
   useEffect(() => {
     if (!id) return;
@@ -73,7 +74,6 @@ export default function StudentDetail() {
         studentData = { id: sSnap.id, ...sSnap.data() } as Student;
         setStudent(studentData);
         setSelectedSession(studentData.session || getCurrentSession());
-        // pre-fill new subjects with the student's current subjects
         setNewFeeSubjects(studentData.subjects || []);
       }
 
@@ -86,7 +86,6 @@ export default function StudentDetail() {
       const exSnap = await getDocs(query(collection(db, 'schoolExams', id!, 'exams'), orderBy('date')));
       setExams(exSnap.docs.map(d => ({ id: d.id, ...d.data() }) as SchoolExam));
 
-      // Fetch Schedule
       const slotSnap = await getDocs(collection(db, 'schedules', id!, 'slots'));
       const DAYS_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
       const fetchedSlots = slotSnap.docs.map(d => ({ id: d.id, ...d.data() }) as ScheduleSlot);
@@ -97,19 +96,16 @@ export default function StudentDetail() {
       });
       setSlots(fetchedSlots);
 
-      // Fetch Global Tuition Tests and filter
       const testSnap = await getDocs(query(collection(db, 'tests'), orderBy('date', 'desc')));
       setTests(testSnap.docs.map(d => ({ id: d.id, ...d.data() }) as TuitionTest)
         .filter(t => t.studentMarks && t.studentMarks[id!] !== undefined));
 
-      // Fetch Global Homework and filter
       if (studentData) {
         const hwSnap = await getDocs(query(collection(db, 'homework'), orderBy('dueDate', 'desc')));
         const allHw = hwSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Homework);
         setHomeworks(allHw.filter(h => h.targetClass === studentData!.class && studentData!.subjects?.includes(h.subject)));
       }
 
-      // Fetch Global Events
       const evSnap = await getDocs(query(collection(db, 'events'), orderBy('date', 'desc')));
       setEvents(evSnap.docs.map(d => ({ id: d.id, ...d.data() }) as CenterEvent)
         .filter(e => !e.attendees || e.attendees.length === 0 || e.attendees.includes(id!)));
@@ -117,10 +113,6 @@ export default function StudentDetail() {
       setLoading(false);
     }
     load();
-    // Load master subjects list from Firestore
-    getDocs(collection(db, 'subjects')).then(snap => {
-      setAvailableSubjects(snap.docs.map(d => (d.data() as any).name).filter(Boolean));
-    });
   }, [id]);
 
   const handleAddFeeChange = async (e: React.FormEvent) => {
@@ -173,7 +165,6 @@ export default function StudentDetail() {
   const completedTopics = syllabus.filter(t => t.status === 'completed').length;
   const syllabusProgress = syllabus.length ? Math.round((completedTopics / syllabus.length) * 100) : 0;
 
-  // Build exam chart data grouped by subject
   const distinctSessions = [...new Set([
     student?.session || getCurrentSession(),
     ...exams.map(e => e.session).filter(Boolean)
@@ -193,14 +184,12 @@ export default function StudentDetail() {
     return row;
   });
 
-  
   return (
     <div className="page">
       <div className="page-header">
         <Link to="/teacher/students" className="back-btn"><ArrowLeft size={18} /> Back</Link>
       </div>
 
-      {/* Profile card */}
       <div className="profile-card">
         <div className="profile-avatar">{student.name.charAt(0)}</div>
         <div className="profile-info">
@@ -212,7 +201,7 @@ export default function StudentDetail() {
             {student.email && <span><Mail size={14}/> {student.email}</span>}
           </div>
           <div className="profile-chips">
-            {student.subjects?.map(s => <span key={s} className="chip">{s}</span>)}
+            {student.subjects?.map(s => <span key={s} className="chip">{formatSubjects([s])}</span>)}
           </div>
         </div>
         <div className="profile-stats">
@@ -241,7 +230,6 @@ export default function StudentDetail() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="tabs">
         {(['overview','schedule','fees','syllabus','tests','exams','homework','events'] as Tab[]).map(t => (
           <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
@@ -250,7 +238,6 @@ export default function StudentDetail() {
         ))}
       </div>
 
-      {/* Overview Tab */}
       {tab === 'overview' && (
         <div className="card">
           <h3 className="section-title"><User size={18}/> Student Details</h3>
@@ -268,7 +255,6 @@ export default function StudentDetail() {
         </div>
       )}
 
-      {/* Fees Tab */}
       {tab === 'fees' && (
         <>
         <div className="card">
@@ -319,7 +305,7 @@ export default function StudentDetail() {
           </div>
           
           <p className="text-muted text-sm mb-16">
-            Use this to record when a student changes subjects (and therefore fee). Each entry tracks the new fee amount, new subject list, and the month it takes effect. Past unpaid months will still use the fee that was active at that time.
+            Use this to record when a student changes subjects (and therefore fee).
           </p>
           
           {showFeeConfig && (
@@ -335,9 +321,9 @@ export default function StudentDetail() {
                 </div>
               </div>
               <div className="form-group" style={{ marginTop: 16 }}>
-                <label>New Subjects * <span className="text-muted text-sm">(select all subjects from this month)</span></label>
+                <label>New Subjects *</label>
                 <MultiSelect
-                  options={availableSubjects}
+                  options={masterSubjects}
                   selected={newFeeSubjects}
                   onChange={setNewFeeSubjects}
                   placeholder="Select subjects..."
@@ -345,7 +331,7 @@ export default function StudentDetail() {
                 />
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Note <span className="text-muted text-sm">(optional reason)</span></label>
+                <label>Note</label>
                 <input type="text" value={newFeeNote} onChange={e => setNewFeeNote(e.target.value)} placeholder="e.g. Added Physics" />
               </div>
               <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
@@ -370,8 +356,8 @@ export default function StudentDetail() {
                   <td>{student.joiningDate ? format(student.joiningDate.toDate(), 'MMMM yyyy') : '—'} <span className="badge badge-gray">Base</span></td>
                   <td>₹{student.confirmedFee?.toLocaleString()}</td>
                   <td>
-                    <div className="subject-chips">
-                      {(student.subjects || []).map(s => <span key={s} className="chip">{s}</span>)}
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {(student.subjects || []).map(s => <span key={s} className="chip">{formatSubjects([s])}</span>)}
                     </div>
                   </td>
                   <td className="text-muted text-sm">Initial enrollment</td>
@@ -387,8 +373,8 @@ export default function StudentDetail() {
                     </td>
                     <td>₹{fh.amount.toLocaleString()}</td>
                     <td>
-                      <div className="subject-chips">
-                        {(fh.subjects || []).map(s => <span key={s} className="chip">{s}</span>)}
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {(fh.subjects || []).map(s => <span key={s} className="chip">{formatSubjects([s])}</span>)}
                         {(!fh.subjects || fh.subjects.length === 0) && <span className="text-muted text-sm">—</span>}
                       </div>
                     </td>
@@ -407,7 +393,6 @@ export default function StudentDetail() {
         </>
       )}
 
-      {/* Syllabus Tab */}
       {tab === 'syllabus' && (
         <div className="card">
           <h3 className="section-title"><BookOpen size={18}/> Syllabus Progress</h3>
@@ -420,7 +405,7 @@ export default function StudentDetail() {
               <div key={t.id} className={`syllabus-item status-${t.status}`}>
                 <div>
                   <div className="fw-600">{t.topic}</div>
-                  <div className="text-muted text-sm">{t.subjects?.join(', ')} — {t.chapter}</div>
+                  <div className="text-muted text-sm">{formatSubjects(t.subjects || [])} — {t.chapter}</div>
                 </div>
                 <span className={`badge badge-${t.status === 'completed' ? 'green' : t.status === 'in_progress' ? 'orange' : 'gray'}`}>
                   {t.status.replace('_',' ')}
@@ -431,7 +416,6 @@ export default function StudentDetail() {
         </div>
       )}
 
-      {/* Exams Tab */}
       {tab === 'exams' && (
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '16px' }}>
@@ -497,7 +481,7 @@ export default function StudentDetail() {
                     {filteredExams.map(ex => (
                       <tr key={ex.id}>
                         <td>{ex.examName}</td>
-                        <td>{ex.subjects?.join(', ')}</td>
+                        <td>{formatSubjects(ex.subjects || [])}</td>
                         <td>{ex.marksObtained}</td>
                         <td>{ex.maxMarks}</td>
                         <td>
@@ -515,7 +499,6 @@ export default function StudentDetail() {
         </div>
       )}
 
-      {/* Schedule Tab */}
       {tab === 'schedule' && (
         <div className="card">
           <h3 className="section-title"><Clock size={18}/> Weekly Schedule</h3>
@@ -530,7 +513,7 @@ export default function StudentDetail() {
                     <tr key={s.id}>
                       <td>{s.day}</td>
                       <td>{formatTime12h(s.startTime)} – {formatTime12h(s.endTime)}</td>
-                      <td>{s.subjects?.join(', ')}</td>
+                      <td>{formatSubjects(s.subjects || [])}</td>
                       <td><span className={`badge ${s.type === 'tuition' ? 'badge-blue' : 'badge-orange'}`}>{s.type === 'tuition' ? 'My Slot' : 'Other Tuition'}</span></td>
                     </tr>
                   ))}
@@ -541,7 +524,6 @@ export default function StudentDetail() {
         </div>
       )}
 
-      {/* Tests Tab */}
       {tab === 'tests' && (
         <div className="card">
           <h3 className="section-title"><ClipboardList size={18}/> Tuition Tests</h3>
@@ -559,7 +541,7 @@ export default function StudentDetail() {
                       <tr key={t.id}>
                         <td>{t.date ? format(t.date.toDate(), 'dd MMM yyyy') : '—'}</td>
                         <td className="fw-600">{t.title}</td>
-                        <td>{t.subjects?.join(', ')}</td>
+                        <td>{formatSubjects(t.subjects || [])}</td>
                         <td>{mark}</td>
                         <td>{t.maxMarks}</td>
                         <td><span className={`badge ${getMarksBadgeClass(pct)}`}>{pct}%</span></td>
