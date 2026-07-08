@@ -43,6 +43,7 @@ const COLORS = [
 export default function SchoolExams() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedClass, setSelectedClass] = useState('');
   const [exams, setExams] = useState<SchoolExam[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [viewMode, setViewMode] = useState<'student' | 'master'>('master');
@@ -259,10 +260,24 @@ export default function SchoolExams() {
         <>
           <div className="card mb-16" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
             <div className="form-group" style={{marginBottom:0, flex: 1, minWidth: '200px'}}>
+              <label>Select Class</label>
+              <select className="input" value={selectedClass} onChange={e => {
+                setSelectedClass(e.target.value);
+                const sel = students.find(s => s.id === selectedStudent);
+                if (sel && e.target.value && sel.class !== e.target.value) {
+                  setSelectedStudent('');
+                }
+              }}>
+                <option value="">All Classes</option>
+                {['1','2','3','4','5','6','7','8','9','10','11','12'].map(c => <option key={c} value={c}>Class {c}</option>)}
+              </select>
+            </div>
+            
+            <div className="form-group" style={{marginBottom:0, flex: 1, minWidth: '200px'}}>
               <label>Select Student</label>
               <select id="exams-student-select" className="input" value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)}>
                 <option value="">— Choose a student —</option>
-                {students.map(s => <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>)}
+                {students.filter(s => !selectedClass || s.class === selectedClass).map(s => <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>)}
               </select>
             </div>
             

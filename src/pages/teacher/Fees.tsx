@@ -13,6 +13,7 @@ import html2canvas from 'html2canvas';
 import logo from '../../assets/logo.png';
 
 const PAYMENT_MODES: PaymentMode[] = ['Cash', 'PhonePe', 'Google Pay', 'Paytm', 'Online', 'Waived / Leave'];
+const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 
 function formatMonthLabel(m: string) {
   const [y, mo] = m.split('-');
@@ -22,6 +23,7 @@ function formatMonthLabel(m: string) {
 export default function Fees() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedClass, setSelectedClass] = useState('');
   const [payments, setPayments] = useState<FeePayment[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -442,12 +444,27 @@ export default function Fees() {
 
       {/* Student selector */}
       <div className="card mb-16">
-        <div className="form-group" style={{marginBottom:0}}>
-          <label>Select Student</label>
-          <select id="fees-student-select" value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)}>
-            <option value="">— Choose a student —</option>
-            {students.map(s => <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>)}
-          </select>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="form-group" style={{marginBottom:0}}>
+            <label>Select Class</label>
+            <select className="input" value={selectedClass} onChange={e => {
+              setSelectedClass(e.target.value);
+              const sel = students.find(s => s.id === selectedStudent);
+              if (sel && e.target.value && sel.class !== e.target.value) {
+                setSelectedStudent('');
+              }
+            }}>
+              <option value="">All Classes</option>
+              {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{marginBottom:0}}>
+            <label>Select Student</label>
+            <select id="fees-student-select" className="input" value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)}>
+              <option value="">— Choose a student —</option>
+              {students.filter(s => !selectedClass || s.class === selectedClass).map(s => <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>)}
+            </select>
+          </div>
         </div>
       </div>
 

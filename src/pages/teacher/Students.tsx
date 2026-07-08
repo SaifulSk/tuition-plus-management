@@ -628,14 +628,14 @@ export default function Students() {
               </div>
               <div className="form-group mb-4">
                 <label>Action</label>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                    <input type="radio" name="action" value="promote" checked={promoteForm.action === 'promote'} onChange={() => setPromoteForm({...promoteForm, action: 'promote'})} />
-                    Promote to Next Class
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontWeight: 500 }}>
+                    <input type="radio" name="action" value="promote" checked={promoteForm.action === 'promote'} onChange={() => setPromoteForm({...promoteForm, action: 'promote'})} style={{ marginTop: '3px' }} />
+                    <span style={{ lineHeight: 1.4 }}>Promote to Next Class</span>
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                    <input type="radio" name="action" value="retain" checked={promoteForm.action === 'retain'} onChange={() => setPromoteForm({...promoteForm, action: 'retain'})} />
-                    Retain in Same Class
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontWeight: 500 }}>
+                    <input type="radio" name="action" value="retain" checked={promoteForm.action === 'retain'} onChange={() => setPromoteForm({...promoteForm, action: 'retain'})} style={{ marginTop: '3px' }} />
+                    <span style={{ lineHeight: 1.4 }}>Retain in Same Class</span>
                   </label>
                 </div>
               </div>

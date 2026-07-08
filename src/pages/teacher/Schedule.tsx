@@ -10,6 +10,7 @@ import { useSubjects } from '../../hooks/useSubjects';
 import { getCurrentSession } from '../../utils/dateUtils';
 
 const DAYS: DayOfWeek[] = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 
 const COLOR_MAP = {
   tuition: 'slot-tuition',
@@ -39,6 +40,7 @@ const DEFAULT_OPERATING_HOURS: OperatingHours = {
 };
 
 const timeToMins = (t: string) => {
+  if (!t) return NaN;
   const [h, m] = t.split(':').map(Number);
   return h * 60 + m;
 };
@@ -52,6 +54,7 @@ const minsToTime = (m: number) => {
 export default function Schedule() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedClass, setSelectedClass] = useState('');
   const [modalStudentId, setModalStudentId] = useState('');
   const [isStudentLocked, setIsStudentLocked] = useState(false);
   const [viewMode, setViewMode] = useState<'master' | 'student' | 'free_slots'>('master');
@@ -82,6 +85,7 @@ export default function Schedule() {
   // Accordion for free slots
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
   const [showClassTuitions, setShowClassTuitions] = useState<{class: string, day: string} | null>(null);
+  const [showMyFreeSlots, setShowMyFreeSlots] = useState(false);
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
@@ -419,10 +423,25 @@ export default function Schedule() {
       )}
 
       {viewMode === 'free_slots' && (
-        <div className="mt-16 accordion-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {freeSlotsData.length === 0 ? (
-             <div className="card empty-state"><Clock size={48}/><p>No active students in the current session.</p></div>
-          ) : (
+        <div className="card mt-16">
+          <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <h3 className="section-title" style={{ margin: 0 }}>Class-wise Free Slots</h3>
+              <div style={{ display: 'flex', gap: '12px', fontSize: '12px', fontWeight: 600 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#065f46' }}>
+                  <div style={{ width: 12, height: 12, borderRadius: '4px', background: '#d1fae5' }}/> Free Slots
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e40af' }}>
+                  <div style={{ width: 12, height: 12, borderRadius: '4px', background: '#dbeafe' }}/> My Tuition
+                </span>
+              </div>
+            </div>
+            <button className="btn-primary" onClick={() => setShowMyFreeSlots(true)}>My Free Slots</button>
+          </div>
+          <div className="accordion-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {freeSlotsData.length === 0 ? (
+               <div className="empty-state" style={{ padding: 48 }}><Clock size={48}/><p>No active students in the current session.</p></div>
+            ) : (
             freeSlotsData.map(classData => (
               <div key={classData.class} className="accordion-item" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
                 <div 
@@ -451,8 +470,13 @@ export default function Schedule() {
                           </button>
                         </div>
                         {dayData.myTuitionIntervals && dayData.myTuitionIntervals.length > 0 && (
-                          <div style={{ marginBottom: '8px', fontSize: '13px', color: 'var(--primary)', fontWeight: 600 }}>
-                            My Tuition: {dayData.myTuitionIntervals.join(', ')}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
+                            {dayData.myTuitionIntervals.map((interval, i) => (
+                              <div key={`tuition-${i}`} className="badge badge-blue" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', fontSize: '13px' }}>
+                                <Clock size={14} />
+                                {interval}
+                              </div>
+                            ))}
                           </div>
                         )}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -462,7 +486,7 @@ export default function Schedule() {
                              <div style={{ fontSize: '13px', color: 'var(--danger)', fontWeight: 500 }}>No common free time.</div>
                           ) : (
                             dayData.freeIntervals.map((interval, i) => (
-                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', background: 'var(--success-light)', color: 'var(--success-dark)', padding: '6px 10px', borderRadius: '6px', fontWeight: 600 }}>
+                              <div key={i} className="badge badge-green" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', fontSize: '13px' }}>
                                 <Clock size={14} />
                                 {formatTime12h(interval.start)} – {formatTime12h(interval.end)}
                               </div>
@@ -478,24 +502,46 @@ export default function Schedule() {
             ))
           )}
         </div>
+        </div>
       )}
 
       {viewMode === 'student' && (
         <>
           {/* Student selector */}
           <div className="card mb-16">
-            <div className="form-group" style={{marginBottom:0}}>
-              <label>Select Student</label>
-              <select
-                id="schedule-student-select"
-                value={selectedStudent}
-                onChange={e => { setSelectedStudent(e.target.value); setModalStudentId(e.target.value); }}
-              >
-                <option value="">— Choose a student —</option>
-                {students.map(s => (
-                  <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
-                ))}
-              </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="form-group" style={{marginBottom:0}}>
+                <label>Select Class</label>
+                <select 
+                  className="input" 
+                  value={selectedClass} 
+                  onChange={e => {
+                    setSelectedClass(e.target.value);
+                    const sel = students.find(s => s.id === selectedStudent);
+                    if (sel && e.target.value && sel.class !== e.target.value) {
+                      setSelectedStudent('');
+                      setModalStudentId('');
+                    }
+                  }}
+                >
+                  <option value="">All Classes</option>
+                  {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+                </select>
+              </div>
+              <div className="form-group" style={{marginBottom:0}}>
+                <label>Select Student</label>
+                <select
+                  id="schedule-student-select"
+                  className="input"
+                  value={selectedStudent}
+                  onChange={e => { setSelectedStudent(e.target.value); setModalStudentId(e.target.value); }}
+                >
+                  <option value="">— Choose a student —</option>
+                  {students.filter(s => !selectedClass || s.class === selectedClass).map(s => (
+                    <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -606,14 +652,14 @@ export default function Schedule() {
                 </div>
                 <div className="form-group">
                   <label>Type</label>
-                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginTop: '8px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 500 }}>
-                      <input type="radio" name="slotType" value="tuition" checked={form.type === 'tuition'} onChange={() => setForm(f => ({ ...f, type: 'tuition' }))} />
-                      My Teaching Slot
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontWeight: 500 }}>
+                      <input type="radio" name="slotType" value="tuition" checked={form.type === 'tuition'} onChange={() => setForm(f => ({ ...f, type: 'tuition' }))} style={{ marginTop: '3px' }} />
+                      <span style={{ lineHeight: 1.4 }}>My Teaching Slot</span>
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 500 }}>
-                      <input type="radio" name="slotType" value="other_tuition" checked={form.type === 'other_tuition'} onChange={() => setForm(f => ({ ...f, type: 'other_tuition' }))} />
-                      Student&apos;s Other Tuition
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontWeight: 500 }}>
+                      <input type="radio" name="slotType" value="other_tuition" checked={form.type === 'other_tuition'} onChange={() => setForm(f => ({ ...f, type: 'other_tuition' }))} style={{ marginTop: '3px' }} />
+                      <span style={{ lineHeight: 1.4 }}>Student's Other Tuition</span>
                     </label>
                   </div>
                 </div>
@@ -710,7 +756,7 @@ export default function Schedule() {
               ))}
               </div>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer" style={{ padding: '16px 24px', margin: 0 }}>
               <button className="btn-ghost" onClick={() => setShowOpsModal(false)}>Cancel</button>
               <button className="btn-primary" onClick={handleSaveOps} disabled={saving}>
                 {saving ? <span className="btn-spinner"/> : <Settings2 size={16}/>}
@@ -754,6 +800,81 @@ export default function Schedule() {
                   );
                 });
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* My Free Slots Modal */}
+      {showMyFreeSlots && (
+        <div className="modal-overlay" onClick={() => setShowMyFreeSlots(false)}>
+          <div className="modal" style={{ maxWidth: '600px', width: '100%' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>My Free Slots</h2>
+              <button className="modal-close" onClick={() => setShowMyFreeSlots(false)}><X size={20}/></button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {DAYS.map(day => {
+                  const baseHours = operatingHours[day] || [];
+                  const activeStudentIds = new Set(students.filter(s => (s.session || getCurrentSession()) === getCurrentSession()).map(s => s.id));
+                  const busySlots = allSlots.filter(s => s.day === day && s.type === 'tuition' && activeStudentIds.has(s.studentId));
+                  const busyIntervals = busySlots
+                    .map(s => [timeToMins(s.startTime), timeToMins(s.endTime)])
+                    .filter(interval => !isNaN(interval[0]) && !isNaN(interval[1]));
+                  
+                  // merge busy intervals
+                  busyIntervals.sort((a, b) => a[0] - b[0]);
+                  const mergedBusy: number[][] = [];
+                  for (const interval of busyIntervals) {
+                    if (!mergedBusy.length) mergedBusy.push(interval);
+                    else {
+                      const last = mergedBusy[mergedBusy.length - 1];
+                      if (interval[0] <= last[1]) last[1] = Math.max(last[1], interval[1]);
+                      else mergedBusy.push(interval);
+                    }
+                  }
+                  
+                  const freeIntervals: {start: string, end: string}[] = [];
+                  baseHours.forEach(block => {
+                    if (!block.start || !block.end) return;
+                    let currentStart = timeToMins(block.start);
+                    const blockEnd = timeToMins(block.end);
+                    
+                    for (const busy of mergedBusy) {
+                      if (busy[1] <= currentStart) continue;
+                      if (busy[0] >= blockEnd) break;
+                      if (busy[0] > currentStart) {
+                        freeIntervals.push({ start: minsToTime(currentStart), end: minsToTime(busy[0]) });
+                      }
+                      currentStart = Math.max(currentStart, busy[1]);
+                    }
+                    if (currentStart < blockEnd) {
+                      freeIntervals.push({ start: minsToTime(currentStart), end: minsToTime(blockEnd) });
+                    }
+                  });
+
+                  return (
+                    <div key={day} style={{ background: 'var(--bg)', borderRadius: '8px', padding: '12px', border: '1px solid var(--border-light)' }}>
+                      <div className="fw-700" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '12px' }}>{day}</div>
+                      {(!baseHours || baseHours.length === 0) ? (
+                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>No hours set.</div>
+                      ) : freeIntervals.length === 0 ? (
+                        <div style={{ fontSize: '13px', color: 'var(--danger)', fontWeight: 500 }} title={JSON.stringify({baseHours, busyIntervals, mergedBusy})}>Fully booked.</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {freeIntervals.map((interval, i) => (
+                            <div key={i} className="badge badge-green" style={{ padding: '6px 10px', fontSize: '13px' }}>
+                              <Clock size={14} style={{ marginRight: '6px' }} />
+                              {formatTime12h(interval.start)} - {formatTime12h(interval.end)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
