@@ -335,7 +335,7 @@ img { max-width: 100%; }
 .login-form, .modal-body { display: flex; flex-direction: column; gap: 16px; }
 .form-group { display: flex; flex-direction: column; gap: 6px; }
 .form-group label { font-size: 13px; font-weight: 600; color: var(--text); }
-.form-group input,
+.form-group input:not([type="radio"]):not([type="checkbox"]),
 .form-group select,
 .form-group textarea,
 .input {
@@ -349,7 +349,7 @@ img { max-width: 100%; }
   outline: none;
   width: 100%;
 }
-.form-group input:focus,
+.form-group input:not([type="radio"]):not([type="checkbox"]):focus,
 .form-group select:focus,
 .form-group textarea:focus,
 .input:focus {
