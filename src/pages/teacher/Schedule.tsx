@@ -591,6 +591,20 @@ export default function Schedule() {
                       </div>
                     ))}
                     {daySlots.length === 0 && <div className="schedule-empty">Free</div>}
+                    <button 
+                      className="btn-ghost btn-sm" 
+                      style={{ width: '100%', padding: '6px', fontSize: '12px', color: 'var(--primary)', marginTop: daySlots.length > 0 ? '8px' : '4px', border: '1px dashed var(--border)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                      onClick={() => {
+                        setEditingSlotId(null);
+                        setModalStudentId(selectedStudent);
+                        setIsStudentLocked(true);
+                        setForm({ day: day as DayOfWeek, startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' });
+                        setSubjects([]);
+                        setShowModal(true);
+                      }}
+                    >
+                      <Plus size={14} /> Add Slot
+                    </button>
                   </div>
                 </div>
               );
