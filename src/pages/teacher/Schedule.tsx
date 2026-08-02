@@ -70,14 +70,16 @@ export default function Schedule() {
   const [showOpsModal, setShowOpsModal] = useState(false);
   const [opsForm, setOpsForm] = useState<OperatingHours>(DEFAULT_OPERATING_HOURS);
 
-  const [form, setForm] = useState({
-    day: 'Monday' as DayOfWeek,
-    startTime: '16:00',
-    endTime: '17:00',
-    type: 'tuition' as 'tuition' | 'other_tuition',
-    notes: '',
-  });
-  const [subjects, setSubjects] = useState<string[]>([]);
+  type SlotForm = {
+    day: DayOfWeek;
+    startTime: string;
+    endTime: string;
+    type: 'tuition' | 'other_tuition';
+    notes: string;
+    subjects: string[];
+  };
+  const DEFAULT_FORM: SlotForm = { day: 'Monday', startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '', subjects: [] };
+  const [forms, setForms] = useState<SlotForm[]>([DEFAULT_FORM]);
   const [saving, setSaving] = useState(false);
   const { masterSubjects, formatSubjects } = useSubjects();
   const { confirm, ConfirmDialog } = useConfirm();
@@ -136,14 +138,14 @@ export default function Schedule() {
     setEditingSlotId(s.id);
     setModalStudentId(studentId);
     setIsStudentLocked(true);
-    setForm({
+    setForms([{
       day: s.day || 'Monday',
       startTime: s.startTime || '16:00',
       endTime: s.endTime || '17:00',
       type: s.type || 'tuition',
       notes: s.notes || '',
-    });
-    setSubjects(s.subjects || []);
+      subjects: s.subjects || [],
+    }]);
     setShowModal(true);
   };
 
@@ -151,8 +153,7 @@ export default function Schedule() {
     setShowModal(false);
     setEditingSlotId(null);
     setModalStudentId('');
-    setForm({ day: 'Monday', startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' });
-    setSubjects([]);
+    setForms([DEFAULT_FORM]);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -160,14 +161,18 @@ export default function Schedule() {
     if (!modalStudentId) { toast.error('Select a student'); return; }
     setSaving(true);
     try {
-      const payload = { ...form, subjects, studentId: modalStudentId };
       if (editingSlotId) {
+        const payload = { ...forms[0], studentId: modalStudentId };
         const { updateDoc } = await import('firebase/firestore');
         await updateDoc(doc(db, 'schedules', modalStudentId, 'slots', editingSlotId), payload);
         toast.success('Slot updated!');
       } else {
-        await addDoc(collection(db,'schedules',modalStudentId,'slots'), payload);
-        toast.success('Slot added!');
+        await Promise.all(forms.map(async f => {
+          const payload = { ...f, studentId: modalStudentId };
+          const { addDoc, collection } = await import('firebase/firestore');
+          await addDoc(collection(db,'schedules',modalStudentId,'slots'), payload);
+        }));
+        toast.success('Slots added!');
       }
       closeModal();
       loadAllSlots();
@@ -305,8 +310,7 @@ export default function Schedule() {
             setModalStudentId(isStudentView ? selectedStudent : '');
             setIsStudentLocked(isStudentView);
             setEditingSlotId(null); 
-            setForm({ day: 'Monday', startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' }); 
-            setSubjects([]); 
+            setForms([DEFAULT_FORM]); 
             setShowModal(true); 
           }}>
             <Plus size={18} /> Add Slot
@@ -370,8 +374,7 @@ export default function Schedule() {
                       setEditingSlotId(null);
                       setModalStudentId('');
                       setIsStudentLocked(false);
-                      setForm({ day: day as DayOfWeek, startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' });
-                      setSubjects([]);
+                      setForms([{ ...DEFAULT_FORM, day: day as DayOfWeek }]);
                       setShowModal(true);
                     }}>
                       <Plus size={14} /> Add Slot
@@ -598,8 +601,7 @@ export default function Schedule() {
                         setEditingSlotId(null);
                         setModalStudentId(selectedStudent);
                         setIsStudentLocked(true);
-                        setForm({ day: day as DayOfWeek, startTime: '16:00', endTime: '17:00', type: 'tuition', notes: '' });
-                        setSubjects([]);
+                        setForms([{ ...DEFAULT_FORM, day: day as DayOfWeek }]);
                         setShowModal(true);
                       }}
                     >
@@ -654,72 +656,100 @@ export default function Schedule() {
               <button className="modal-close" onClick={closeModal}><X size={20}/></button>
             </div>
             <form onSubmit={handleSave} className="modal-body">
-              <div className="form-grid-2">
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label>Select Student *</label>
-                  {isStudentLocked ? (
-                    <div className="fw-600" style={{ fontSize: 15, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                      {students.find(s => s.id === modalStudentId)?.name || '—'} 
-                      <span style={{color: 'var(--text-muted)', fontSize: 13, marginLeft: 8}}>
-                        (Class {students.find(s => s.id === modalStudentId)?.class || '—'})
-                      </span>
-                    </div>
-                  ) : (
-                    <select value={modalStudentId} onChange={e => setModalStudentId(e.target.value)} disabled={!!editingSlotId} required>
-                      <option value="">— Choose a student —</option>
-                      {students.map(s => (
-                        <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-                <div className="form-group">
-                  <label>Day</label>
-                  <select value={form.day} onChange={e => setForm(f => ({ ...f, day: e.target.value as DayOfWeek }))}>
-                    {DAYS.map(d => <option key={d}>{d}</option>)}
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label>Select Student *</label>
+                {isStudentLocked ? (
+                  <div className="fw-600" style={{ fontSize: 15, padding: '10px 14px', background: 'var(--surface-2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    {students.find(s => s.id === modalStudentId)?.name || '—'} 
+                    <span style={{color: 'var(--text-muted)', fontSize: 13, marginLeft: 8}}>
+                      (Class {students.find(s => s.id === modalStudentId)?.class || '—'})
+                    </span>
+                  </div>
+                ) : (
+                  <select value={modalStudentId} onChange={e => setModalStudentId(e.target.value)} disabled={!!editingSlotId} required>
+                    <option value="">— Choose a student —</option>
+                    {students.map(s => (
+                      <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                    ))}
                   </select>
-                </div>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label>Type</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '8px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 500, padding: '12px 16px', background: form.type === 'tuition' ? 'var(--primary-light, #e0f2fe)' : 'var(--surface-2)', borderRadius: '8px', border: form.type === 'tuition' ? '1px solid var(--primary)' : '1px solid var(--border)' }}>
-                      <input type="radio" name="slotType" value="tuition" checked={form.type === 'tuition'} onChange={() => setForm(f => ({ ...f, type: 'tuition' }))} style={{ width: 'auto', margin: 0 }} />
-                      <span style={{ color: form.type === 'tuition' ? 'var(--primary-dark, #0369a1)' : 'var(--text)' }}>My Teaching Slot</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 500, padding: '12px 16px', background: form.type === 'other_tuition' ? 'var(--primary-light, #e0f2fe)' : 'var(--surface-2)', borderRadius: '8px', border: form.type === 'other_tuition' ? '1px solid var(--primary)' : '1px solid var(--border)' }}>
-                      <input type="radio" name="slotType" value="other_tuition" checked={form.type === 'other_tuition'} onChange={() => setForm(f => ({ ...f, type: 'other_tuition' }))} style={{ width: 'auto', margin: 0 }} />
-                      <span style={{ color: form.type === 'other_tuition' ? 'var(--primary-dark, #0369a1)' : 'var(--text)' }}>Student's Other Tuition</span>
-                    </label>
+                )}
+              </div>
+
+              {forms.map((form, index) => (
+                <div key={index} style={{ background: 'var(--surface-2)', padding: '16px', borderRadius: '8px', marginBottom: '16px', position: 'relative' }}>
+                  {forms.length > 1 && !editingSlotId && (
+                    <button 
+                      type="button" 
+                      className="icon-btn danger" 
+                      style={{ position: 'absolute', top: '12px', right: '12px', background: 'var(--bg)' }}
+                      onClick={() => setForms(prev => prev.filter((_, i) => i !== index))}
+                      title="Remove Slot"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                  <div className="form-grid-2">
+                    <div className="form-group">
+                      <label>Day</label>
+                      <select value={form.day} onChange={e => setForms(prev => { const n = [...prev]; n[index] = { ...n[index], day: e.target.value as DayOfWeek }; return n; })}>
+                        {DAYS.map(d => <option key={d}>{d}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                      <label>Type</label>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '8px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 500, padding: '12px 16px', background: form.type === 'tuition' ? 'var(--primary-light, #e0f2fe)' : 'var(--bg)', borderRadius: '8px', border: form.type === 'tuition' ? '1px solid var(--primary)' : '1px solid var(--border)' }}>
+                          <input type="radio" name={`slotType-${index}`} value="tuition" checked={form.type === 'tuition'} onChange={() => setForms(prev => { const n = [...prev]; n[index] = { ...n[index], type: 'tuition' }; return n; })} style={{ width: 'auto', margin: 0 }} />
+                          <span style={{ color: form.type === 'tuition' ? 'var(--primary-dark, #0369a1)' : 'var(--text)' }}>My Teaching Slot</span>
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 500, padding: '12px 16px', background: form.type === 'other_tuition' ? 'var(--primary-light, #e0f2fe)' : 'var(--bg)', borderRadius: '8px', border: form.type === 'other_tuition' ? '1px solid var(--primary)' : '1px solid var(--border)' }}>
+                          <input type="radio" name={`slotType-${index}`} value="other_tuition" checked={form.type === 'other_tuition'} onChange={() => setForms(prev => { const n = [...prev]; n[index] = { ...n[index], type: 'other_tuition' }; return n; })} style={{ width: 'auto', margin: 0 }} />
+                          <span style={{ color: form.type === 'other_tuition' ? 'var(--primary-dark, #0369a1)' : 'var(--text)' }}>Student's Other Tuition</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Start Time</label>
+                      <input type="time" value={form.startTime} onChange={e => setForms(prev => { const n = [...prev]; n[index] = { ...n[index], startTime: e.target.value }; return n; })} />
+                    </div>
+                    <div className="form-group">
+                      <label>End Time</label>
+                      <input type="time" value={form.endTime} onChange={e => setForms(prev => { const n = [...prev]; n[index] = { ...n[index], endTime: e.target.value }; return n; })} />
+                    </div>
+                  </div>
+                  <div className="form-group" style={{ marginTop: '16px' }}>
+                    <label>Subjects</label>
+                    <MultiSelect 
+                      options={masterSubjects}
+                      selected={form.subjects}
+                      onChange={val => setForms(prev => { const n = [...prev]; n[index] = { ...n[index], subjects: val }; return n; })}
+                      placeholder="Select subjects"
+                      showSelectAll
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginTop: '16px', marginBottom: 0 }}>
+                    <label>Notes</label>
+                    <input type="text" placeholder="Optional notes" value={form.notes} onChange={e => setForms(prev => { const n = [...prev]; n[index] = { ...n[index], notes: e.target.value }; return n; })} />
                   </div>
                 </div>
-                <div className="form-group">
-                  <label>Start Time</label>
-                  <input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label>End Time</label>
-                  <input type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Subjects</label>
-                <MultiSelect 
-                  options={masterSubjects}
-                  selected={subjects}
-                  onChange={setSubjects}
-                  placeholder="Select subjects"
-                  showSelectAll
-                />
-              </div>
-              <div className="form-group">
-                <label>Notes</label>
-                <input type="text" placeholder="Optional notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
-              </div>
-              <div className="modal-footer">
+              ))}
+              
+              {!editingSlotId && (
+                <button 
+                  type="button" 
+                  className="btn-ghost" 
+                  style={{ width: '100%', marginBottom: '16px', border: '1px dashed var(--border)' }}
+                  onClick={() => setForms(prev => [...prev, DEFAULT_FORM])}
+                >
+                  <Plus size={16} style={{ marginRight: '8px' }}/> Add Another Slot
+                </button>
+              )}
+
+              <div className="modal-footer" style={{ borderTop: 'none', paddingTop: 0 }}>
                 <button type="button" className="btn-ghost" onClick={closeModal}>Cancel</button>
                 <button type="submit" className="btn-primary" disabled={saving}>
                   {saving ? <span className="btn-spinner"/> : (editingSlotId ? <Pencil size={16}/> : <Plus size={16}/>)}
-                  {saving ? 'Saving…' : (editingSlotId ? 'Update Slot' : 'Add Slot')}
+                  {saving ? 'Saving…' : (editingSlotId ? 'Update Slot' : `Save ${forms.length > 1 ? forms.length + ' Slots' : 'Slot'}`)}
                 </button>
               </div>
             </form>
