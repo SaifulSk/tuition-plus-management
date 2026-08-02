@@ -415,8 +415,15 @@ export default function Fees() {
                                 return (
                                   <td 
                                     key={i} 
-                                    onClick={isDue ? () => handleDueCellClick(s.id, monthStr) : undefined}
-                                    style={{ background: bgColor, color, textAlign: 'center', padding: '8px 6px', borderBottom: '1px solid var(--border-light)', minWidth: '70px', whiteSpace: 'nowrap', cursor: isDue ? 'pointer' : 'default' }}
+                                    onClick={() => {
+                                      if (isDue) {
+                                        handleDueCellClick(s.id, monthStr);
+                                      } else if (matchingPayment) {
+                                        setCurrentReceipt(matchingPayment);
+                                        setShowReceipt(true);
+                                      }
+                                    }}
+                                    style={{ background: bgColor, color, textAlign: 'center', padding: '8px 6px', borderBottom: '1px solid var(--border-light)', minWidth: '70px', whiteSpace: 'nowrap', cursor: (isDue || matchingPayment) ? 'pointer' : 'default' }}
                                   >
                                     {text && <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: subText ? '2px' : '0' }}>{text}</div>}
                                     {subText && <div style={{ fontSize: '10px', opacity: 0.9, background: 'rgba(0,0,0,0.2)', display: 'inline-block', padding: '2px 6px', borderRadius: '12px' }}>{subText}</div>}
