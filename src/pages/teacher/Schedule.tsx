@@ -82,8 +82,9 @@ export default function Schedule() {
   const { masterSubjects, formatSubjects } = useSubjects();
   const { confirm, ConfirmDialog } = useConfirm();
 
-  // Accordion for free slots
+  // Accordion for free slots and overview
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
+  const [expandedOverview, setExpandedOverview] = useState<Record<string, boolean>>({});
   const [showClassTuitions, setShowClassTuitions] = useState<{class: string, day: string} | null>(null);
   const [showMyFreeSlots, setShowMyFreeSlots] = useState(false);
 
@@ -378,42 +379,56 @@ export default function Schedule() {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {groupedMaster[day].map((slotInfo, i) => (
+                    {groupedMaster[day].map((slotInfo, i) => {
+                      const slotKey = `${day}_${slotInfo.startTime}_${slotInfo.endTime}_${slotInfo.type}`;
+                      const isExpanded = expandedOverview[slotKey] !== false; // expanded by default
+                      
+                      return (
                       <div key={i} className={`card slot-card ${slotInfo.type === 'tuition' ? 'tuition-border' : 'other-border'}`} style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', margin: 0, boxShadow: 'var(--shadow-sm)' }}>
-                        <div className="fw-700" style={{ fontSize: '13px', color: 'var(--text)' }}>
-                          {formatTime12h(slotInfo.startTime)} – {formatTime12h(slotInfo.endTime)}
+                        <div 
+                          className="fw-700" 
+                          style={{ fontSize: '13px', color: 'var(--text)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => setExpandedOverview(prev => ({ ...prev, [slotKey]: !isExpanded }))}
+                        >
+                          <span>{formatTime12h(slotInfo.startTime)} – {formatTime12h(slotInfo.endTime)}</span>
+                          {isExpanded ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
                         </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                          {slotInfo.students.map((st: any) => (
-                            <div key={st.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', width: '100%', border: '1px solid var(--border-light)' }}>
-                              <span 
-                                className="fw-500 hover-primary" 
-                                style={{ cursor: 'pointer', transition: 'color 0.2s' }}
-                                title={formatSubjects(st.subjects)}
-                                onClick={() => { setSelectedStudent(st.id); setViewMode('student'); }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
-                              >
-                                {st.name}
-                              </span>
-                              <button className="icon-btn danger" style={{ padding: '2px', height: 'auto', width: 'auto' }} onClick={() => deleteSlot(st.slotId, st.id)} title="Remove">
-                                <Trash2 size={14} />
-                              </button>
+                        
+                        {isExpanded && (
+                          <>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                              {slotInfo.students.map((st: any) => (
+                                <div key={st.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', padding: '6px 8px', borderRadius: '6px', fontSize: '12px', width: '100%', border: '1px solid var(--border-light)' }}>
+                                  <span 
+                                    className="fw-500 hover-primary" 
+                                    style={{ cursor: 'pointer', transition: 'color 0.2s' }}
+                                    title={formatSubjects(st.subjects)}
+                                    onClick={() => { setSelectedStudent(st.id); setViewMode('student'); }}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
+                                  >
+                                    {st.name}
+                                  </span>
+                                  <button className="icon-btn danger" style={{ padding: '2px', height: 'auto', width: 'auto' }} onClick={() => deleteSlot(st.slotId, st.id)} title="Remove">
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                        <button className="btn-ghost btn-sm" style={{ alignSelf: 'flex-start', marginTop: '4px', padding: '4px 8px', fontSize: '12px', color: 'var(--primary)' }} onClick={() => {
-                          setEditingSlotId(null);
-                          setModalStudentId('');
-                          setIsStudentLocked(false);
-                          setForm({ day: day as DayOfWeek, startTime: slotInfo.startTime, endTime: slotInfo.endTime, type: slotInfo.type, notes: '' });
-                          setSubjects([]);
-                          setShowModal(true);
-                        }}>
-                          <Plus size={14} /> Add Student
-                        </button>
+                            <button className="btn-ghost btn-sm" style={{ alignSelf: 'flex-start', marginTop: '4px', padding: '4px 8px', fontSize: '12px', color: 'var(--primary)' }} onClick={() => {
+                              setEditingSlotId(null);
+                              setModalStudentId('');
+                              setIsStudentLocked(false);
+                              setForm({ day: day as DayOfWeek, startTime: slotInfo.startTime, endTime: slotInfo.endTime, type: slotInfo.type, notes: '' });
+                              setSubjects([]);
+                              setShowModal(true);
+                            }}>
+                              <Plus size={14} /> Add Student
+                            </button>
+                          </>
+                        )}
                       </div>
-                    ))}
+                    )})}
                   </div>
                 )}
               </div>
