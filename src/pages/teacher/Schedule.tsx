@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy, collectionGroup, setDoc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, query, orderBy, collectionGroup, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, ScheduleSlot, DayOfWeek } from '../../types';
 import { Plus, X, Clock, Trash2, Pencil, Settings2, ChevronDown, ChevronRight, Info } from 'lucide-react';
@@ -422,8 +422,7 @@ export default function Schedule() {
                               setEditingSlotId(null);
                               setModalStudentId('');
                               setIsStudentLocked(false);
-                              setForm({ day: day as DayOfWeek, startTime: slotInfo.startTime, endTime: slotInfo.endTime, type: slotInfo.type, notes: '' });
-                              setSubjects([]);
+                              setForms([{ ...DEFAULT_FORM, day: day as DayOfWeek, startTime: slotInfo.startTime, endTime: slotInfo.endTime, type: slotInfo.type }]);
                               setShowModal(true);
                             }}>
                               <Plus size={14} /> Add Student
