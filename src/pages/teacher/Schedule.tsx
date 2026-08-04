@@ -415,24 +415,21 @@ export default function Schedule() {
                       return (
                       <div key={i} className={`card slot-card ${slotInfo.type === 'tuition' ? 'tuition-border' : 'other-border'}`} style={{ position: 'relative', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', margin: 0, boxShadow: 'var(--shadow-sm)' }}>
                         {slotInfo.students.length > 0 && (
-                          <div style={{ position: 'absolute', top: '-6px', right: '-6px', background: 'var(--primary)', color: 'white', fontSize: '10px', fontWeight: 'bold', minWidth: '18px', height: '18px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 1 }} title="Total Students">
+                          <div style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#3b82f6', color: '#ffffff', fontSize: '10px', fontWeight: 'bold', minWidth: '18px', height: '18px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 1 }} title="Total Students">
                             {slotInfo.students.length}
                           </div>
                         )}
                         <div 
                           className="fw-700" 
-                          style={{ fontSize: '13px', color: 'var(--text)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
+                          style={{ fontSize: '13px', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', userSelect: 'none' }}
                           onClick={() => setExpandedOverview(prev => ({ ...prev, [slotKey]: !isExpanded }))}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span>{formatTime12h(slotInfo.startTime)} – {formatTime12h(slotInfo.endTime)}</span>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                               {Array.from(new Set<string>(slotInfo.students.map((st: any) => `${st.class}-${st.school}`))).map((combo: string) => (
                                 <span key={combo} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: getColorForCombo(...(combo.split('-') as [string, string])) }} title={combo.replace('-', ' - ')} />
                               ))}
                             </div>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <button 
                               className="icon-btn danger" 
                               style={{ padding: '4px', height: 'auto', width: 'auto' }} 
@@ -444,6 +441,9 @@ export default function Schedule() {
                             >
                               <Trash2 size={14} />
                             </button>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>{formatTime12h(slotInfo.startTime)} – {formatTime12h(slotInfo.endTime)}</span>
                             {isExpanded ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
                           </div>
                         </div>
