@@ -415,8 +415,26 @@ export default function Schedule() {
                       return (
                       <div key={i} className={`card slot-card ${slotInfo.type === 'tuition' ? 'tuition-border' : 'other-border'}`} style={{ position: 'relative', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', margin: 0, boxShadow: 'var(--shadow-sm)' }}>
                         {slotInfo.students.length > 0 && (
-                          <div style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#3b82f6', color: '#ffffff', fontSize: '10px', fontWeight: 'bold', minWidth: '18px', height: '18px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 1 }} title="Total Students">
-                            {slotInfo.students.length}
+                          <div style={{ position: 'absolute', top: '-8px', right: '-8px', display: 'flex', gap: '4px', alignItems: 'center', zIndex: 1 }}>
+                            {Array.from(new Set<string>(slotInfo.students.map((st: any) => `${st.class}-${st.school}`))).map((combo: string) => {
+                              const count = slotInfo.students.filter((st: any) => `${st.class}-${st.school}` === combo).length;
+                              return (
+                                <div key={combo} style={{ background: getColorForCombo(...(combo.split('-') as [string, string])), color: '#ffffff', fontSize: '10px', fontWeight: 'bold', minWidth: '18px', height: '18px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} title={combo.replace('-', ' - ')}>
+                                  {count}
+                                </div>
+                              );
+                            })}
+                            <button 
+                              className="icon-btn danger" 
+                              style={{ background: 'var(--bg)', color: 'var(--danger)', border: '1px solid var(--danger)', fontSize: '12px', width: '20px', height: '20px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', cursor: 'pointer', flexShrink: 0 }}
+                              title="Delete Entire Slot"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteEntireSlot(slotInfo.students);
+                              }}
+                            >
+                              <X size={12} strokeWidth={3} />
+                            </button>
                           </div>
                         )}
                         <div 
@@ -424,24 +442,6 @@ export default function Schedule() {
                           style={{ fontSize: '13px', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', userSelect: 'none' }}
                           onClick={() => setExpandedOverview(prev => ({ ...prev, [slotKey]: !isExpanded }))}
                         >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                              {Array.from(new Set<string>(slotInfo.students.map((st: any) => `${st.class}-${st.school}`))).map((combo: string) => (
-                                <span key={combo} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: getColorForCombo(...(combo.split('-') as [string, string])) }} title={combo.replace('-', ' - ')} />
-                              ))}
-                            </div>
-                            <button 
-                              className="icon-btn danger" 
-                              style={{ padding: '4px', height: 'auto', width: 'auto' }} 
-                              title="Delete Entire Slot"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteEntireSlot(slotInfo.students);
-                              }}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>{formatTime12h(slotInfo.startTime)} – {formatTime12h(slotInfo.endTime)}</span>
                             {isExpanded ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
