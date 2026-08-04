@@ -51,6 +51,16 @@ const minsToTime = (m: number) => {
   return `${h.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 };
 
+const DOT_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#a855f7', '#d946ef', '#f43f5e'];
+const getColorForCombo = (classStr: string, schoolStr: string) => {
+  const str = `${classStr}-${schoolStr}`;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return DOT_COLORS[Math.abs(hash) % DOT_COLORS.length];
+};
+
 export default function Schedule() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState('');
@@ -191,6 +201,22 @@ export default function Schedule() {
     });
   };
 
+  const deleteEntireSlot = (slotStudents: {id: string, slotId: string}[]) => {
+    confirm('Are you sure you want to delete this entire slot? This will remove the slot for all students within it.', async () => {
+      setSaving(true);
+      try {
+        await Promise.all(slotStudents.map(st => deleteDoc(doc(db, 'schedules', st.id, 'slots', st.slotId))));
+        toast.success('Entire slot removed');
+        loadAllSlots();
+        if (selectedStudent) loadSlots(selectedStudent);
+      } catch(err: any) {
+        toast.error('Failed to delete slot');
+      } finally {
+        setSaving(false);
+      }
+    });
+  };
+
   const handleSaveOps = async () => {
     setSaving(true);
     try {
@@ -208,7 +234,7 @@ export default function Schedule() {
   // Grouped data for Overview
   const groupedMaster = DAYS.reduce((acc, day) => {
     const daySlots = allSlots.filter(s => s.day === day && s.type === 'tuition');
-    const slotMap = new Map<string, { startTime: string, endTime: string, type: 'tuition'|'other_tuition', students: { id: string, name: string, subjects: string[], slotId: string }[] }>();
+    const slotMap = new Map<string, { startTime: string, endTime: string, type: 'tuition'|'other_tuition', students: { id: string, name: string, subjects: string[], slotId: string, class?: string, school?: string }[] }>();
     
     daySlots.forEach(s => {
       const key = `${s.startTime}-${s.endTime}-${s.type}`;
@@ -217,7 +243,7 @@ export default function Schedule() {
       }
       const st = students.find(x => x.id === s.studentId);
       if (st) {
-        slotMap.get(key)!.students.push({ id: st.id, name: st.name, subjects: s.subjects || [], slotId: s.id });
+        slotMap.get(key)!.students.push({ id: st.id, name: st.name, subjects: s.subjects || [], slotId: s.id, class: st.class, school: st.school });
       }
     });
     
@@ -387,14 +413,39 @@ export default function Schedule() {
                       const isExpanded = expandedOverview[slotKey] !== false; // expanded by default
                       
                       return (
-                      <div key={i} className={`card slot-card ${slotInfo.type === 'tuition' ? 'tuition-border' : 'other-border'}`} style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', margin: 0, boxShadow: 'var(--shadow-sm)' }}>
+                      <div key={i} className={`card slot-card ${slotInfo.type === 'tuition' ? 'tuition-border' : 'other-border'}`} style={{ position: 'relative', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', margin: 0, boxShadow: 'var(--shadow-sm)' }}>
+                        {slotInfo.students.length > 0 && (
+                          <div style={{ position: 'absolute', top: '-6px', right: '-6px', background: 'var(--primary)', color: 'white', fontSize: '10px', fontWeight: 'bold', minWidth: '18px', height: '18px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 1 }} title="Total Students">
+                            {slotInfo.students.length}
+                          </div>
+                        )}
                         <div 
                           className="fw-700" 
                           style={{ fontSize: '13px', color: 'var(--text)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
                           onClick={() => setExpandedOverview(prev => ({ ...prev, [slotKey]: !isExpanded }))}
                         >
-                          <span>{formatTime12h(slotInfo.startTime)} – {formatTime12h(slotInfo.endTime)}</span>
-                          {isExpanded ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span>{formatTime12h(slotInfo.startTime)} – {formatTime12h(slotInfo.endTime)}</span>
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                              {Array.from(new Set<string>(slotInfo.students.map((st: any) => `${st.class}-${st.school}`))).map((combo: string) => (
+                                <span key={combo} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: getColorForCombo(...(combo.split('-') as [string, string])) }} title={combo.replace('-', ' - ')} />
+                              ))}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button 
+                              className="icon-btn danger" 
+                              style={{ padding: '4px', height: 'auto', width: 'auto' }} 
+                              title="Delete Entire Slot"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteEntireSlot(slotInfo.students);
+                              }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                            {isExpanded ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
+                          </div>
                         </div>
                         
                         {isExpanded && (
