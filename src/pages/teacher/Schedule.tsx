@@ -247,7 +247,9 @@ export default function Schedule() {
       }
     });
     
-    acc[day] = Array.from(slotMap.values()).sort((a,b) => a.startTime.localeCompare(b.startTime));
+    acc[day] = Array.from(slotMap.values())
+      .filter(slot => slot.students.length > 0)
+      .sort((a,b) => a.startTime.localeCompare(b.startTime));
     return acc;
   }, {} as Record<string, any[]>);
 
