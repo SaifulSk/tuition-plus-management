@@ -421,14 +421,14 @@ export default function Schedule() {
                             {Array.from(new Set<string>(slotInfo.students.map((st: any) => `${st.class}-${st.school}`))).map((combo: string) => {
                               const count = slotInfo.students.filter((st: any) => `${st.class}-${st.school}` === combo).length;
                               return (
-                                <div key={combo} style={{ background: getColorForCombo(...(combo.split('-') as [string, string])), color: '#ffffff', fontSize: '10px', fontWeight: 'bold', minWidth: '18px', height: '18px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} title={combo.replace('-', ' - ')}>
+                                <div key={combo} style={{ background: 'var(--primary)', color: '#ffffff', fontSize: '10px', fontWeight: 'bold', minWidth: '18px', height: '18px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} title={combo.replace('-', ' - ')}>
                                   {count}
                                 </div>
                               );
                             })}
                             <button 
                               className="icon-btn danger" 
-                              style={{ background: 'var(--bg)', color: 'var(--danger)', border: '1px solid var(--danger)', fontSize: '12px', width: '20px', height: '20px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', cursor: 'pointer', flexShrink: 0 }}
+                              style={{ background: 'var(--danger)', color: '#ffffff', border: 'none', fontSize: '12px', width: '20px', height: '20px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', cursor: 'pointer', flexShrink: 0 }}
                               title="Delete Entire Slot"
                               onClick={(e) => {
                                 e.stopPropagation();
