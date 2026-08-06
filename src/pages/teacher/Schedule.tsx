@@ -363,11 +363,11 @@ export default function Schedule() {
         </div>
         
         {viewMode === 'master' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {totalSlots > 0 && (
               <button 
                 className="btn-secondary" 
-                style={{ padding: '6px 12px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ padding: '6px 12px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
                 onClick={() => {
                   if (allCollapsed) {
                     setExpandedOverview({});
@@ -388,7 +388,7 @@ export default function Schedule() {
                 {allCollapsed ? "Expand All" : "Collapse All"}
               </button>
             )}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500, whiteSpace: 'nowrap' }}>
               <input 
                 type="checkbox" 
                 checked={hideEmptyDays} 
@@ -397,7 +397,7 @@ export default function Schedule() {
               />
               Hide Empty Days
             </label>
-            <div style={{ width: '220px' }}>
+            <div style={{ width: '220px', maxWidth: '100%' }}>
               <MultiSelect 
                 options={DAYS} 
                 selected={selectedDays} 
