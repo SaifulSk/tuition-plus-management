@@ -322,6 +322,9 @@ export default function Schedule() {
 
   const student = students.find(s => s.id === selectedStudent);
 
+  const totalSlots = Object.values(groupedMaster).reduce((acc, slots) => acc + slots.length, 0);
+  const allCollapsed = totalSlots > 0 && Object.values(expandedOverview).filter(v => v === false).length === totalSlots;
+
   return (
     <div className="page">
       <div className="page-header">
@@ -361,6 +364,30 @@ export default function Schedule() {
         
         {viewMode === 'master' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
+            {totalSlots > 0 && (
+              <button 
+                className="btn-secondary" 
+                style={{ padding: '6px 12px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                onClick={() => {
+                  if (allCollapsed) {
+                    setExpandedOverview({});
+                  } else {
+                    const newState: Record<string, boolean> = {};
+                    Object.entries(groupedMaster).forEach(([day, slots]) => {
+                      slots.forEach(slotInfo => {
+                        const slotKey = `${day}_${slotInfo.startTime}_${slotInfo.endTime}_${slotInfo.type}`;
+                        newState[slotKey] = false;
+                      });
+                    });
+                    setExpandedOverview(newState);
+                  }
+                }}
+                title={allCollapsed ? "Expand All Slots" : "Collapse All Slots"}
+              >
+                {allCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                {allCollapsed ? "Expand All" : "Collapse All"}
+              </button>
+            )}
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
               <input 
                 type="checkbox" 
