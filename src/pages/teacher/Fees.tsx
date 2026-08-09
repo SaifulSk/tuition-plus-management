@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  collection, getDocs, addDoc, query, orderBy, Timestamp, collectionGroup
+  collection, getDocs, addDoc, query, orderBy, Timestamp, collectionGroup, deleteDoc, doc
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, FeePayment, PaymentMode } from '../../types';
 import { getFeeForMonth } from '../../utils/feeUtils';
 import { getCurrentSession } from '../../utils/dateUtils';
-import { Plus, X, Printer, Share2, Receipt, Pencil, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, X, Printer, Share2, Receipt, Pencil, Trash2, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import html2canvas from 'html2canvas';
@@ -134,6 +134,19 @@ export default function Fees() {
     setShowModal(false);
     setEditingPaymentId(null);
     setTransactions([{ id: Date.now().toString(), mode:'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] }]);
+  };
+
+  const handleDeletePayment = async (payment: FeePayment) => {
+    if (!window.confirm("Are you sure you want to delete this payment?")) return;
+    try {
+      await deleteDoc(doc(db, 'fees', payment.studentId, 'payments', payment.id!));
+      toast.success('Payment deleted!');
+      if (selectedStudent === payment.studentId) loadPayments(payment.studentId);
+      if (viewMode === 'master' || viewMode === 'history') loadMasterData();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to delete payment');
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -558,6 +571,13 @@ export default function Fees() {
                               <Pencil size={16}/>
                             </button>
                             <button
+                              className="icon-btn danger"
+                              title="Delete Payment"
+                              onClick={() => handleDeletePayment(p)}
+                            >
+                              <Trash2 size={16}/>
+                            </button>
+                            <button
                               className="icon-btn"
                               title="View Receipt"
                               onClick={() => { setCurrentReceipt(p); setShowReceipt(true); }}
@@ -744,6 +764,13 @@ export default function Fees() {
                               onClick={() => openEditModal(p)}
                             >
                               <Pencil size={16}/>
+                            </button>
+                            <button
+                              className="icon-btn danger"
+                              title="Delete Payment"
+                              onClick={() => handleDeletePayment(p)}
+                            >
+                              <Trash2 size={16}/>
                             </button>
                             <button
                               className="icon-btn"
