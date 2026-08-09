@@ -45,6 +45,7 @@ export default function Fees() {
 
   const [viewMode, setViewMode] = useState<'student' | 'master' | 'history'>('master');
   const [historyMonth, setHistoryMonth] = useState<string>(new Date().toISOString().slice(0, 7));
+  const [historyClass, setHistoryClass] = useState<string>('');
   const [masterYear, setMasterYear] = useState<number>(new Date().getFullYear());
   const [allPayments, setAllPayments] = useState<Record<string, FeePayment[]>>({});
   const [loadingMaster, setLoadingMaster] = useState(false);
@@ -701,6 +702,16 @@ export default function Fees() {
           <div className="flex-between mb-16">
             <h3 className="section-title" style={{ marginBottom: 0 }}>Payment History</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <label style={{ fontSize: 13, fontWeight: 500 }}>Class:</label>
+              <select 
+                className="input" 
+                value={historyClass} 
+                onChange={e => setHistoryClass(e.target.value)}
+                style={{ width: 'auto' }}
+              >
+                <option value="">All Classes</option>
+                {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+              </select>
               <label style={{ fontSize: 13, fontWeight: 500 }}>Month:</label>
               <input 
                 type="month" 
@@ -737,7 +748,12 @@ export default function Fees() {
                       const d = p.datePaid.toDate();
                       const yyyy = d.getFullYear();
                       const mm = String(d.getMonth() + 1).padStart(2, '0');
-                      return `${yyyy}-${mm}` === historyMonth;
+                      if (`${yyyy}-${mm}` !== historyMonth) return false;
+                      if (historyClass) {
+                        const s = students.find(s => s.id === p.studentId);
+                        if (s?.class !== historyClass) return false;
+                      }
+                      return true;
                     }).sort((a, b) => b.datePaid!.toMillis() - a.datePaid!.toMillis());
 
                     if (filtered.length === 0) {
