@@ -113,10 +113,13 @@ export default function SchoolExams() {
 
   // Build chart data: x = examName, y = percentage per subject
   const chartData = examNames.map(en => {
-    const row: Record<string, string | number> = { exam: en };
+    const row: Record<string, any> = { exam: en, __raw: {} };
     distinctSubjects.forEach(sub => {
       const found = filteredExams.find(e => e.examName === en && e.subjects?.includes(sub));
-      if (found) row[sub] = Math.round((found.marksObtained / found.maxMarks) * 100);
+      if (found) {
+        row[sub] = Math.round((found.marksObtained / found.maxMarks) * 100);
+        row.__raw[sub] = { obtained: found.marksObtained, max: found.maxMarks };
+      }
     });
     return row;
   });
@@ -228,9 +231,10 @@ export default function SchoolExams() {
   const masterStudentsInSubject = [...new Set(masterFilteredExams.map(e => (e as any).studentName))];
 
   const masterChartData = masterExamNames.map(en => {
-    const row: Record<string, string | number> = { exam: en };
+    const row: Record<string, any> = { exam: en, __raw: {} };
     masterFilteredExams.filter(e => e.examName === en).forEach(e => {
       row[(e as any).studentName] = Math.round((e.marksObtained / e.maxMarks) * 100);
+      row.__raw[(e as any).studentName] = { obtained: e.marksObtained, max: e.maxMarks };
     });
     return row;
   });
@@ -327,7 +331,11 @@ export default function SchoolExams() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="exam" tick={{ fontSize: 12 }} padding={{ left: 30, right: 30 }} />
                 <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(v: any, name: any) => [`${v}%`, name]} />
+                <Tooltip formatter={(v: any, name: any, props: any) => {
+                  const raw = props.payload?.__raw?.[name];
+                  if (raw) return [`${raw.obtained}/${raw.max}`, name];
+                  return [`${v}%`, name];
+                }} />
                 <Legend />
                 {distinctSubjects.map((sub) => {
                   const renderCustomDot = (props: any) => {
@@ -465,7 +473,11 @@ export default function SchoolExams() {
                                         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                                         <XAxis dataKey="exam" tick={{ fontSize: 12 }} padding={{ left: 30, right: 30 }} />
                                         <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 12 }} />
-                                        <Tooltip formatter={(v: any, name: any) => [`${v}%`, name]} />
+                                        <Tooltip formatter={(v: any, name: any, props: any) => {
+                                          const raw = props.payload?.__raw?.[name];
+                                          if (raw) return [`${raw.obtained}/${raw.max}`, name];
+                                          return [`${v}%`, name];
+                                        }} />
                                         <Legend />
                                         {masterStudentsInSubject.map((sName, i) => {
                                           const color = COLORS[i % COLORS.length];

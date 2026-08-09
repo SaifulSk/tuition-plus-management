@@ -72,10 +72,13 @@ export default function StudentResults() {
   const subjects = [...new Set(filteredExams.flatMap(e => e.subjects || []))];
   const examNames = [...new Set(filteredExams.map(e => e.examName))];
   const chartData = examNames.map(en => {
-    const row: Record<string, string | number> = { exam: en };
+    const row: Record<string, any> = { exam: en, __raw: {} };
     subjects.forEach(sub => {
       const found = filteredExams.find(e => e.examName === en && e.subjects?.includes(sub));
-      if (found) row[sub] = Math.round((found.marksObtained / found.maxMarks) * 100);
+      if (found) {
+        row[sub] = Math.round((found.marksObtained / found.maxMarks) * 100);
+        row.__raw[sub] = { obtained: found.marksObtained, max: found.maxMarks };
+      }
     });
     return row;
   });
@@ -132,7 +135,11 @@ export default function StudentResults() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
                 <XAxis dataKey="exam" tick={{ fontSize: 12 }} padding={{ left: 30, right: 30 }} />
                 <YAxis domain={[0,100]} tickFormatter={v=>`${v}%`} tick={{ fontSize: 12 }}/>
-                <Tooltip formatter={(v: any, name: any) => [`${v}%`, name]}/>
+                <Tooltip formatter={(v: any, name: any, props: any) => {
+                  const raw = props.payload?.__raw?.[name];
+                  if (raw) return [`${raw.obtained}/${raw.max}`, name];
+                  return [`${v}%`, name];
+                }}/>
                 <Legend/>
                 {subjects.map((sub) => {
                   const renderCustomDot = (props: any) => {
