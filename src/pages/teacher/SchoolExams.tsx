@@ -9,7 +9,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend
 } from 'recharts';
-import MultiSelect from '../../components/common/MultiSelect';
+
 import { useConfirm } from '../../hooks/useConfirm';
 import { useSubjects } from '../../hooks/useSubjects';
 import { getCurrentSession } from '../../utils/dateUtils';
