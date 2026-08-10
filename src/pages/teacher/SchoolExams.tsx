@@ -540,15 +540,17 @@ export default function SchoolExams() {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Subjects *</label>
-                  <MultiSelect 
-                    options={Array.from(new Set([...(student?.subjects || []), ...masterSubjects]))}
-                    selected={subjects}
-                    onChange={setSubjects}
-                    placeholder="Select subjects"
+                  <label>Subject *</label>
+                  <select 
+                    value={subjects.length > 0 ? subjects[0] : ''} 
+                    onChange={e => setSubjects([e.target.value])}
                     required
-                    showSelectAll
-                  />
+                  >
+                    <option value="" disabled>Select subject...</option>
+                    {Array.from(new Set([...(student?.subjects || []), ...masterSubjects])).map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Max Marks *</label>
@@ -564,11 +566,12 @@ export default function SchoolExams() {
                 </div>
                 <div className="form-group">
                   <label>Academic Session</label>
-                  <input type="text" placeholder="e.g. 2024-2025" value={form.session} onChange={e => setForm(f=>({...f,session:e.target.value}))} required />
-                </div>
-                <div className="form-group">
-                  <label>Class Name</label>
-                  <input type="text" placeholder="e.g. 9" value={form.className} onChange={e => setForm(f=>({...f,className:e.target.value}))} />
+                  <select value={form.session} onChange={e => setForm(f=>({...f,session:e.target.value}))} required>
+                    {[...new Set([
+                      ...Array.from({length: 6}, (_, i) => { const yr = new Date().getFullYear() - 2 + i; return `${yr}-${yr+1}`; }),
+                      ...(distinctSessions as string[])
+                    ])].sort().reverse().map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
               </div>
               <div className="modal-footer">
