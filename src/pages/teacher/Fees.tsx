@@ -855,9 +855,6 @@ export default function Fees() {
                 <button className="btn-primary" onClick={shareReceipt}>
                   <Share2 size={18}/> Share / Download
                 </button>
-                <button className="btn-ghost" onClick={() => window.print()}>
-                  <Printer size={18}/> Print
-                </button>
               </div>
             </div>
           </div>
