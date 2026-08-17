@@ -733,6 +733,7 @@ export default function Fees() {
                     <th>Date</th>
                     <th>Name</th>
                     <th>Class</th>
+                    <th>Months Paid</th>
                     <th>Paid Via</th>
                     <th>Actions</th>
                   </tr>
@@ -759,7 +760,7 @@ export default function Fees() {
                     if (filtered.length === 0) {
                       return (
                         <tr>
-                          <td colSpan={5} className="text-center text-muted" style={{ padding: '24px 0' }}>
+                          <td colSpan={6} className="text-center text-muted" style={{ padding: '24px 0' }}>
                             No payments found in {formatMonthLabel(historyMonth + '-01')}.
                           </td>
                         </tr>
@@ -771,6 +772,11 @@ export default function Fees() {
                         <td>{p.datePaid ? format(p.datePaid.toDate(), 'dd MMM yyyy') : '—'}</td>
                         <td className="fw-600">{p.studentName || '—'}</td>
                         <td>{p.studentClass || '—'}</td>
+                        <td>
+                          <div className="subject-chips">
+                            {p.monthsPaid?.map(m => <span key={m} className="chip">{formatMonthLabel(m)}</span>)}
+                          </div>
+                        </td>
                         <td>{p.mode}</td>
                         <td>
                           <div className="action-btns">

@@ -53,6 +53,7 @@ export default function SchoolExams() {
   const [masterLoading, setMasterLoading] = useState(false);
 
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
+  const [isStudentLocked, setIsStudentLocked] = useState(false);
   const [form, setForm] = useState({
     examName: '', maxMarks: '', marksObtained: '',
     date: new Date().toISOString().split('T')[0],
@@ -126,6 +127,7 @@ export default function SchoolExams() {
 
   const openEditModal = (ex: SchoolExam) => {
     setEditingExamId(ex.id);
+    setIsStudentLocked(true);
     setForm({
       examName: ex.examName || '',
       maxMarks: ex.maxMarks?.toString() || '',
@@ -150,6 +152,7 @@ export default function SchoolExams() {
     if (!selectedStudent || !form.examName || subjects.length === 0) { toast.error('Fill required fields'); return; }
     setSaving(true);
     try {
+      const currentStudent = students.find(s => s.id === selectedStudent);
       const payload = {
         studentId: selectedStudent,
         examName: form.examName,
@@ -159,7 +162,7 @@ export default function SchoolExams() {
         date: Timestamp.fromDate(new Date(form.date)),
         percentage: Math.round((Number(form.marksObtained)/Number(form.maxMarks))*100),
         session: form.session || getCurrentSession(),
-        className: form.className || student?.class || ''
+        className: form.className || currentStudent?.class || ''
       };
 
       if (editingExamId) {
@@ -171,9 +174,12 @@ export default function SchoolExams() {
       }
 
       closeModal();
-      loadExams(selectedStudent);
-      setMasterExpandedClass(null);
-      setMasterClassExams([]);
+      if (selectedStudent) {
+        loadExams(selectedStudent);
+      }
+      if (masterExpandedClass) {
+        loadMasterExamsForClass(masterExpandedClass);
+      }
     } finally { setSaving(false); }
   };
 
@@ -181,19 +187,14 @@ export default function SchoolExams() {
     confirm('Are you sure you want to delete this result?', async () => {
       await deleteDoc(doc(db,'schoolExams',selectedStudent,'exams',id));
       loadExams(selectedStudent);
-      setMasterExpandedClass(null);
-      setMasterClassExams([]);
+      if (masterExpandedClass) {
+        loadMasterExamsForClass(masterExpandedClass);
+      }
       toast.success('Result deleted');
     });
   };
 
-  const handleToggleClass = async (className: string) => {
-    if (masterExpandedClass === className) {
-      setMasterExpandedClass(null);
-      return;
-    }
-    setMasterExpandedClass(className);
-    setMasterSubject('');
+  const loadMasterExamsForClass = async (className: string) => {
     setMasterLoading(true);
     try {
       const classStudents = students.filter(s => s.class === className && s.active !== false);
@@ -223,6 +224,16 @@ export default function SchoolExams() {
     }
   };
 
+  const handleToggleClass = async (className: string) => {
+    if (masterExpandedClass === className) {
+      setMasterExpandedClass(null);
+      return;
+    }
+    setMasterExpandedClass(className);
+    setMasterSubject('');
+    loadMasterExamsForClass(className);
+  };
+
   const masterClasses = [...new Set(students.filter(s => s.active !== false).map(s => s.class))].sort((a,b) => parseInt(a) - parseInt(b));
   
   // Master chart data
@@ -246,11 +257,24 @@ export default function SchoolExams() {
           <h1 className="page-title">School Exam Results</h1>
           <p className="page-sub">Track and visualize school exam performance</p>
         </div>
-        {selectedStudent && (
-          <button className="btn-primary" onClick={() => { setEditingExamId(null); setForm({ examName:'', maxMarks:'', marksObtained:'', date: new Date().toISOString().split('T')[0], session: selectedSession, className: student?.class || '' }); setSubjects([]); setShowModal(true); }}>
-            <Plus size={18}/> Add Result
-          </button>
-        )}
+        <button className="btn-primary" onClick={() => { 
+          const isStudentView = viewMode === 'student' && !!selectedStudent;
+          if (!isStudentView) setSelectedStudent(''); 
+          setIsStudentLocked(isStudentView);
+          setEditingExamId(null); 
+          setForm({ 
+            examName: '', 
+            maxMarks: '', 
+            marksObtained: '', 
+            date: new Date().toISOString().split('T')[0], 
+            session: (isStudentView ? selectedSession : '') || getCurrentSession(), 
+            className: (isStudentView ? student?.class : '') || '' 
+          }); 
+          setSubjects([]); 
+          setShowModal(true); 
+        }}>
+          <Plus size={18}/> Add Result
+        </button>
       </div>
 
       <div className="filter-bar" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
@@ -537,6 +561,36 @@ export default function SchoolExams() {
               <button className="modal-close" onClick={closeModal}><X size={20}/></button>
             </div>
             <form onSubmit={handleSave} className="modal-body">
+              <div className="form-group mb-16">
+                <label>Student *</label>
+                {isStudentLocked ? (
+                  <div className="fw-600" style={{ fontSize: 15, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    {students.find(s => s.id === selectedStudent)?.name || '—'} 
+                    <span style={{color: 'var(--text-muted)', fontSize: 13, marginLeft: 8}}>
+                      (Class {students.find(s => s.id === selectedStudent)?.class || '—'})
+                    </span>
+                  </div>
+                ) : (
+                  <select 
+                    className="input" 
+                    value={selectedStudent} 
+                    onChange={e => {
+                      const sid = e.target.value;
+                      setSelectedStudent(sid);
+                      const s = students.find(x => x.id === sid);
+                      if (s) {
+                        setForm(f => ({ ...f, session: s.session || getCurrentSession(), className: s.class || '' }));
+                      }
+                    }}
+                    required
+                  >
+                    <option value="">Select a student...</option>
+                    {students.filter(s => s.active !== false).map(s => (
+                      <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <div className="form-grid-2">
                 <div className="form-group">
                   <label>Exam Name *</label>
