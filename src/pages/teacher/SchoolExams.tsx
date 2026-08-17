@@ -331,11 +331,14 @@ export default function SchoolExams() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="exam" tick={{ fontSize: 12 }} padding={{ left: 30, right: 30 }} />
                 <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(v: any, name: any, props: any) => {
-                  const raw = props.payload?.__raw?.[name];
-                  if (raw) return [`${raw.obtained}/${raw.max}`, name];
-                  return [`${v}%`, name];
-                }} />
+                <Tooltip 
+                  wrapperStyle={{ zIndex: 1000 }}
+                  formatter={(v: any, name: any, props: any) => {
+                    const raw = props.payload?.__raw?.[name];
+                    if (raw) return [`${raw.obtained}/${raw.max}`, name];
+                    return [`${v}%`, name];
+                  }} 
+                />
                 <Legend />
                 {distinctSubjects.map((sub) => {
                   const renderCustomDot = (props: any) => {
@@ -473,11 +476,14 @@ export default function SchoolExams() {
                                         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                                         <XAxis dataKey="exam" tick={{ fontSize: 12 }} padding={{ left: 30, right: 30 }} />
                                         <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 12 }} />
-                                        <Tooltip formatter={(v: any, name: any, props: any) => {
-                                          const raw = props.payload?.__raw?.[name];
-                                          if (raw) return [`${raw.obtained}/${raw.max}`, name];
-                                          return [`${v}%`, name];
-                                        }} />
+                                        <Tooltip 
+                                          wrapperStyle={{ zIndex: 1000 }}
+                                          formatter={(v: any, name: any, props: any) => {
+                                            const raw = props.payload?.__raw?.[name];
+                                            if (raw) return [`${raw.obtained}/${raw.max}`, name];
+                                            return [`${v}%`, name];
+                                          }} 
+                                        />
                                         <Legend />
                                         {masterStudentsInSubject.map((sName, i) => {
                                           const color = COLORS[i % COLORS.length];
@@ -547,7 +553,7 @@ export default function SchoolExams() {
                     required
                   >
                     <option value="" disabled>Select subject...</option>
-                    {Array.from(new Set([...(student?.subjects || []), ...masterSubjects])).map(s => (
+                    {masterSubjects.map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
