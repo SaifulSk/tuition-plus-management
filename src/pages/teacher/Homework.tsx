@@ -19,6 +19,7 @@ export default function HomeworkPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [assignType, setAssignType] = useState<'class' | 'student'>('class');
+  const [studentFilterClass, setStudentFilterClass] = useState('');
   const [form, setForm] = useState({
     title: '', description: '', subject: '',
     targetClass: '',
@@ -50,6 +51,7 @@ export default function HomeworkPage() {
       setEditingId(hw.id);
       const isStudent = hw.targetType === 'student' || !!hw.targetStudentId;
       setAssignType(isStudent ? 'student' : 'class');
+      setStudentFilterClass(isStudent ? (hw.targetClass || '') : '');
       setForm({
         title: hw.title,
         description: hw.description,
@@ -61,6 +63,7 @@ export default function HomeworkPage() {
     } else {
       setEditingId(null);
       setAssignType('class');
+      setStudentFilterClass('');
       setForm({
         title: '', description: '', subject: '',
         targetClass: '',
@@ -282,27 +285,54 @@ export default function HomeworkPage() {
                   </select>
                 </div>
               ) : (
-                <div className="form-group mb-16">
-                  <label>Target Student *</label>
-                  <select 
-                    className="input" 
-                    value={form.targetStudentId} 
-                    onChange={e => {
-                      const sId = e.target.value;
-                      const st = students.find(s => s.id === sId);
-                      setForm(f => ({ 
-                        ...f, 
-                        targetStudentId: sId, 
-                        targetClass: st?.class || '' 
-                      }));
-                    }} 
-                    required
-                  >
-                    <option value="">Select student</option>
-                    {students.filter(s => s.active !== false).map(s => (
-                      <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
-                    ))}
-                  </select>
+                <div className="form-grid-2 mb-16">
+                  <div className="form-group">
+                    <label>Filter by Class</label>
+                    <select 
+                      className="input" 
+                      value={studentFilterClass} 
+                      onChange={e => {
+                        const newClass = e.target.value;
+                        setStudentFilterClass(newClass);
+                        if (newClass && form.targetStudentId) {
+                          const currentSt = students.find(s => s.id === form.targetStudentId);
+                          if (currentSt && currentSt.class !== newClass) {
+                            setForm(f => ({ ...f, targetStudentId: '', targetClass: newClass }));
+                          }
+                        }
+                      }}
+                    >
+                      <option value="">All Classes</option>
+                      {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Target Student *</label>
+                    <select 
+                      className="input" 
+                      value={form.targetStudentId} 
+                      onChange={e => {
+                        const sId = e.target.value;
+                        const st = students.find(s => s.id === sId);
+                        setForm(f => ({ 
+                          ...f, 
+                          targetStudentId: sId, 
+                          targetClass: st?.class || '' 
+                        }));
+                        if (st && !studentFilterClass) {
+                          setStudentFilterClass(st.class);
+                        }
+                      }} 
+                      required
+                    >
+                      <option value="">Select student</option>
+                      {students
+                        .filter(s => s.active !== false && (!studentFilterClass || s.class === studentFilterClass))
+                        .map(s => (
+                          <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                        ))}
+                    </select>
+                  </div>
                 </div>
               )}
 
