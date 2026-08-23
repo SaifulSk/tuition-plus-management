@@ -58,7 +58,7 @@ export default function AddEventModal({ isOpen, onClose, onSuccess, students }: 
 
       toast.success('Event created successfully!');
       setTitle('');
-      setType('celebration');
+      setType('picnic');
       setDescription('');
       setAttendees([]);
       onSuccess();
