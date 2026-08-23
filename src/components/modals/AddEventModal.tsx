@@ -5,7 +5,7 @@ import type { Student, EventType } from '../../types';
 import { X, PartyPopper } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const EVENT_TYPES: EventType[] = ['picnic', 'farewell', 'feast', 'celebration', 'workshop', 'competition', 'other'];
+const EVENT_TYPES: EventType[] = ['picnic', 'farewell', 'feast', 'study_trip', 'other'];
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -16,7 +16,7 @@ interface AddEventModalProps {
 
 export default function AddEventModal({ isOpen, onClose, onSuccess, students }: AddEventModalProps) {
   const [title, setTitle] = useState('');
-  const [type, setType] = useState<EventType>('celebration');
+  const [type, setType] = useState<EventType>('picnic');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
   const [attendees, setAttendees] = useState<string[]>([]);

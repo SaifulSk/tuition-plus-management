@@ -7,7 +7,7 @@ import { X, Wallet, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
-const PAYMENT_MODES: PaymentMode[] = ['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Other'];
+const PAYMENT_MODES: PaymentMode[] = ['Cash', 'PhonePe', 'Google Pay', 'Paytm', 'Online', 'Waived / Leave'];
 
 function formatMonthLabel(mStr: string) {
   if (!mStr) return '';

@@ -51,16 +51,6 @@ const minsToTime = (m: number) => {
   return `${h.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 };
 
-const DOT_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#a855f7', '#d946ef', '#f43f5e'];
-const getColorForCombo = (classStr: string, schoolStr: string) => {
-  const str = `${classStr}-${schoolStr}`;
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return DOT_COLORS[Math.abs(hash) % DOT_COLORS.length];
-};
-
 export default function Schedule() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState('');
