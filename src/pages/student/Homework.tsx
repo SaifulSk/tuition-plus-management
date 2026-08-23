@@ -31,7 +31,12 @@ export default function StudentHomework() {
       const hwSnap = await getDocs(query(collection(db, 'homework'), orderBy('dueDate', 'desc')));
       const allHw = hwSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Homework);
       
-      const myHw = allHw.filter(hw => hw.targetClass === studentClass && studentSubjects.includes(hw.subject));
+      const myHw = allHw.filter(hw => {
+        if (hw.targetType === 'student' || hw.targetStudentId) {
+          return hw.targetStudentId === sid && studentSubjects.includes(hw.subject);
+        }
+        return hw.targetClass === studentClass && studentSubjects.includes(hw.subject);
+      });
       setHomeworks(myHw);
     } catch (err: any) {
       toast.error(err.message);

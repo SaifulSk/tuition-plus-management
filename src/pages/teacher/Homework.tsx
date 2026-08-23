@@ -18,9 +18,11 @@ export default function HomeworkPage() {
   
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [assignType, setAssignType] = useState<'class' | 'student'>('class');
   const [form, setForm] = useState({
     title: '', description: '', subject: '',
     targetClass: '',
+    targetStudentId: '',
     dueDate: new Date().toISOString().split('T')[0]
   });
   const [saving, setSaving] = useState(false);
@@ -46,18 +48,23 @@ export default function HomeworkPage() {
   const openModal = (hw?: Homework) => {
     if (hw) {
       setEditingId(hw.id);
+      const isStudent = hw.targetType === 'student' || !!hw.targetStudentId;
+      setAssignType(isStudent ? 'student' : 'class');
       setForm({
         title: hw.title,
         description: hw.description,
         subject: hw.subject,
         targetClass: hw.targetClass || '',
+        targetStudentId: hw.targetStudentId || '',
         dueDate: hw.dueDate ? new Date(hw.dueDate.toDate().getTime() - hw.dueDate.toDate().getTimezoneOffset() * 60000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
       });
     } else {
       setEditingId(null);
+      setAssignType('class');
       setForm({
         title: '', description: '', subject: '',
         targetClass: '',
+        targetStudentId: '',
         dueDate: new Date().toISOString().split('T')[0]
       });
     }
@@ -66,16 +73,26 @@ export default function HomeworkPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || !form.subject || !form.targetClass) {
+    if (!form.title || !form.subject) {
       toast.error('Fill required fields'); return;
+    }
+    if (assignType === 'class' && !form.targetClass) {
+      toast.error('Please select a target class'); return;
+    }
+    if (assignType === 'student' && !form.targetStudentId) {
+      toast.error('Please select a target student'); return;
     }
     setSaving(true);
     try {
-      const payload = {
+      const targetStudent = assignType === 'student' ? students.find(s => s.id === form.targetStudentId) : null;
+      const payload: Partial<Homework> = {
         title: form.title,
         description: form.description,
         subject: form.subject,
-        targetClass: form.targetClass,
+        targetType: assignType,
+        targetClass: assignType === 'student' ? (targetStudent?.class || form.targetClass) : form.targetClass,
+        targetStudentId: assignType === 'student' ? form.targetStudentId : '',
+        targetStudentName: assignType === 'student' ? (targetStudent?.name || '') : '',
         dueDate: Timestamp.fromDate(new Date(form.dueDate)),
       };
 
@@ -134,7 +151,7 @@ export default function HomeworkPage() {
                 <tr>
                   <th style={{ paddingLeft: '24px' }}>Title</th>
                   <th>Subject</th>
-                  <th>Class</th>
+                  <th>Assigned To</th>
                   <th>Assigned</th>
                   <th>Due Date</th>
                   <th>Completion</th>
@@ -143,9 +160,14 @@ export default function HomeworkPage() {
               </thead>
               <tbody>
                 {homeworks.map(hw => {
-                  const targetStudents = students.filter(s => s.active !== false && s.class === hw.targetClass && (s.subjects || []).includes(hw.subject));
-                  const completed = hw.completedBy?.length || 0;
-                  const total = targetStudents.length;
+                  const isStudentHw = hw.targetType === 'student' || !!hw.targetStudentId;
+                  const targetStudents = isStudentHw 
+                    ? students.filter(s => s.id === hw.targetStudentId)
+                    : students.filter(s => s.active !== false && s.class === hw.targetClass && (s.subjects || []).includes(hw.subject));
+                  const completed = isStudentHw 
+                    ? (hw.completedBy?.includes(hw.targetStudentId!) ? 1 : 0)
+                    : (hw.completedBy?.length || 0);
+                  const total = isStudentHw ? 1 : targetStudents.length;
                   const pct = total ? Math.round((completed / total) * 100) : 0;
                   return (
                     <tr key={hw.id}>
@@ -154,7 +176,18 @@ export default function HomeworkPage() {
                         {hw.description && <div className="text-muted text-sm" style={{ maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hw.description}</div>}
                       </td>
                       <td><span className="badge badge-gray">{formatSubjects([hw.subject])}</span></td>
-                      <td>{hw.targetClass}</td>
+                      <td>
+                        {isStudentHw ? (
+                          <span>
+                            <span className="fw-600">{hw.targetStudentName || students.find(s => s.id === hw.targetStudentId)?.name || 'Student'}</span>
+                            <span className="text-muted text-sm" style={{ marginLeft: 4 }}>
+                              (Class {hw.targetClass || students.find(s => s.id === hw.targetStudentId)?.class})
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="badge badge-blue">Class {hw.targetClass}</span>
+                        )}
+                      </td>
                       <td>{hw.assignedDate ? format(hw.assignedDate.toDate(), 'dd MMM yyyy') : '—'}</td>
                       <td>
                         <span className={`badge ${hw.dueDate.toDate() < new Date() ? 'badge-red' : 'badge-green'}`}>
@@ -213,13 +246,66 @@ export default function HomeworkPage() {
                   <input type="date" className="input" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} required />
                 </div>
               </div>
+
               <div className="form-group mt-16 mb-16">
-                <label>Target Class *</label>
-                <select className="input" value={form.targetClass} onChange={e => setForm(f => ({ ...f, targetClass: e.target.value }))} required>
-                  <option value="">Select class</option>
-                  {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
-                </select>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Assign To *</label>
+                <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 500 }}>
+                    <input 
+                      type="radio" 
+                      name="assignType" 
+                      value="class" 
+                      checked={assignType === 'class'} 
+                      onChange={() => setAssignType('class')} 
+                    />
+                    Class
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 500 }}>
+                    <input 
+                      type="radio" 
+                      name="assignType" 
+                      value="student" 
+                      checked={assignType === 'student'} 
+                      onChange={() => setAssignType('student')} 
+                    />
+                    Student
+                  </label>
+                </div>
               </div>
+
+              {assignType === 'class' ? (
+                <div className="form-group mb-16">
+                  <label>Target Class *</label>
+                  <select className="input" value={form.targetClass} onChange={e => setForm(f => ({ ...f, targetClass: e.target.value }))} required>
+                    <option value="">Select class</option>
+                    {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+                  </select>
+                </div>
+              ) : (
+                <div className="form-group mb-16">
+                  <label>Target Student *</label>
+                  <select 
+                    className="input" 
+                    value={form.targetStudentId} 
+                    onChange={e => {
+                      const sId = e.target.value;
+                      const st = students.find(s => s.id === sId);
+                      setForm(f => ({ 
+                        ...f, 
+                        targetStudentId: sId, 
+                        targetClass: st?.class || '' 
+                      }));
+                    }} 
+                    required
+                  >
+                    <option value="">Select student</option>
+                    {students.filter(s => s.active !== false).map(s => (
+                      <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="modal-footer">
                 <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>

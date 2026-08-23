@@ -103,7 +103,12 @@ export default function StudentDetail() {
       if (studentData) {
         const hwSnap = await getDocs(query(collection(db, 'homework'), orderBy('dueDate', 'desc')));
         const allHw = hwSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Homework);
-        setHomeworks(allHw.filter(h => h.targetClass === studentData!.class && studentData!.subjects?.includes(h.subject)));
+        setHomeworks(allHw.filter(h => {
+          if (h.targetType === 'student' || h.targetStudentId) {
+            return h.targetStudentId === id && studentData!.subjects?.includes(h.subject);
+          }
+          return h.targetClass === studentData!.class && studentData!.subjects?.includes(h.subject);
+        }));
       }
 
       const evSnap = await getDocs(query(collection(db, 'events'), orderBy('date', 'desc')));

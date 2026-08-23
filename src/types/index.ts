@@ -121,7 +121,10 @@ export interface Homework {
   title: string;
   description: string;
   subject: string;
-  targetClass: string; // e.g., "9"
+  targetType?: 'class' | 'student';
+  targetClass?: string; // e.g., "9"
+  targetStudentId?: string;
+  targetStudentName?: string;
   dueDate: Timestamp;
   assignedDate: Timestamp;
   completedBy: string[]; // Array of student IDs
