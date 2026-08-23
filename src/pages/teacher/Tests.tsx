@@ -28,6 +28,7 @@ export default function Tests() {
   });
   const { masterSubjects, formatSubjects } = useSubjects();
   const [subjects, setSubjects] = useState<string[]>([]);
+  const [filterClass, setFilterClass] = useState('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
@@ -73,6 +74,7 @@ export default function Tests() {
   const closeModal = () => {
     setShowModal(false);
     setEditingTestId(null);
+    setFilterClass('');
     setForm(f => ({ ...f, title:'', maxMarks:'', marks: Object.fromEntries(students.map(s=>[s.id,''])) }));
     setSubjects([]);
     setSelectedStudentIds([]);
@@ -244,14 +246,32 @@ export default function Tests() {
               </div>
               <h3 className="section-title mt-8">Student Marks</h3>
               
-              <div className="form-group mb-16">
-                <label>Select Students *</label>
-                <MultiSelectObj
-                  options={students.map(s => ({ value: s.id, label: `${s.name} (Class ${s.class})` }))}
-                  selected={selectedStudentIds}
-                  onChange={setSelectedStudentIds}
-                  placeholder="Select students to mark"
-                />
+              <div className="form-grid-2 mb-16">
+                <div className="form-group">
+                  <label>Filter by Class</label>
+                  <select 
+                    value={filterClass} 
+                    onChange={e => {
+                      setFilterClass(e.target.value);
+                      if (e.target.value) {
+                        const validIds = new Set(students.filter(s => s.active !== false && s.class === e.target.value).map(s => s.id));
+                        setSelectedStudentIds(prev => prev.filter(id => validIds.has(id)));
+                      }
+                    }}
+                  >
+                    <option value="">All Classes</option>
+                    {['1','2','3','4','5','6','7','8','9','10','11','12'].map(c => <option key={c} value={c}>Class {c}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Select Students *</label>
+                  <MultiSelectObj
+                    options={students.filter(s => s.active !== false && (!filterClass || s.class === filterClass)).map(s => ({ value: s.id, label: `${s.name} (Class ${s.class})` }))}
+                    selected={selectedStudentIds}
+                    onChange={setSelectedStudentIds}
+                    placeholder="Select students to mark"
+                  />
+                </div>
               </div>
 
               {selectedStudentIds.length > 0 && (

@@ -6,6 +6,8 @@ import type { Student } from '../../types';
 import { X, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+
 function getCurrentSession() {
   const now = new Date();
   const year = now.getFullYear();
@@ -26,6 +28,7 @@ interface AddExamResultModalProps {
 
 export default function AddExamResultModal({ isOpen, onClose, onSuccess, students }: AddExamResultModalProps) {
   const { masterSubjects } = useSubjects();
+  const [filterClass, setFilterClass] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [availableExamNames, setAvailableExamNames] = useState<string[]>([]);
   const [examName, setExamName] = useState('');
@@ -47,6 +50,8 @@ export default function AddExamResultModal({ isOpen, onClose, onSuccess, student
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const filteredStudents = students.filter(s => s.active !== false && (!filterClass || s.class === filterClass));
 
   const sessionOptions = [...new Set([
     ...Array.from({ length: 6 }, (_, i) => {
@@ -87,6 +92,7 @@ export default function AddExamResultModal({ isOpen, onClose, onSuccess, student
       setMaxMarks('');
       setMarksObtained('');
       setSelectedStudentId('');
+      setFilterClass('');
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -108,25 +114,47 @@ export default function AddExamResultModal({ isOpen, onClose, onSuccess, student
         </div>
 
         <form onSubmit={handleSave} className="modal-body">
-          <div className="form-group">
-            <label>Student *</label>
-            <select 
-              value={selectedStudentId} 
-              onChange={e => {
-                const sid = e.target.value;
-                setSelectedStudentId(sid);
-                const st = students.find(s => s.id === sid);
-                if (st) {
-                  setSession(st.session || getCurrentSession());
-                }
-              }} 
-              required
-            >
-              <option value="">Select a student...</option>
-              {students.filter(s => s.active !== false).map(s => (
-                <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
-              ))}
-            </select>
+          <div className="form-grid-2">
+            <div className="form-group">
+              <label>Filter by Class</label>
+              <select 
+                value={filterClass} 
+                onChange={e => {
+                  setFilterClass(e.target.value);
+                  if (selectedStudentId) {
+                    const st = students.find(s => s.id === selectedStudentId);
+                    if (st && e.target.value && st.class !== e.target.value) {
+                      setSelectedStudentId('');
+                    }
+                  }
+                }}
+              >
+                <option value="">All Classes</option>
+                {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Student *</label>
+              <select 
+                value={selectedStudentId} 
+                onChange={e => {
+                  const sid = e.target.value;
+                  setSelectedStudentId(sid);
+                  const st = students.find(s => s.id === sid);
+                  if (st) {
+                    setSession(st.session || getCurrentSession());
+                    if (!filterClass) setFilterClass(st.class);
+                  }
+                }} 
+                required
+              >
+                <option value="">Select a student...</option>
+                {filteredStudents.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="form-grid-2">

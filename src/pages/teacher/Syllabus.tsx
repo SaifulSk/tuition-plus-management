@@ -43,6 +43,7 @@ export default function Syllabus() {
   const [topics, setTopics] = useState<SyllabusTopic[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [modalStudentId, setModalStudentId] = useState('');
+  const [modalFilterClass, setModalFilterClass] = useState('');
   const [isStudentLocked, setIsStudentLocked] = useState(false);
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
   const [form, setForm] = useState({ chapter: '', topic: '', status: 'not_started' as SyllabusStatus });
@@ -126,6 +127,7 @@ export default function Syllabus() {
     setShowModal(false);
     setEditingTopicId(null);
     setModalStudentId('');
+    setModalFilterClass('');
     setIsStudentLocked(false);
     setForm({ chapter: '', topic: '', status: 'not_started' });
     setSubjects([]);
@@ -633,19 +635,43 @@ export default function Syllabus() {
             </div>
             <form onSubmit={handleSave} className="modal-body">
               {!isStudentLocked && (
-                <div className="form-group">
-                  <label>Student *</label>
-                  <select
-                    value={modalStudentId}
-                    onChange={e => setModalStudentId(e.target.value)}
-                    required
-                    disabled={isStudentLocked}
-                  >
-                    <option value="">— Select a student —</option>
-                    {students.map(st => (
-                      <option key={st.id} value={st.id}>{st.name} ({st.class})</option>
-                    ))}
-                  </select>
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label>Filter by Class</label>
+                    <select
+                      value={modalFilterClass}
+                      onChange={e => {
+                        setModalFilterClass(e.target.value);
+                        if (modalStudentId) {
+                          const st = students.find(s => s.id === modalStudentId);
+                          if (st && e.target.value && st.class !== e.target.value) {
+                            setModalStudentId('');
+                          }
+                        }
+                      }}
+                    >
+                      <option value="">All Classes</option>
+                      {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Student *</label>
+                    <select
+                      value={modalStudentId}
+                      onChange={e => {
+                        setModalStudentId(e.target.value);
+                        const st = students.find(s => s.id === e.target.value);
+                        if (st && !modalFilterClass) setModalFilterClass(st.class);
+                      }}
+                      required
+                      disabled={isStudentLocked}
+                    >
+                      <option value="">— Select a student —</option>
+                      {students.filter(st => st.active !== false && (!modalFilterClass || st.class === modalFilterClass)).map(st => (
+                        <option key={st.id} value={st.id}>{st.name} ({st.class})</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               )}
               <div className="form-group">

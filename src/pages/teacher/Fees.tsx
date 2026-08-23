@@ -42,6 +42,7 @@ export default function Fees() {
   const [showPaymentAmounts, setShowPaymentAmounts] = useState<Record<string, boolean>>({});
   const [showDueModal, setShowDueModal] = useState(false);
   const [isStudentLocked, setIsStudentLocked] = useState(false);
+  const [modalFilterClass, setModalFilterClass] = useState('');
 
   const [viewMode, setViewMode] = useState<'student' | 'master' | 'history'>('master');
   const [historyMonth, setHistoryMonth] = useState<string>(new Date().toISOString().slice(0, 7));
@@ -134,6 +135,7 @@ export default function Fees() {
   const closeModal = () => {
     setShowModal(false);
     setEditingPaymentId(null);
+    setModalFilterClass('');
     setTransactions([{ id: Date.now().toString(), mode:'Cash', datePaid: new Date().toISOString().split('T')[0], monthInput: new Date().toISOString().slice(0,7), monthsPaid: [] }]);
   };
 
@@ -609,29 +611,57 @@ export default function Fees() {
               <button className="modal-close" onClick={closeModal}><X size={20}/></button>
             </div>
             <form onSubmit={handleSave} className="modal-body">
-              <div className="form-group">
-                <label>Student *</label>
-                {isStudentLocked ? (
+              {isStudentLocked ? (
+                <div className="form-group">
+                  <label>Student *</label>
                   <div className="fw-600" style={{ fontSize: 15, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
                     {students.find(s => s.id === selectedStudent)?.name || '—'} 
                     <span style={{color: 'var(--text-muted)', fontSize: 13, marginLeft: 8}}>
                       (Class {students.find(s => s.id === selectedStudent)?.class || '—'})
                     </span>
                   </div>
-                ) : (
-                  <select 
-                    className="input" 
-                    value={selectedStudent} 
-                    onChange={e => setSelectedStudent(e.target.value)}
-                    required
-                  >
-                    <option value="">Select a student...</option>
-                    {students.map(s => (
-                      <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
-                    ))}
-                  </select>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label>Filter by Class</label>
+                    <select 
+                      className="input" 
+                      value={modalFilterClass} 
+                      onChange={e => {
+                        setModalFilterClass(e.target.value);
+                        if (selectedStudent) {
+                          const st = students.find(s => s.id === selectedStudent);
+                          if (st && e.target.value && st.class !== e.target.value) {
+                            setSelectedStudent('');
+                          }
+                        }
+                      }}
+                    >
+                      <option value="">All Classes</option>
+                      {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Student *</label>
+                    <select 
+                      className="input" 
+                      value={selectedStudent} 
+                      onChange={e => {
+                        setSelectedStudent(e.target.value);
+                        const st = students.find(s => s.id === e.target.value);
+                        if (st && !modalFilterClass) setModalFilterClass(st.class);
+                      }}
+                      required
+                    >
+                      <option value="">Select a student...</option>
+                      {students.filter(s => s.active !== false && (!modalFilterClass || s.class === modalFilterClass)).map(s => (
+                        <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
               {transactions.map((t, idx) => (
                 <div key={t.id} style={{ marginBottom: transactions.length > 1 ? 24 : 0, paddingBottom: transactions.length > 1 ? 24 : 0, borderBottom: transactions.length > 1 && idx < transactions.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
                   {transactions.length > 1 && (

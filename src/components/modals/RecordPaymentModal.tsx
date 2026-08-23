@@ -6,6 +6,7 @@ import type { Student, PaymentMode, FeePayment } from '../../types';
 import { X, Wallet, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 const PAYMENT_MODES: PaymentMode[] = ['Cash', 'PhonePe', 'Google Pay', 'Paytm', 'Online', 'Waived / Leave'];
 
 function formatMonthLabel(mStr: string) {
@@ -31,6 +32,7 @@ interface RecordPaymentModalProps {
 }
 
 export default function RecordPaymentModal({ isOpen, onClose, onSuccess, students }: RecordPaymentModalProps) {
+  const [filterClass, setFilterClass] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [transactions, setTransactions] = useState<TransactionItem[]>([
     {
@@ -45,6 +47,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSuccess, student
 
   if (!isOpen) return null;
 
+  const filteredStudents = students.filter(s => s.active !== false && (!filterClass || s.class === filterClass));
   const selectedStudent = students.find(s => s.id === selectedStudentId);
 
   const addMonth = (tId: string) => {
@@ -98,6 +101,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSuccess, student
         monthsPaid: []
       }]);
       setSelectedStudentId('');
+      setFilterClass('');
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -119,18 +123,43 @@ export default function RecordPaymentModal({ isOpen, onClose, onSuccess, student
         </div>
 
         <form onSubmit={handleSave} className="modal-body">
-          <div className="form-group">
-            <label>Student *</label>
-            <select 
-              value={selectedStudentId} 
-              onChange={e => setSelectedStudentId(e.target.value)} 
-              required
-            >
-              <option value="">Select a student...</option>
-              {students.filter(s => s.active !== false).map(s => (
-                <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
-              ))}
-            </select>
+          <div className="form-grid-2">
+            <div className="form-group">
+              <label>Filter by Class</label>
+              <select 
+                value={filterClass} 
+                onChange={e => {
+                  setFilterClass(e.target.value);
+                  if (selectedStudentId) {
+                    const st = students.find(s => s.id === selectedStudentId);
+                    if (st && e.target.value && st.class !== e.target.value) {
+                      setSelectedStudentId('');
+                    }
+                  }
+                }}
+              >
+                <option value="">All Classes</option>
+                {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Student *</label>
+              <select 
+                value={selectedStudentId} 
+                onChange={e => {
+                  setSelectedStudentId(e.target.value);
+                  const st = students.find(s => s.id === e.target.value);
+                  if (st && !filterClass) setFilterClass(st.class);
+                }} 
+                required
+              >
+                <option value="">Select a student...</option>
+                {filteredStudents.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {transactions.map((t, idx) => (

@@ -64,6 +64,7 @@ export default function Schedule() {
   const [allSlots, setAllSlots] = useState<ScheduleSlot[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
+  const [modalFilterClass, setModalFilterClass] = useState('');
   
   // Operating Hours State
   const [operatingHours, setOperatingHours] = useState<OperatingHours>(DEFAULT_OPERATING_HOURS);
@@ -153,6 +154,7 @@ export default function Schedule() {
     setShowModal(false);
     setEditingSlotId(null);
     setModalStudentId('');
+    setModalFilterClass('');
     setForms([DEFAULT_FORM]);
   };
 
@@ -725,24 +727,56 @@ export default function Schedule() {
               <button className="modal-close" onClick={closeModal}><X size={20}/></button>
             </div>
             <form onSubmit={handleSave} className="modal-body">
-              <div className="form-group" style={{ marginBottom: '24px' }}>
-                <label>Select Student *</label>
-                {isStudentLocked ? (
+              {isStudentLocked ? (
+                <div className="form-group" style={{ marginBottom: '24px' }}>
+                  <label>Select Student *</label>
                   <div className="fw-600" style={{ fontSize: 15, padding: '10px 14px', background: 'var(--surface-2)', borderRadius: 8, border: '1px solid var(--border)' }}>
                     {students.find(s => s.id === modalStudentId)?.name || '—'} 
                     <span style={{color: 'var(--text-muted)', fontSize: 13, marginLeft: 8}}>
                       (Class {students.find(s => s.id === modalStudentId)?.class || '—'})
                     </span>
                   </div>
-                ) : (
-                  <select value={modalStudentId} onChange={e => setModalStudentId(e.target.value)} disabled={!!editingSlotId} required>
-                    <option value="">— Choose a student —</option>
-                    {students.map(s => (
-                      <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
-                    ))}
-                  </select>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="form-grid-2" style={{ marginBottom: '24px' }}>
+                  <div className="form-group">
+                    <label>Filter by Class</label>
+                    <select 
+                      value={modalFilterClass} 
+                      onChange={e => {
+                        setModalFilterClass(e.target.value);
+                        if (modalStudentId) {
+                          const st = students.find(s => s.id === modalStudentId);
+                          if (st && e.target.value && st.class !== e.target.value) {
+                            setModalStudentId('');
+                          }
+                        }
+                      }}
+                    >
+                      <option value="">All Classes</option>
+                      {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Select Student *</label>
+                    <select 
+                      value={modalStudentId} 
+                      onChange={e => {
+                        setModalStudentId(e.target.value);
+                        const st = students.find(s => s.id === e.target.value);
+                        if (st && !modalFilterClass) setModalFilterClass(st.class);
+                      }} 
+                      disabled={!!editingSlotId} 
+                      required
+                    >
+                      <option value="">— Choose a student —</option>
+                      {students.filter(s => s.active !== false && (!modalFilterClass || s.class === modalFilterClass)).map(s => (
+                        <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
 
               {forms.map((form, index) => (
                 <div key={index} style={{ background: 'var(--surface-2)', padding: '16px', borderRadius: '8px', marginBottom: '16px', position: 'relative' }}>

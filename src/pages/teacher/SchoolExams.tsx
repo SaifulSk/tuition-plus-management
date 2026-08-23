@@ -54,6 +54,7 @@ export default function SchoolExams() {
 
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
   const [isStudentLocked, setIsStudentLocked] = useState(false);
+  const [modalFilterClass, setModalFilterClass] = useState('');
   const [form, setForm] = useState({
     examName: '', maxMarks: '', marksObtained: '',
     session: '', className: ''
@@ -141,6 +142,7 @@ export default function SchoolExams() {
   const closeModal = () => {
     setShowModal(false);
     setEditingExamId(null);
+    setModalFilterClass('');
     setForm({ examName:'', maxMarks:'', marksObtained:'', session: '', className: '' });
     setSubjects([]);
   };
@@ -558,36 +560,61 @@ export default function SchoolExams() {
               <button className="modal-close" onClick={closeModal}><X size={20}/></button>
             </div>
             <form onSubmit={handleSave} className="modal-body">
-              <div className="form-group mb-16">
-                <label>Student *</label>
-                {isStudentLocked ? (
+              {isStudentLocked ? (
+                <div className="form-group mb-16">
+                  <label>Student *</label>
                   <div className="fw-600" style={{ fontSize: 15, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
                     {students.find(s => s.id === selectedStudent)?.name || '—'} 
                     <span style={{color: 'var(--text-muted)', fontSize: 13, marginLeft: 8}}>
                       (Class {students.find(s => s.id === selectedStudent)?.class || '—'})
                     </span>
                   </div>
-                ) : (
-                  <select 
-                    className="input" 
-                    value={selectedStudent} 
-                    onChange={e => {
-                      const sid = e.target.value;
-                      setSelectedStudent(sid);
-                      const s = students.find(x => x.id === sid);
-                      if (s) {
-                        setForm(f => ({ ...f, session: s.session || getCurrentSession(), className: s.class || '' }));
-                      }
-                    }}
-                    required
-                  >
-                    <option value="">Select a student...</option>
-                    {students.filter(s => s.active !== false).map(s => (
-                      <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
-                    ))}
-                  </select>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="form-grid-2 mb-16">
+                  <div className="form-group">
+                    <label>Filter by Class</label>
+                    <select 
+                      className="input" 
+                      value={modalFilterClass} 
+                      onChange={e => {
+                        setModalFilterClass(e.target.value);
+                        if (selectedStudent) {
+                          const st = students.find(s => s.id === selectedStudent);
+                          if (st && e.target.value && st.class !== e.target.value) {
+                            setSelectedStudent('');
+                          }
+                        }
+                      }}
+                    >
+                      <option value="">All Classes</option>
+                      {['1','2','3','4','5','6','7','8','9','10','11','12'].map(c => <option key={c} value={c}>Class {c}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Student *</label>
+                    <select 
+                      className="input" 
+                      value={selectedStudent} 
+                      onChange={e => {
+                        const sid = e.target.value;
+                        setSelectedStudent(sid);
+                        const s = students.find(x => x.id === sid);
+                        if (s) {
+                          setForm(f => ({ ...f, session: s.session || getCurrentSession(), className: s.class || '' }));
+                          if (!modalFilterClass) setModalFilterClass(s.class);
+                        }
+                      }}
+                      required
+                    >
+                      <option value="">Select a student...</option>
+                      {students.filter(s => s.active !== false && (!modalFilterClass || s.class === modalFilterClass)).map(s => (
+                        <option key={s.id} value={s.id}>{s.name} (Class {s.class})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
               <div className="form-grid-2">
                 <div className="form-group">
                   <label>Exam Name *</label>

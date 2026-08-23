@@ -7,6 +7,8 @@ import type { Student } from '../../types';
 import { X, ClipboardList } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+
 interface LogTestModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -16,6 +18,7 @@ interface LogTestModalProps {
 
 export default function LogTestModal({ isOpen, onClose, onSuccess, students }: LogTestModalProps) {
   const { masterSubjects } = useSubjects();
+  const [filterClass, setFilterClass] = useState('');
   const [form, setForm] = useState({
     title: '',
     date: new Date().toISOString().split('T')[0],
@@ -27,6 +30,8 @@ export default function LogTestModal({ isOpen, onClose, onSuccess, students }: L
   const [saving, setSaving] = useState(false);
 
   if (!isOpen) return null;
+
+  const filteredStudents = students.filter(s => s.active !== false && (!filterClass || s.class === filterClass));
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +70,7 @@ export default function LogTestModal({ isOpen, onClose, onSuccess, students }: L
       });
       setSubject('');
       setSelectedStudentIds([]);
+      setFilterClass('');
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -131,14 +137,33 @@ export default function LogTestModal({ isOpen, onClose, onSuccess, students }: L
 
           <h3 className="section-title mt-8">Student Marks</h3>
 
-          <div className="form-group mb-16">
-            <label>Select Students *</label>
-            <MultiSelectObj
-              options={students.filter(s => s.active !== false).map(s => ({ value: s.id, label: `${s.name} (Class ${s.class})` }))}
-              selected={selectedStudentIds}
-              onChange={setSelectedStudentIds}
-              placeholder="Select students to mark"
-            />
+          <div className="form-grid-2 mb-16">
+            <div className="form-group">
+              <label>Filter by Class</label>
+              <select 
+                value={filterClass} 
+                onChange={e => {
+                  setFilterClass(e.target.value);
+                  if (e.target.value) {
+                    const validIds = new Set(students.filter(s => s.active !== false && s.class === e.target.value).map(s => s.id));
+                    setSelectedStudentIds(prev => prev.filter(id => validIds.has(id)));
+                  }
+                }}
+              >
+                <option value="">All Classes</option>
+                {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Select Students *</label>
+              <MultiSelectObj
+                options={filteredStudents.map(s => ({ value: s.id, label: `${s.name} (Class ${s.class})` }))}
+                selected={selectedStudentIds}
+                onChange={setSelectedStudentIds}
+                placeholder="Select students to mark"
+              />
+            </div>
           </div>
 
           {selectedStudentIds.length > 0 && (
