@@ -6,8 +6,6 @@ import type { Student } from '../../types';
 import { X, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
-
 function getCurrentSession() {
   const now = new Date();
   const year = now.getFullYear();
@@ -28,7 +26,6 @@ interface AddExamResultModalProps {
 
 export default function AddExamResultModal({ isOpen, onClose, onSuccess, students }: AddExamResultModalProps) {
   const { masterSubjects } = useSubjects();
-  const [filterClass, setFilterClass] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [availableExamNames, setAvailableExamNames] = useState<string[]>([]);
   const [examName, setExamName] = useState('');
@@ -50,8 +47,6 @@ export default function AddExamResultModal({ isOpen, onClose, onSuccess, student
   }, [isOpen]);
 
   if (!isOpen) return null;
-
-  const filteredStudents = students.filter(s => s.active !== false && (!filterClass || s.class === filterClass));
 
   const sessionOptions = [...new Set([
     ...Array.from({ length: 6 }, (_, i) => {

@@ -264,7 +264,6 @@ export default function SchoolExams() {
             examName: '', 
             maxMarks: '', 
             marksObtained: '', 
-            date: new Date().toISOString().split('T')[0], 
             session: (isStudentView ? selectedSession : '') || getCurrentSession(), 
             className: (isStudentView ? student?.class : '') || '' 
           }); 
