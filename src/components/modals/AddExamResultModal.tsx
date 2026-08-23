@@ -87,7 +87,6 @@ export default function AddExamResultModal({ isOpen, onClose, onSuccess, student
       setMaxMarks('');
       setMarksObtained('');
       setSelectedStudentId('');
-      setFilterClass('');
       onSuccess();
       onClose();
     } catch (err: any) {
