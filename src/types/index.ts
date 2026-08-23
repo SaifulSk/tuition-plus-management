@@ -123,6 +123,7 @@ export interface Homework {
   subject: string;
   targetType?: 'class' | 'student';
   targetClass?: string; // e.g., "9"
+  targetSchool?: string; // e.g., "KECS"
   targetStudentId?: string;
   targetStudentName?: string;
   dueDate: Timestamp;

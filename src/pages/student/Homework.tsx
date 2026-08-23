@@ -25,6 +25,7 @@ export default function StudentHomework() {
       const sSnap = await getDocs(collection(db, 'students'));
       const st = sSnap.docs.find(d => d.id === sid);
       const studentClass = st?.data().class;
+      const studentSchool = st?.data().school;
       const studentSubjects = st?.data().subjects || [];
       if (!studentClass) { setLoading(false); return; }
 
@@ -35,7 +36,9 @@ export default function StudentHomework() {
         if (hw.targetType === 'student' || hw.targetStudentId) {
           return hw.targetStudentId === sid && studentSubjects.includes(hw.subject);
         }
-        return hw.targetClass === studentClass && studentSubjects.includes(hw.subject);
+        const matchesClass = hw.targetClass === studentClass;
+        const matchesSchool = !hw.targetSchool || hw.targetSchool === studentSchool;
+        return matchesClass && matchesSchool && studentSubjects.includes(hw.subject);
       });
       setHomeworks(myHw);
     } catch (err: any) {

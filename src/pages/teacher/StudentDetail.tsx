@@ -107,7 +107,9 @@ export default function StudentDetail() {
           if (h.targetType === 'student' || h.targetStudentId) {
             return h.targetStudentId === id && studentData!.subjects?.includes(h.subject);
           }
-          return h.targetClass === studentData!.class && studentData!.subjects?.includes(h.subject);
+          const matchesClass = h.targetClass === studentData!.class;
+          const matchesSchool = !h.targetSchool || h.targetSchool === studentData!.school;
+          return matchesClass && matchesSchool && studentData!.subjects?.includes(h.subject);
         }));
       }
 

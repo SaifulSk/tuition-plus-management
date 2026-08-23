@@ -13,6 +13,7 @@ const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 export default function HomeworkPage() {
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [schools, setSchools] = useState<string[]>([]);
   const { masterSubjects: subjects, formatSubjects } = useSubjects();
   const [loading, setLoading] = useState(true);
   
@@ -23,6 +24,7 @@ export default function HomeworkPage() {
   const [form, setForm] = useState({
     title: '', description: '', subject: '',
     targetClass: '',
+    targetSchool: '',
     targetStudentId: '',
     dueDate: new Date().toISOString().split('T')[0]
   });
@@ -36,7 +38,13 @@ export default function HomeworkPage() {
       setHomeworks(hwSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Homework));
       
       const stSnap = await getDocs(collection(db, 'students'));
-      setStudents(stSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false));
+      const loadedStudents = stSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false);
+      setStudents(loadedStudents);
+
+      const schSnap = await getDocs(query(collection(db, 'schools'), orderBy('name')));
+      const schNames = schSnap.docs.map(d => d.data().name as string).filter(Boolean);
+      const allSchools = [...new Set([...schNames, ...loadedStudents.map(s => s.school).filter(Boolean)])].sort();
+      setSchools(allSchools);
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -57,6 +65,7 @@ export default function HomeworkPage() {
         description: hw.description,
         subject: hw.subject,
         targetClass: hw.targetClass || '',
+        targetSchool: hw.targetSchool || '',
         targetStudentId: hw.targetStudentId || '',
         dueDate: hw.dueDate ? new Date(hw.dueDate.toDate().getTime() - hw.dueDate.toDate().getTimezoneOffset() * 60000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
       });
@@ -67,6 +76,7 @@ export default function HomeworkPage() {
       setForm({
         title: '', description: '', subject: '',
         targetClass: '',
+        targetSchool: '',
         targetStudentId: '',
         dueDate: new Date().toISOString().split('T')[0]
       });
@@ -94,6 +104,7 @@ export default function HomeworkPage() {
         subject: form.subject,
         targetType: assignType,
         targetClass: assignType === 'student' ? (targetStudent?.class || form.targetClass) : form.targetClass,
+        targetSchool: assignType === 'class' ? (form.targetSchool || '') : (targetStudent?.school || ''),
         targetStudentId: assignType === 'student' ? form.targetStudentId : '',
         targetStudentName: assignType === 'student' ? (targetStudent?.name || '') : '',
         dueDate: Timestamp.fromDate(new Date(form.dueDate)),
@@ -166,7 +177,12 @@ export default function HomeworkPage() {
                   const isStudentHw = hw.targetType === 'student' || !!hw.targetStudentId;
                   const targetStudents = isStudentHw 
                     ? students.filter(s => s.id === hw.targetStudentId)
-                    : students.filter(s => s.active !== false && s.class === hw.targetClass && (s.subjects || []).includes(hw.subject));
+                    : students.filter(s => 
+                        s.active !== false && 
+                        s.class === hw.targetClass && 
+                        (!hw.targetSchool || s.school === hw.targetSchool) &&
+                        (s.subjects || []).includes(hw.subject)
+                      );
                   const completed = isStudentHw 
                     ? (hw.completedBy?.includes(hw.targetStudentId!) ? 1 : 0)
                     : (hw.completedBy?.length || 0);
@@ -188,7 +204,12 @@ export default function HomeworkPage() {
                             </span>
                           </span>
                         ) : (
-                          <span className="badge badge-blue">Class {hw.targetClass}</span>
+                          <span>
+                            <span className="badge badge-blue">Class {hw.targetClass}</span>
+                            {hw.targetSchool && (
+                              <span className="badge badge-gray" style={{ marginLeft: 6 }}>{hw.targetSchool}</span>
+                            )}
+                          </span>
                         )}
                       </td>
                       <td>{hw.assignedDate ? format(hw.assignedDate.toDate(), 'dd MMM yyyy') : '—'}</td>
@@ -277,12 +298,30 @@ export default function HomeworkPage() {
               </div>
 
               {assignType === 'class' ? (
-                <div className="form-group mb-16">
-                  <label>Target Class *</label>
-                  <select className="input" value={form.targetClass} onChange={e => setForm(f => ({ ...f, targetClass: e.target.value }))} required>
-                    <option value="">Select class</option>
-                    {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
-                  </select>
+                <div className="form-grid-2 mb-16">
+                  <div className="form-group">
+                    <label>School</label>
+                    <select 
+                      className="input" 
+                      value={form.targetSchool} 
+                      onChange={e => setForm(f => ({ ...f, targetSchool: e.target.value }))}
+                    >
+                      <option value="">All Schools</option>
+                      {schools.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Target Class *</label>
+                    <select 
+                      className="input" 
+                      value={form.targetClass} 
+                      onChange={e => setForm(f => ({ ...f, targetClass: e.target.value }))} 
+                      required
+                    >
+                      <option value="">Select class</option>
+                      {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+                    </select>
+                  </div>
                 </div>
               ) : (
                 <div className="form-grid-2 mb-16">
