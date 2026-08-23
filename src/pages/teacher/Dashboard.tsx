@@ -1,15 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { collection, query, getDocs, orderBy, collectionGroup } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
 import { getFeeForMonth } from '../../utils/feeUtils';
 import {
   Users, Wallet, ClipboardList, TrendingDown,
-  TrendingUp, BookOpen, CalendarCheck, ArrowRight, Eye, EyeOff, PartyPopper
+  TrendingUp, BookOpen, CalendarCheck, CalendarPlus, ArrowRight, Eye, EyeOff, PartyPopper,
+  UserPlus, Layers
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Student, FeePayment, TuitionTest, CenterEvent } from '../../types';
 import { format } from 'date-fns';
+
+// Modal imports
+import AddStudentModal from '../../components/modals/AddStudentModal';
+import RecordPaymentModal from '../../components/modals/RecordPaymentModal';
+import LogTestModal from '../../components/modals/LogTestModal';
+import AssignHomeworkModal from '../../components/modals/AssignHomeworkModal';
+import AddExamResultModal from '../../components/modals/AddExamResultModal';
+import AddScheduleSlotModal from '../../components/modals/AddScheduleSlotModal';
+import AddSyllabusTopicModal from '../../components/modals/AddSyllabusTopicModal';
+import AddEventModal from '../../components/modals/AddEventModal';
 
 interface Stats {
   totalStudents: number;
@@ -32,92 +43,101 @@ export default function TeacherDashboard() {
   const [showFeesCollected, setShowFeesCollected] = useState(false);
   const [showFeesDue, setShowFeesDue] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        // Students
-        const studSnap = await getDocs(query(collection(db, 'students')));
-        const studs = studSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false);
-        
-        // Sort students by joiningDate descending for the Recent Students view
-        studs.sort((a, b) => {
-          const tA = a.joiningDate ? a.joiningDate.toDate().getTime() : 0;
-          const tB = b.joiningDate ? b.joiningDate.toDate().getTime() : 0;
-          return tB - tA;
-        });
-        
-        setStudents(studs);
+  // Modal open states
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [showRecordPayment, setShowRecordPayment] = useState(false);
+  const [showLogTest, setShowLogTest] = useState(false);
+  const [showAssignHomework, setShowAssignHomework] = useState(false);
+  const [showAddExamResult, setShowAddExamResult] = useState(false);
+  const [showAddScheduleSlot, setShowAddScheduleSlot] = useState(false);
+  const [showAddSyllabusTopic, setShowAddSyllabusTopic] = useState(false);
+  const [showAddEvent, setShowAddEvent] = useState(false);
 
-        // Payments
-        const paymentsSnap = await getDocs(collectionGroup(db, 'payments'));
-        let feesThisMonth = 0;
-        const allPayments: Record<string, Set<string>> = {};
+  const loadData = useCallback(async () => {
+    try {
+      // Students
+      const studSnap = await getDocs(query(collection(db, 'students')));
+      const studs = studSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => s.active !== false);
+      
+      // Sort students by joiningDate descending for the Recent Students view
+      studs.sort((a, b) => {
+        const tA = a.joiningDate ? a.joiningDate.toDate().getTime() : 0;
+        const tB = b.joiningDate ? b.joiningDate.toDate().getTime() : 0;
+        return tB - tA;
+      });
+      
+      setStudents(studs);
+
+      // Payments
+      const paymentsSnap = await getDocs(collectionGroup(db, 'payments'));
+      let feesThisMonth = 0;
+      const allPayments: Record<string, Set<string>> = {};
+      
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      
+      paymentsSnap.docs.forEach(d => {
+        const p = d.data() as FeePayment;
+        const studentId = d.ref.parent.parent?.id;
         
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth();
-        
-        paymentsSnap.docs.forEach(d => {
-          const p = d.data() as FeePayment;
-          const studentId = d.ref.parent.parent?.id;
-          
-          if (p.datePaid) {
-            const pd = p.datePaid.toDate();
-            if (pd.getFullYear() === currentYear && pd.getMonth() === currentMonth) {
-              feesThisMonth += p.amount || 0;
-            }
+        if (p.datePaid) {
+          const pd = p.datePaid.toDate();
+          if (pd.getFullYear() === currentYear && pd.getMonth() === currentMonth) {
+            feesThisMonth += p.amount || 0;
           }
-          
-          if (studentId) {
-            if (!allPayments[studentId]) allPayments[studentId] = new Set();
-            p.monthsPaid?.forEach((m: string) => allPayments[studentId].add(m));
+        }
+        
+        if (studentId) {
+          if (!allPayments[studentId]) allPayments[studentId] = new Set();
+          p.monthsPaid?.forEach((m: string) => allPayments[studentId].add(m));
+        }
+      });
+
+      // Calculate pending fees
+      const activeStuds = studs.filter(s => s.active);
+      let pendingFees = 0;
+      activeStuds.forEach(s => {
+        if (!s.joiningDate) return;
+        const start = s.joiningDate.toDate();
+        const startYear = start.getFullYear();
+        const startMonth = start.getMonth();
+        
+        let d = new Date(startYear, startMonth, 1);
+        const end = new Date(currentYear, currentMonth, 1);
+        while (d < end) {
+          const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          if (!allPayments[s.id] || !allPayments[s.id].has(mStr)) {
+            pendingFees += getFeeForMonth(mStr, s);
           }
-        });
+          d.setMonth(d.getMonth() + 1);
+        }
+      });
 
-        // Calculate pending fees
-        const activeStuds = studs.filter(s => s.active);
-        let pendingFees = 0;
-        activeStuds.forEach(s => {
-          if (!s.joiningDate) return;
-          const start = s.joiningDate.toDate();
-          const startYear = start.getFullYear();
-          const startMonth = start.getMonth();
-          
-          let expectedCount = 0;
-          let d = new Date(startYear, startMonth, 1);
-          const end = new Date(currentYear, currentMonth, 1);
-          while (d < end) {
-            const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            if (!allPayments[s.id] || !allPayments[s.id].has(mStr)) {
-              expectedCount++;
-              pendingFees += getFeeForMonth(mStr, s);
-            }
-            d.setMonth(d.getMonth() + 1);
-          }
-        });
+      // Tests
+      const testSnap = await getDocs(query(collection(db, 'tests'), orderBy('date', 'desc')));
+      const tests = testSnap.docs.slice(0, 3).map(d => ({ id: d.id, ...d.data() }) as TuitionTest);
 
-        // Tests
-        const testSnap = await getDocs(query(collection(db, 'tests'), orderBy('date', 'desc')));
-        const tests = testSnap.docs.slice(0, 3).map(d => ({ id: d.id, ...d.data() }) as TuitionTest);
+      // Events
+      const evSnap = await getDocs(query(collection(db, 'events'), orderBy('date', 'desc')));
+      const events = evSnap.docs.slice(0, 3).map(d => ({ id: d.id, ...d.data() }) as CenterEvent);
 
-        // Events
-        const evSnap = await getDocs(query(collection(db, 'events'), orderBy('date', 'desc')));
-        const events = evSnap.docs.slice(0, 3).map(d => ({ id: d.id, ...d.data() }) as CenterEvent);
-
-        setStats({
-          totalStudents: studs.length,
-          activeStudents: activeStuds.length,
-          feesThisMonth,
-          pendingFees,
-          recentTests: tests,
-          upcomingEvents: events,
-        });
-      } finally {
-        setLoading(false);
-      }
+      setStats({
+        totalStudents: studs.length,
+        activeStudents: activeStuds.length,
+        feesThisMonth,
+        pendingFees,
+        recentTests: tests,
+        upcomingEvents: events,
+      });
+    } finally {
+      setLoading(false);
     }
-    load();
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -213,7 +233,7 @@ export default function TeacherDashboard() {
             {!loading && students.length === 0 && (
               <div className="empty-state">
                 <Users size={32} />
-                <p>No students yet. <Link to="/teacher/students">Add one!</Link></p>
+                <p>No students yet. <button type="button" className="btn-link" onClick={() => setShowAddStudent(true)}>Add one!</button></p>
               </div>
             )}
           </div>
@@ -223,24 +243,30 @@ export default function TeacherDashboard() {
         <div className="card">
           <div className="card-title"><TrendingUp size={18} /> Quick Actions</div>
           <div className="quick-actions">
-            <Link to="/teacher/students" className="quick-action-btn">
-              <Users size={20} /><span>Add Student</span>
-            </Link>
-            <Link to="/teacher/fees" className="quick-action-btn">
+            <button type="button" className="quick-action-btn" onClick={() => setShowAddStudent(true)}>
+              <UserPlus size={20} /><span>Add Student</span>
+            </button>
+            <button type="button" className="quick-action-btn" onClick={() => setShowRecordPayment(true)}>
               <Wallet size={20} /><span>Record Fee</span>
-            </Link>
-            <Link to="/teacher/tests" className="quick-action-btn">
+            </button>
+            <button type="button" className="quick-action-btn" onClick={() => setShowLogTest(true)}>
               <ClipboardList size={20} /><span>Log Test</span>
-            </Link>
-            <Link to="/teacher/syllabus" className="quick-action-btn">
-              <BookOpen size={20} /><span>Update Syllabus</span>
-            </Link>
-            <Link to="/teacher/exams" className="quick-action-btn">
-              <TrendingUp size={20} /><span>School Exams</span>
-            </Link>
-            <Link to="/teacher/events" className="quick-action-btn">
+            </button>
+            <button type="button" className="quick-action-btn" onClick={() => setShowAssignHomework(true)}>
+              <BookOpen size={20} /><span>Assign HW</span>
+            </button>
+            <button type="button" className="quick-action-btn" onClick={() => setShowAddExamResult(true)}>
+              <TrendingUp size={20} /><span>Exam Result</span>
+            </button>
+            <button type="button" className="quick-action-btn" onClick={() => setShowAddScheduleSlot(true)}>
+              <CalendarPlus size={20} /><span>Add Slot</span>
+            </button>
+            <button type="button" className="quick-action-btn" onClick={() => setShowAddSyllabusTopic(true)}>
+              <Layers size={20} /><span>Add Topic</span>
+            </button>
+            <button type="button" className="quick-action-btn" onClick={() => setShowAddEvent(true)}>
               <PartyPopper size={20} /><span>Add Event</span>
-            </Link>
+            </button>
           </div>
         </div>
 
@@ -286,6 +312,63 @@ export default function TeacherDashboard() {
           ))}
         </div>
       </div>
+
+      {/* Modals rendered directly on Dashboard */}
+      <AddStudentModal
+        isOpen={showAddStudent}
+        onClose={() => setShowAddStudent(false)}
+        onSuccess={loadData}
+      />
+
+      <RecordPaymentModal
+        isOpen={showRecordPayment}
+        onClose={() => setShowRecordPayment(false)}
+        onSuccess={loadData}
+        students={students}
+      />
+
+      <LogTestModal
+        isOpen={showLogTest}
+        onClose={() => setShowLogTest(false)}
+        onSuccess={loadData}
+        students={students}
+      />
+
+      <AssignHomeworkModal
+        isOpen={showAssignHomework}
+        onClose={() => setShowAssignHomework(false)}
+        onSuccess={loadData}
+        students={students}
+      />
+
+      <AddExamResultModal
+        isOpen={showAddExamResult}
+        onClose={() => setShowAddExamResult(false)}
+        onSuccess={loadData}
+        students={students}
+      />
+
+      <AddScheduleSlotModal
+        isOpen={showAddScheduleSlot}
+        onClose={() => setShowAddScheduleSlot(false)}
+        onSuccess={loadData}
+        students={students}
+      />
+
+      <AddSyllabusTopicModal
+        isOpen={showAddSyllabusTopic}
+        onClose={() => setShowAddSyllabusTopic(false)}
+        onSuccess={loadData}
+        students={students}
+      />
+
+      <AddEventModal
+        isOpen={showAddEvent}
+        onClose={() => setShowAddEvent(false)}
+        onSuccess={loadData}
+        students={students}
+      />
     </div>
   );
 }
+
