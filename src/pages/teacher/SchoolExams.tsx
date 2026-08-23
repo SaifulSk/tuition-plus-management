@@ -56,7 +56,6 @@ export default function SchoolExams() {
   const [isStudentLocked, setIsStudentLocked] = useState(false);
   const [form, setForm] = useState({
     examName: '', maxMarks: '', marksObtained: '',
-    date: new Date().toISOString().split('T')[0],
     session: '', className: ''
   });
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -132,7 +131,6 @@ export default function SchoolExams() {
       examName: ex.examName || '',
       maxMarks: ex.maxMarks?.toString() || '',
       marksObtained: ex.marksObtained?.toString() || '',
-      date: ex.date ? new Date(ex.date.toDate().getTime() - ex.date.toDate().getTimezoneOffset() * 60000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       session: ex.session || getCurrentSession(),
       className: ex.className || student?.class || ''
     });
@@ -143,7 +141,7 @@ export default function SchoolExams() {
   const closeModal = () => {
     setShowModal(false);
     setEditingExamId(null);
-    setForm({ examName:'', maxMarks:'', marksObtained:'', date: new Date().toISOString().split('T')[0], session: '', className: '' });
+    setForm({ examName:'', maxMarks:'', marksObtained:'', session: '', className: '' });
     setSubjects([]);
   };
 
@@ -159,7 +157,7 @@ export default function SchoolExams() {
         subjects,
         maxMarks: Number(form.maxMarks),
         marksObtained: Number(form.marksObtained),
-        date: Timestamp.fromDate(new Date(form.date)),
+        date: Timestamp.now(),
         percentage: Math.round((Number(form.marksObtained)/Number(form.maxMarks))*100),
         session: form.session || getCurrentSession(),
         className: form.className || currentStudent?.class || ''
@@ -619,10 +617,6 @@ export default function SchoolExams() {
                 <div className="form-group">
                   <label>Marks Obtained *</label>
                   <input type="number" placeholder="e.g. 78" value={form.marksObtained} onChange={e => setForm(f=>({...f,marksObtained:e.target.value}))} required max={form.maxMarks} />
-                </div>
-                <div className="form-group">
-                  <label>Exam Date</label>
-                  <input type="date" value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))} />
                 </div>
                 <div className="form-group">
                   <label>Academic Session</label>

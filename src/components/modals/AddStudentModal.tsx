@@ -10,17 +10,6 @@ import { format } from 'date-fns';
 
 const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 
-function getCurrentSession() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth(); // 0-indexed: 0=Jan, 3=Apr
-  if (month >= 3) {
-    return `${year}-${year + 1}`;
-  } else {
-    return `${year - 1}-${year}`;
-  }
-}
-
 interface AddStudentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -30,6 +19,7 @@ interface AddStudentModalProps {
 export default function AddStudentModal({ isOpen, onClose, onSuccess }: AddStudentModalProps) {
   const { masterSubjects } = useSubjects();
   const [masterSchools, setMasterSchools] = useState<string[]>([]);
+  const [masterSections, setMasterSections] = useState<string[]>(['A', 'B', 'C', 'D', 'E', 'F']);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -46,13 +36,18 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess }: AddStude
     notes: '',
     email: '',
     tempPassword: '',
-    session: getCurrentSession(),
+    session: '2026-2027',
   });
 
   useEffect(() => {
     if (isOpen) {
       getDocs(query(collection(db, 'schools'), orderBy('name'))).then(snap => {
         setMasterSchools(snap.docs.map(d => d.data().name).filter(Boolean));
+      }).catch(console.error);
+
+      getDocs(query(collection(db, 'sections'), orderBy('name'))).then(snap => {
+        const secs = snap.docs.map(d => d.data().name).filter(Boolean);
+        if (secs.length > 0) setMasterSections(secs);
       }).catch(console.error);
     }
   }, [isOpen]);
@@ -130,7 +125,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess }: AddStude
         });
       }
 
-      toast.success(`${form.name} added successfully!`);
+      toast.success(`${form.name} created successfully!`);
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -168,31 +163,30 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess }: AddStude
 
             <div className="form-group">
               <label>Section</label>
-              <input type="text" placeholder="e.g. A, B" value={form.section} onChange={set('section')} />
+              <select value={form.section} onChange={set('section')}>
+                <option value="">No section</option>
+                {masterSections.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Session</label>
+              <select value={form.session} onChange={set('session')}>
+                {['2024-2025', '2025-2026', '2026-2027', '2027-2028', '2028-2029'].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
 
             <div className="form-group">
               <label>School *</label>
-              <input 
-                list="schools-list-dash" 
-                placeholder="Type or select school" 
-                value={form.school} 
-                onChange={set('school')} 
-                required 
-              />
-              <datalist id="schools-list-dash">
-                {masterSchools.map(sch => <option key={sch} value={sch} />)}
-              </datalist>
-            </div>
-
-            <div className="form-group">
-              <label>Academic Session</label>
-              <input type="text" placeholder="e.g. 2026-2027" value={form.session} onChange={set('session')} />
+              <select value={form.school} onChange={set('school')} required>
+                <option value="">Select school</option>
+                {masterSchools.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
 
             <div className="form-group">
               <label>Student Phone</label>
-              <input type="tel" placeholder="10-digit number" value={form.phone} onChange={set('phone')} />
+              <input type="tel" placeholder="Phone number" value={form.phone} onChange={set('phone')} />
             </div>
 
             <div className="form-group">
@@ -211,16 +205,16 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess }: AddStude
             </div>
 
             <div className="form-group">
-              <label>Login Email <span className="text-muted" style={{fontWeight:400}}>(optional)</span></label>
+              <label>Login Email <span className="text-muted" style={{fontWeight:400}}>(optional — for student app access)</span></label>
               <input type="email" placeholder="student@email.com" value={form.email} onChange={set('email')} />
             </div>
 
             <div className="form-group">
-              <label>Temp Password <span className="text-muted" style={{fontWeight:400}}>(min 6 chars)</span></label>
+              <label>Temp Password <span className="text-muted" style={{fontWeight:400}}>(optional — min 6 chars)</span></label>
               <div className="input-with-icon">
                 <input 
                   type={showPassword ? 'text' : 'password'} 
-                  placeholder="Leave blank if no login" 
+                  placeholder="Leave blank if no login needed" 
                   value={form.tempPassword} 
                   onChange={set('tempPassword')} 
                   minLength={form.tempPassword ? 6 : undefined} 
@@ -239,19 +233,20 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess }: AddStude
               selected={subjects}
               onChange={setSubjects}
               placeholder="Select subjects"
+              required
               showSelectAll
             />
           </div>
 
           <div className="form-group">
             <label>Notes</label>
-            <textarea rows={2} placeholder="Any special notes or instructions..." value={form.notes} onChange={set('notes')} />
+            <textarea placeholder="Any special notes about this student…" value={form.notes} onChange={set('notes')} rows={3} />
           </div>
 
           <div className="modal-footer">
-            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn-ghost" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? 'Adding Student...' : 'Add Student'}
+              {saving ? 'Creating…' : 'Create Student'}
             </button>
           </div>
         </form>
