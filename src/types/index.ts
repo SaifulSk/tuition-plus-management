@@ -132,7 +132,7 @@ export interface Homework {
 }
 
 // ─── Attendance ────────────────────────────────────────────────────────────
-export type AttendanceStatus = 'present' | 'absent' | 'late' | 'leave';
+export type AttendanceStatus = 'present' | 'absent' | 'teacher_absent';
 
 export interface AttendanceRecord {
   id: string; // `${date}_${studentId}`

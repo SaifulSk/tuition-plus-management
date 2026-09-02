@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { doc, setDoc, getDocs, collection, query, Timestamp, collectionGroup } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, getDocs, collection, query, Timestamp, collectionGroup } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, AttendanceRecord, AttendanceStatus, ScheduleSlot } from '../../types';
 import { X, UserCheck, AlertCircle } from 'lucide-react';
@@ -127,7 +127,7 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
       let checkIn = existing.checkInTime;
       let checkOut = existing.checkOutTime;
 
-      if (status === 'present' || status === 'late') {
+      if (status === 'present') {
         if (!checkIn) checkIn = firstSlot?.startTime || nowTime;
         if (!checkOut && firstSlot?.endTime) checkOut = firstSlot.endTime;
       }
@@ -137,11 +137,19 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
         [studentId]: {
           ...existing,
           status,
-          checkInTime: (status === 'present' || status === 'late') ? checkIn : '',
-          checkOutTime: (status === 'absent' || status === 'leave') ? '' : checkOut,
+          checkInTime: status === 'present' ? checkIn : '',
+          checkOutTime: status === 'present' ? checkOut : '',
         }
       };
     });
+  };
+
+  const clearStatus = (studentId: string) => {
+    if (isFutureDate) return;
+    setEntries(prev => ({
+      ...prev,
+      [studentId]: { status: 'unmarked', checkInTime: '', checkOutTime: '', remarks: '' }
+    }));
   };
 
   const handleMarkAll = (status: AttendanceStatus) => {
@@ -160,7 +168,7 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
         let checkIn = existing.checkInTime;
         let checkOut = existing.checkOutTime;
 
-        if (status === 'present' || status === 'late') {
+        if (status === 'present') {
           if (!checkIn) checkIn = firstSlot?.startTime || nowTime;
           if (!checkOut && firstSlot?.endTime) checkOut = firstSlot.endTime;
         }
@@ -168,8 +176,8 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
         updated[s.id] = {
           ...existing,
           status,
-          checkInTime: (status === 'present' || status === 'late') ? checkIn : '',
-          checkOutTime: (status === 'absent' || status === 'leave') ? '' : checkOut,
+          checkInTime: status === 'present' ? checkIn : '',
+          checkOutTime: status === 'present' ? checkOut : '',
         };
       });
       return updated;
@@ -187,9 +195,12 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
     try {
       const promises = filteredStudents.map(async s => {
         const entry = entries[s.id];
-        if (!entry || entry.status === 'unmarked') return Promise.resolve();
-
         const docId = `${selectedDate}_${s.id}`;
+
+        if (!entry || entry.status === 'unmarked') {
+          return deleteDoc(doc(db, 'attendance', docId)).catch(() => {});
+        }
+
         const record: AttendanceRecord = {
           id: docId,
           date: selectedDate,
@@ -220,33 +231,35 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal large" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
+      <div className="modal large" onClick={e => e.stopPropagation()} style={{ maxWidth: '640px' }}>
+        <div className="modal-header" style={{ padding: '14px 18px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <UserCheck size={20} color="var(--navy)" />
-            <h2>Mark Attendance</h2>
+            <UserCheck size={18} color="var(--navy)" />
+            <h2 style={{ fontSize: '17px' }}>Mark Attendance</h2>
           </div>
           <button className="modal-close" onClick={onClose}><X size={18}/></button>
         </div>
 
-        <form onSubmit={handleSave} className="modal-body">
+        <form onSubmit={handleSave} className="modal-body" style={{ padding: '14px 18px' }}>
           {/* Controls */}
-          <div className="form-grid-2 mb-16">
-            <div className="form-group">
-              <label>Date *</label>
+          <div className="form-grid-2 mb-12" style={{ gap: '10px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label style={{ fontSize: '12px' }}>Date *</label>
               <input
                 type="date"
                 className="input"
+                style={{ fontSize: '13px', padding: '6px 8px' }}
                 value={selectedDate}
                 max={todayStr}
                 onChange={e => setSelectedDate(e.target.value)}
                 required
               />
             </div>
-            <div className="form-group">
-              <label>Filter by Class</label>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label style={{ fontSize: '12px' }}>Filter by Class</label>
               <select
                 className="input"
+                style={{ fontSize: '13px', padding: '6px 8px' }}
                 value={filterClass}
                 onChange={e => setFilterClass(e.target.value)}
               >
@@ -258,21 +271,21 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
 
           {/* Future Date Alert */}
           {isFutureDate && (
-            <div className="card mb-16" style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px', color: '#b91c1c' }}>
-              <AlertCircle size={16} />
-              <span style={{ fontSize: '13px', fontWeight: 600 }}>Future date selected. Cannot mark attendance.</span>
+            <div className="card mb-12" style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px', color: '#b91c1c' }}>
+              <AlertCircle size={15} />
+              <span style={{ fontSize: '12px', fontWeight: 600 }}>Future date selected. Cannot mark attendance.</span>
             </div>
           )}
 
           {/* Schedule filter toggle & bulk actions */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '6px' }}>
             <button
               type="button"
               className="btn-ghost"
               style={{
-                fontSize: '12px',
-                padding: '4px 12px',
-                borderRadius: '16px',
+                fontSize: '11px',
+                padding: '3px 10px',
+                borderRadius: '14px',
                 border: onlyScheduled ? '1px solid var(--navy, #1E3A5F)' : '1px solid var(--border)',
                 background: onlyScheduled ? 'rgba(30, 58, 95, 0.08)' : 'transparent',
                 fontWeight: 600,
@@ -283,37 +296,46 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
               {onlyScheduled ? `📅 Scheduled on ${selectedDayOfWeek} (${Object.keys(todaySlotsByStudent).length})` : '👥 All Students'}
             </button>
 
-            <div style={{ display: 'flex', gap: '6px' }}>
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className="btn-ghost"
-                style={{ fontSize: '12px', padding: '4px 10px', height: 'auto', color: '#15803d' }}
+                style={{ fontSize: '11px', padding: '3px 8px', height: 'auto', color: '#15803d', border: '1px solid #bbf7d0', background: '#f0fdf4' }}
                 onClick={() => handleMarkAll('present')}
                 disabled={isFutureDate}
               >
-                Mark All Present
+                All Present
               </button>
               <button
                 type="button"
                 className="btn-ghost"
-                style={{ fontSize: '12px', padding: '4px 10px', height: 'auto', color: '#b91c1c' }}
+                style={{ fontSize: '11px', padding: '3px 8px', height: 'auto', color: '#b91c1c', border: '1px solid #fecaca', background: '#fef2f2' }}
                 onClick={() => handleMarkAll('absent')}
                 disabled={isFutureDate}
               >
-                Mark All Absent
+                All Absent
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ fontSize: '11px', padding: '3px 8px', height: 'auto', color: '#6d28d9', border: '1px solid #ddd6fe', background: '#f5f3ff' }}
+                onClick={() => handleMarkAll('teacher_absent')}
+                disabled={isFutureDate}
+              >
+                Teacher Absent
               </button>
             </div>
           </div>
 
           {/* Student list */}
-          <div style={{ maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
+          <div style={{ maxHeight: '350px', overflowY: 'auto', paddingRight: '2px' }}>
             {loading ? (
               <div className="skeleton-list">
                 {[1, 2, 3].map(i => <div key={i} className="skeleton-row" />)}
               </div>
             ) : filteredStudents.length === 0 ? (
-              <div className="empty-state">
-                <p>
+              <div className="empty-state" style={{ padding: '24px 12px' }}>
+                <p style={{ fontSize: '13px' }}>
                   {onlyScheduled
                     ? `No students have tuition slots scheduled on ${selectedDayOfWeek}.`
                     : 'No students match the selected class.'}
@@ -322,6 +344,7 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
                   <button
                     type="button"
                     className="btn-link mt-8"
+                    style={{ fontSize: '12px' }}
                     onClick={() => setOnlyScheduled(false)}
                   >
                     Show All Students
@@ -331,22 +354,24 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
             ) : (
               filteredStudents.map(student => {
                 const entry = entries[student.id] || { status: 'unmarked', checkInTime: '', checkOutTime: '', remarks: '' };
-                const isPresentOrLate = entry.status === 'present' || entry.status === 'late';
+                const isPresent = entry.status === 'present';
                 const studentSlots = todaySlotsByStudent[student.id];
 
                 return (
-                  <div key={student.id} className={`attendance-student-card status-${entry.status}`} style={{ padding: '12px', marginBottom: '8px' }}>
+                  <div key={student.id} className={`attendance-student-card status-${entry.status}`} style={{ padding: '10px 12px', marginBottom: '8px' }}>
                     <div className="attendance-row-header">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div className="student-avatar" style={{ width: '32px', height: '32px', fontSize: '13px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '150px' }}>
+                        <div className="student-avatar" style={{ width: '30px', height: '30px', fontSize: '12px' }}>
                           {student.name.charAt(0)}
                         </div>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: '14px' }}>{student.name}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {student.name}
+                          </div>
                           <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                             Class {student.class}
                             {studentSlots && studentSlots.length > 0 && (
-                              <span style={{ marginLeft: '6px', color: 'var(--navy)', fontWeight: 600 }}>
+                              <span style={{ marginLeft: '4px', color: 'var(--navy)', fontWeight: 600 }}>
                                 • ⏰ {formatTime12h(studentSlots[0].startTime)} - {formatTime12h(studentSlots[0].endTime)}
                               </span>
                             )}
@@ -358,7 +383,7 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
                         <button
                           type="button"
                           className={`attendance-status-btn ${entry.status === 'present' ? 'active-present' : ''}`}
-                          style={{ padding: '4px 10px', fontSize: '12px' }}
+                          style={{ padding: '3px 9px', fontSize: '11px' }}
                           onClick={() => setStatus(student.id, 'present')}
                           disabled={isFutureDate}
                         >
@@ -367,7 +392,7 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
                         <button
                           type="button"
                           className={`attendance-status-btn ${entry.status === 'absent' ? 'active-absent' : ''}`}
-                          style={{ padding: '4px 10px', fontSize: '12px' }}
+                          style={{ padding: '3px 9px', fontSize: '11px' }}
                           onClick={() => setStatus(student.id, 'absent')}
                           disabled={isFutureDate}
                         >
@@ -375,27 +400,30 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
                         </button>
                         <button
                           type="button"
-                          className={`attendance-status-btn ${entry.status === 'late' ? 'active-late' : ''}`}
-                          style={{ padding: '4px 10px', fontSize: '12px' }}
-                          onClick={() => setStatus(student.id, 'late')}
+                          className={`attendance-status-btn ${entry.status === 'teacher_absent' ? 'active-teacher_absent' : ''}`}
+                          style={{ padding: '3px 9px', fontSize: '11px' }}
+                          onClick={() => setStatus(student.id, 'teacher_absent')}
                           disabled={isFutureDate}
                         >
-                          L
+                          TA
                         </button>
-                        <button
-                          type="button"
-                          className={`attendance-status-btn ${entry.status === 'leave' ? 'active-leave' : ''}`}
-                          style={{ padding: '4px 10px', fontSize: '12px' }}
-                          onClick={() => setStatus(student.id, 'leave')}
-                          disabled={isFutureDate}
-                        >
-                          E
-                        </button>
+                        {entry.status !== 'unmarked' && (
+                          <button
+                            type="button"
+                            className="attendance-status-btn"
+                            style={{ padding: '3px 6px', fontSize: '11px', color: '#64748b' }}
+                            onClick={() => clearStatus(student.id)}
+                            disabled={isFutureDate}
+                            title="Clear student mark"
+                          >
+                            <X size={12} />
+                          </button>
+                        )}
                       </div>
                     </div>
 
-                    {isPresentOrLate && (
-                      <div className="attendance-time-inputs" style={{ marginTop: '8px', paddingTop: '8px' }}>
+                    {isPresent && (
+                      <div className="attendance-time-inputs" style={{ marginTop: '6px', paddingTop: '6px' }}>
                         <div className="attendance-time-box">
                           <span>In:</span>
                           <input
@@ -428,9 +456,9 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
             )}
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn-ghost" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary" disabled={saving || isFutureDate}>
+          <div className="modal-footer" style={{ padding: '12px 18px' }}>
+            <button type="button" className="btn-ghost" style={{ fontSize: '13px', padding: '6px 14px' }} onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary" style={{ fontSize: '13px', padding: '6px 18px' }} disabled={saving || isFutureDate}>
               {saving ? 'Saving...' : 'Save Attendance'}
             </button>
           </div>

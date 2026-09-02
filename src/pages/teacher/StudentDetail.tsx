@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { Student, FeePayment, SyllabusTopic, SchoolExam, ScheduleSlot, TuitionTest, Homework, CenterEvent, AttendanceRecord } from '../../types';
-import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff, Plus, X, Settings, Clock, ClipboardList, CalendarDays, BookOpenCheck, UserCheck, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff, Plus, X, Settings, Clock, ClipboardList, CalendarDays, BookOpenCheck, UserCheck, CheckCircle2, XCircle, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import MultiSelect from '../../components/common/MultiSelect';
@@ -273,11 +273,10 @@ export default function StudentDetail() {
         <>
           {(() => {
             const attPresent = attendance.filter(a => a.status === 'present').length;
-            const attLate = attendance.filter(a => a.status === 'late').length;
             const attAbsent = attendance.filter(a => a.status === 'absent').length;
-            const attLeave = attendance.filter(a => a.status === 'leave').length;
-            const attTotal = attPresent + attLate + attAbsent + attLeave;
-            const attRate = attTotal > 0 ? Math.round(((attPresent + attLate) / attTotal) * 100) : 0;
+            const attTeacherAbsent = attendance.filter(a => a.status === 'teacher_absent').length;
+            const sessionsHeld = attPresent + attAbsent;
+            const attRate = sessionsHeld > 0 ? Math.round((attPresent / sessionsHeld) * 100) : 0;
 
             return (
               <>
@@ -287,16 +286,7 @@ export default function StudentDetail() {
                     <div className="stat-body">
                       <div className="stat-value">{attRate}%</div>
                       <div className="stat-label">Attendance Rate</div>
-                      <div className="stat-sub">{attPresent + attLate} of {attTotal} sessions</div>
-                    </div>
-                  </div>
-
-                  <div className="stat-card stat-blue">
-                    <div className="stat-icon"><Clock size={24} /></div>
-                    <div className="stat-body">
-                      <div className="stat-value">{attLate}</div>
-                      <div className="stat-label">Late Arrivals</div>
-                      <div className="stat-sub">With logged timings</div>
+                      <div className="stat-sub">{attPresent} of {sessionsHeld} sessions</div>
                     </div>
                   </div>
 
@@ -304,8 +294,17 @@ export default function StudentDetail() {
                     <div className="stat-icon"><XCircle size={24} /></div>
                     <div className="stat-body">
                       <div className="stat-value">{attAbsent}</div>
-                      <div className="stat-label">Absences</div>
-                      <div className="stat-sub">{attLeave} excused leaves</div>
+                      <div className="stat-label">Student Absences</div>
+                      <div className="stat-sub">Sessions missed</div>
+                    </div>
+                  </div>
+
+                  <div className="stat-card stat-purple">
+                    <div className="stat-icon"><ShieldAlert size={24} color="#7c3aed" /></div>
+                    <div className="stat-body">
+                      <div className="stat-value" style={{ color: '#6d28d9' }}>{attTeacherAbsent}</div>
+                      <div className="stat-label">Teacher Absences</div>
+                      <div className="stat-sub">Tuition off</div>
                     </div>
                   </div>
                 </div>
@@ -331,8 +330,8 @@ export default function StudentDetail() {
                             <tr key={r.id}>
                               <td><strong>{format(new Date(r.date), 'dd MMM yyyy')}</strong></td>
                               <td>
-                                <span className={`badge ${r.status === 'present' ? 'badge-green' : r.status === 'absent' ? 'badge-red' : r.status === 'late' ? 'badge-yellow' : 'badge-blue'}`}>
-                                  {r.status.toUpperCase()}
+                                <span className={`badge ${r.status === 'present' ? 'badge-green' : r.status === 'absent' ? 'badge-red' : 'badge-purple'}`}>
+                                  {r.status === 'teacher_absent' ? 'TEACHER ABSENT' : r.status.toUpperCase()}
                                 </span>
                               </td>
                               <td>{r.checkInTime || '—'}</td>

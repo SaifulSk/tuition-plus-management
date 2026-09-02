@@ -4,7 +4,7 @@ import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Student, AttendanceRecord } from '../../types';
 import {
-  UserCheck, CheckCircle2, XCircle, Clock, Calendar
+  UserCheck, CheckCircle2, XCircle, Calendar, ShieldAlert
 } from 'lucide-react';
 import { format, getDaysInMonth, getDay } from 'date-fns';
 
@@ -44,20 +44,18 @@ export default function StudentAttendance() {
   const overallStats = useMemo(() => {
     let present = 0;
     let absent = 0;
-    let late = 0;
-    let leave = 0;
+    let teacherAbsent = 0;
 
     records.forEach(r => {
       if (r.status === 'present') present++;
       else if (r.status === 'absent') absent++;
-      else if (r.status === 'late') late++;
-      else if (r.status === 'leave') leave++;
+      else if (r.status === 'teacher_absent') teacherAbsent++;
     });
 
-    const total = present + absent + late + leave;
-    const pct = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
+    const sessionsHeld = present + absent;
+    const pct = sessionsHeld > 0 ? Math.round((present / sessionsHeld) * 100) : 0;
 
-    return { total, present, absent, late, leave, pct };
+    return { total: records.length, present, absent, teacherAbsent, sessionsHeld, pct };
   }, [records]);
 
   // Month filtered stats
@@ -65,20 +63,18 @@ export default function StudentAttendance() {
     const monthFiltered = records.filter(r => r.date.startsWith(selectedMonth));
     let present = 0;
     let absent = 0;
-    let late = 0;
-    let leave = 0;
+    let teacherAbsent = 0;
 
     monthFiltered.forEach(r => {
       if (r.status === 'present') present++;
       else if (r.status === 'absent') absent++;
-      else if (r.status === 'late') late++;
-      else if (r.status === 'leave') leave++;
+      else if (r.status === 'teacher_absent') teacherAbsent++;
     });
 
-    const total = present + absent + late + leave;
-    const pct = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
+    const sessionsHeld = present + absent;
+    const pct = sessionsHeld > 0 ? Math.round((present / sessionsHeld) * 100) : 0;
 
-    return { total, present, absent, late, leave, pct, records: monthFiltered };
+    return { total: monthFiltered.length, present, absent, teacherAbsent, sessionsHeld, pct, records: monthFiltered };
   }, [records, selectedMonth]);
 
   // Calendar days for selected month
@@ -128,53 +124,53 @@ export default function StudentAttendance() {
 
       {/* Top Stats Cards */}
       <div className="stats-grid mb-16">
-        <div className="stat-card stat-green">
-          <div className="stat-icon"><CheckCircle2 size={24} /></div>
+        <div className="stat-card stat-green" style={{ padding: '12px 14px' }}>
+          <div className="stat-icon"><CheckCircle2 size={20} /></div>
           <div className="stat-body">
-            <div className="stat-value">{overallStats.pct}%</div>
+            <div className="stat-value" style={{ fontSize: '20px' }}>{overallStats.pct}%</div>
             <div className="stat-label">Overall Attendance</div>
-            <div className="stat-sub">{overallStats.present + overallStats.late} of {overallStats.total} total sessions</div>
+            <div className="stat-sub">{overallStats.present} of {overallStats.sessionsHeld} sessions</div>
           </div>
         </div>
 
-        <div className="stat-card stat-blue">
-          <div className="stat-icon"><Calendar size={24} /></div>
+        <div className="stat-card stat-blue" style={{ padding: '12px 14px' }}>
+          <div className="stat-icon"><Calendar size={20} /></div>
           <div className="stat-body">
-            <div className="stat-value">{monthStats.pct}%</div>
+            <div className="stat-value" style={{ fontSize: '20px' }}>{monthStats.pct}%</div>
             <div className="stat-label">This Month Rate</div>
-            <div className="stat-sub">{monthStats.present + monthStats.late} of {monthStats.total} sessions in {format(new Date(selectedMonth + '-01'), 'MMM yyyy')}</div>
+            <div className="stat-sub">{monthStats.present} of {monthStats.sessionsHeld} in {format(new Date(selectedMonth + '-01'), 'MMM yyyy')}</div>
           </div>
         </div>
 
-        <div className="stat-card stat-orange">
-          <div className="stat-icon"><Clock size={24} /></div>
+        <div className="stat-card stat-red" style={{ padding: '12px 14px' }}>
+          <div className="stat-icon"><XCircle size={20} /></div>
           <div className="stat-body">
-            <div className="stat-value">{monthStats.late}</div>
-            <div className="stat-label">Late Arrivals</div>
+            <div className="stat-value" style={{ fontSize: '20px' }}>{monthStats.absent}</div>
+            <div className="stat-label">Absences</div>
             <div className="stat-sub">This month</div>
           </div>
         </div>
 
-        <div className="stat-card stat-red">
-          <div className="stat-icon"><XCircle size={24} /></div>
+        <div className="stat-card stat-purple" style={{ padding: '12px 14px' }}>
+          <div className="stat-icon"><ShieldAlert size={20} color="#7c3aed" /></div>
           <div className="stat-body">
-            <div className="stat-value">{monthStats.absent}</div>
-            <div className="stat-label">Absences</div>
-            <div className="stat-sub">{monthStats.leave} excused leaves</div>
+            <div className="stat-value" style={{ fontSize: '20px', color: '#6d28d9' }}>{monthStats.teacherAbsent}</div>
+            <div className="stat-label">Teacher Absences</div>
+            <div className="stat-sub">Tuition off</div>
           </div>
         </div>
       </div>
 
       {/* Monthly Attendance Calendar */}
-      <div className="card mb-16">
+      <div className="card mb-16" style={{ padding: '14px 16px' }}>
         <div className="flex-between mb-16" style={{ alignItems: 'center' }}>
-          <h3 className="section-title" style={{ margin: 0 }}>
+          <h3 className="section-title" style={{ margin: 0, fontSize: '14px' }}>
             📅 {format(new Date(selectedMonth + '-01'), 'MMMM yyyy')} Calendar
           </h3>
           <input
             type="month"
             className="input"
-            style={{ width: 'auto' }}
+            style={{ width: 'auto', fontSize: '12px', padding: '4px 8px' }}
             value={selectedMonth}
             onChange={e => setSelectedMonth(e.target.value)}
           />
@@ -191,11 +187,12 @@ export default function StudentAttendance() {
 
             const rec = item.record;
             let dayClass = '';
+            let badgeClass = 'empty';
+            let label = '';
             if (rec) {
-              if (rec.status === 'present') dayClass = 'day-present';
-              else if (rec.status === 'absent') dayClass = 'day-absent';
-              else if (rec.status === 'late') dayClass = 'day-late';
-              else if (rec.status === 'leave') dayClass = 'day-leave';
+              if (rec.status === 'present') { dayClass = 'day-present'; badgeClass = 'p'; label = 'P'; }
+              else if (rec.status === 'absent') { dayClass = 'day-absent'; badgeClass = 'a'; label = 'A'; }
+              else if (rec.status === 'teacher_absent') { dayClass = 'day-teacher_absent'; badgeClass = 'ta'; label = 'TA'; }
             }
 
             return (
@@ -204,20 +201,20 @@ export default function StudentAttendance() {
                   <span style={{ fontWeight: 600 }}>{item.dayNum}</span>
                   {rec && (
                     <span
-                      className={`attendance-matrix-badge ${rec.status === 'present' ? 'p' : rec.status === 'absent' ? 'a' : rec.status === 'late' ? 'l' : 'e'}`}
-                      style={{ width: '20px', height: '20px', fontSize: '10px' }}
+                      className={`attendance-matrix-badge ${badgeClass}`}
+                      style={{ width: '18px', height: '18px', fontSize: '9px' }}
                     >
-                      {rec.status.charAt(0).toUpperCase()}
+                      {label}
                     </span>
                   )}
                 </div>
                 {rec && rec.checkInTime && (
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    ⏰ {rec.checkInTime}{rec.checkOutTime ? ` - ${rec.checkOutTime}` : ''}
+                  <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    ⏰ {rec.checkInTime}{rec.checkOutTime ? `-${rec.checkOutTime}` : ''}
                   </div>
                 )}
                 {rec && rec.remarks && (
-                  <div style={{ fontSize: '10px', color: '#64748b', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={rec.remarks}>
+                  <div style={{ fontSize: '9px', color: '#64748b', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={rec.remarks}>
                     💬 {rec.remarks}
                   </div>
                 )}
@@ -228,8 +225,8 @@ export default function StudentAttendance() {
       </div>
 
       {/* History Table */}
-      <div className="card">
-        <h3 className="section-title mb-16">Attendance History Log</h3>
+      <div className="card" style={{ padding: '14px 16px' }}>
+        <h3 className="section-title mb-16" style={{ fontSize: '14px' }}>Attendance History Log</h3>
         {records.length === 0 ? (
           <div className="empty-state">
             <UserCheck size={36} />
@@ -237,7 +234,7 @@ export default function StudentAttendance() {
           </div>
         ) : (
           <div className="table-responsive">
-            <table className="table">
+            <table className="table" style={{ fontSize: '12px' }}>
               <thead>
                 <tr>
                   <th>Date</th>
@@ -252,8 +249,8 @@ export default function StudentAttendance() {
                   <tr key={r.id}>
                     <td><strong>{format(new Date(r.date), 'dd MMM yyyy')}</strong></td>
                     <td>
-                      <span className={`badge ${r.status === 'present' ? 'badge-green' : r.status === 'absent' ? 'badge-red' : r.status === 'late' ? 'badge-yellow' : 'badge-blue'}`}>
-                        {r.status.toUpperCase()}
+                      <span className={`badge ${r.status === 'present' ? 'badge-green' : r.status === 'absent' ? 'badge-red' : 'badge-purple'}`}>
+                        {r.status === 'teacher_absent' ? 'TEACHER ABSENT' : r.status.toUpperCase()}
                       </span>
                     </td>
                     <td>{r.checkInTime || '—'}</td>
