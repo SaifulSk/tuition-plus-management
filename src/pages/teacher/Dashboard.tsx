@@ -6,7 +6,7 @@ import { getFeeForMonth } from '../../utils/feeUtils';
 import {
   Users, Wallet, ClipboardList, TrendingDown,
   TrendingUp, BookOpen, CalendarCheck, CalendarPlus, ArrowRight, Eye, EyeOff, PartyPopper,
-  UserPlus, Layers
+  UserPlus, Layers, UserCheck
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Student, FeePayment, TuitionTest, CenterEvent } from '../../types';
@@ -21,6 +21,7 @@ import AddExamResultModal from '../../components/modals/AddExamResultModal';
 import AddScheduleSlotModal from '../../components/modals/AddScheduleSlotModal';
 import AddSyllabusTopicModal from '../../components/modals/AddSyllabusTopicModal';
 import AddEventModal from '../../components/modals/AddEventModal';
+import MarkAttendanceModal from '../../components/modals/MarkAttendanceModal';
 
 interface Stats {
   totalStudents: number;
@@ -52,6 +53,7 @@ export default function TeacherDashboard() {
   const [showAddScheduleSlot, setShowAddScheduleSlot] = useState(false);
   const [showAddSyllabusTopic, setShowAddSyllabusTopic] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [showMarkAttendance, setShowMarkAttendance] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -243,6 +245,9 @@ export default function TeacherDashboard() {
         <div className="card">
           <div className="card-title"><TrendingUp size={18} /> Quick Actions</div>
           <div className="quick-actions">
+            <button type="button" className="quick-action-btn" onClick={() => setShowMarkAttendance(true)}>
+              <UserCheck size={20} /><span>Attendance</span>
+            </button>
             <button type="button" className="quick-action-btn" onClick={() => setShowAddStudent(true)}>
               <UserPlus size={20} /><span>Add Student</span>
             </button>
@@ -314,6 +319,13 @@ export default function TeacherDashboard() {
       </div>
 
       {/* Modals rendered directly on Dashboard */}
+      <MarkAttendanceModal
+        isOpen={showMarkAttendance}
+        onClose={() => setShowMarkAttendance(false)}
+        onSuccess={loadData}
+        students={students}
+      />
+
       <AddStudentModal
         isOpen={showAddStudent}
         onClose={() => setShowAddStudent(false)}
@@ -371,4 +383,5 @@ export default function TeacherDashboard() {
     </div>
   );
 }
+
 

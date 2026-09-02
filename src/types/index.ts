@@ -130,3 +130,22 @@ export interface Homework {
   assignedDate: Timestamp;
   completedBy: string[]; // Array of student IDs
 }
+
+// ─── Attendance ────────────────────────────────────────────────────────────
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'leave';
+
+export interface AttendanceRecord {
+  id: string; // `${date}_${studentId}`
+  date: string; // "YYYY-MM-DD"
+  timestamp: Timestamp;
+  studentId: string;
+  studentName: string;
+  studentClass: string;
+  status: AttendanceStatus;
+  checkInTime?: string; // "HH:mm" e.g. "16:00"
+  checkOutTime?: string; // "HH:mm" e.g. "17:30"
+  remarks?: string;
+  markedAt: Timestamp;
+  markedBy?: string;
+}
+

@@ -9,6 +9,7 @@ import Login from './pages/auth/Login';
 import TeacherDashboard from './pages/teacher/Dashboard';
 import Students from './pages/teacher/Students';
 import StudentDetail from './pages/teacher/StudentDetail';
+import TeacherAttendance from './pages/teacher/Attendance';
 import Schedule from './pages/teacher/Schedule';
 import Fees from './pages/teacher/Fees';
 import Syllabus from './pages/teacher/Syllabus';
@@ -23,6 +24,7 @@ import SectionMaster from './pages/teacher/SectionMaster';
 
 // Student pages
 import StudentDashboard from './pages/student/Dashboard';
+import StudentAttendance from './pages/student/Attendance';
 import StudentFees from './pages/student/Fees';
 import StudentSyllabus from './pages/student/Syllabus';
 import StudentResults from './pages/student/Results';
@@ -62,6 +64,7 @@ export default function App() {
             <Route index element={<TeacherDashboard />} />
             <Route path="students" element={<Students />} />
             <Route path="students/:id" element={<StudentDetail />} />
+            <Route path="attendance" element={<TeacherAttendance />} />
             <Route path="schedule" element={<Schedule />} />
             <Route path="fees" element={<Fees />} />
             <Route path="syllabus" element={<Syllabus />} />
@@ -85,6 +88,7 @@ export default function App() {
             }
           >
             <Route index element={<StudentDashboard />} />
+            <Route path="attendance" element={<StudentAttendance />} />
             <Route path="fees" element={<StudentFees />} />
             <Route path="syllabus" element={<StudentSyllabus />} />
             <Route path="results" element={<StudentResults />} />

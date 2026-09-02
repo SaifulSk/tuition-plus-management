@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import type { Student, FeePayment, SyllabusTopic, SchoolExam, ScheduleSlot, TuitionTest, Homework, CenterEvent } from '../../types';
-import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff, Plus, X, Settings, Clock, ClipboardList, CalendarDays, BookOpenCheck } from 'lucide-react';
+import type { Student, FeePayment, SyllabusTopic, SchoolExam, ScheduleSlot, TuitionTest, Homework, CenterEvent, AttendanceRecord } from '../../types';
+import { ArrowLeft, Mail, Phone, BookOpen, Wallet, BarChart3, GraduationCap, User, Eye, EyeOff, Plus, X, Settings, Clock, ClipboardList, CalendarDays, BookOpenCheck, UserCheck, CheckCircle2, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import MultiSelect from '../../components/common/MultiSelect';
@@ -14,7 +14,7 @@ import {
 import { useSubjects } from '../../hooks/useSubjects';
 import { getCurrentSession } from '../../utils/dateUtils';
 
-type Tab = 'overview' | 'fees' | 'syllabus' | 'exams' | 'schedule' | 'tests' | 'homework' | 'events';
+type Tab = 'overview' | 'attendance' | 'schedule' | 'fees' | 'syllabus' | 'tests' | 'exams' | 'homework' | 'events';
 
 const getMarksBadgeClass = (pct: number) => {
   if (pct >= 90) return 'badge-excel-dark-green';
@@ -51,6 +51,7 @@ export default function StudentDetail() {
   const [tests, setTests] = useState<TuitionTest[]>([]);
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [events, setEvents] = useState<CenterEvent[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [tab, setTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
   const [showMonthlyFee, setShowMonthlyFee] = useState(false);
@@ -116,6 +117,9 @@ export default function StudentDetail() {
       const evSnap = await getDocs(query(collection(db, 'events'), orderBy('date', 'desc')));
       setEvents(evSnap.docs.map(d => ({ id: d.id, ...d.data() }) as CenterEvent)
         .filter(e => !e.attendees || e.attendees.length === 0 || e.attendees.includes(id!)));
+
+      const attSnap = await getDocs(query(collection(db, 'attendance'), orderBy('date', 'desc')));
+      setAttendance(attSnap.docs.map(d => d.data() as AttendanceRecord).filter(r => r.studentId === id));
 
       setLoading(false);
     }
@@ -241,9 +245,9 @@ export default function StudentDetail() {
       </div>
 
       <div className="tabs">
-        {(['overview','schedule','fees','syllabus','tests','exams','homework','events'] as Tab[]).map(t => (
+        {(['overview','attendance','schedule','fees','syllabus','tests','exams','homework','events'] as Tab[]).map(t => (
           <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'attendance' ? 'Attendance' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -263,6 +267,88 @@ export default function StudentDetail() {
             </div>
           )}
         </div>
+      )}
+
+      {tab === 'attendance' && (
+        <>
+          {(() => {
+            const attPresent = attendance.filter(a => a.status === 'present').length;
+            const attLate = attendance.filter(a => a.status === 'late').length;
+            const attAbsent = attendance.filter(a => a.status === 'absent').length;
+            const attLeave = attendance.filter(a => a.status === 'leave').length;
+            const attTotal = attPresent + attLate + attAbsent + attLeave;
+            const attRate = attTotal > 0 ? Math.round(((attPresent + attLate) / attTotal) * 100) : 0;
+
+            return (
+              <>
+                <div className="stats-grid mb-16">
+                  <div className="stat-card stat-green">
+                    <div className="stat-icon"><CheckCircle2 size={24} /></div>
+                    <div className="stat-body">
+                      <div className="stat-value">{attRate}%</div>
+                      <div className="stat-label">Attendance Rate</div>
+                      <div className="stat-sub">{attPresent + attLate} of {attTotal} sessions</div>
+                    </div>
+                  </div>
+
+                  <div className="stat-card stat-blue">
+                    <div className="stat-icon"><Clock size={24} /></div>
+                    <div className="stat-body">
+                      <div className="stat-value">{attLate}</div>
+                      <div className="stat-label">Late Arrivals</div>
+                      <div className="stat-sub">With logged timings</div>
+                    </div>
+                  </div>
+
+                  <div className="stat-card stat-red">
+                    <div className="stat-icon"><XCircle size={24} /></div>
+                    <div className="stat-body">
+                      <div className="stat-value">{attAbsent}</div>
+                      <div className="stat-label">Absences</div>
+                      <div className="stat-sub">{attLeave} excused leaves</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card">
+                  <h3 className="section-title"><UserCheck size={18}/> Attendance Records</h3>
+                  {attendance.length === 0 ? (
+                    <div className="empty-state"><UserCheck size={32}/><p>No attendance records logged for this student</p></div>
+                  ) : (
+                    <div className="table-wrap">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Check-in</th>
+                            <th>Check-out</th>
+                            <th>Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {attendance.map(r => (
+                            <tr key={r.id}>
+                              <td><strong>{format(new Date(r.date), 'dd MMM yyyy')}</strong></td>
+                              <td>
+                                <span className={`badge ${r.status === 'present' ? 'badge-green' : r.status === 'absent' ? 'badge-red' : r.status === 'late' ? 'badge-yellow' : 'badge-blue'}`}>
+                                  {r.status.toUpperCase()}
+                                </span>
+                              </td>
+                              <td>{r.checkInTime || '—'}</td>
+                              <td>{r.checkOutTime || '—'}</td>
+                              <td>{r.remarks || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </>
       )}
 
       {tab === 'fees' && (

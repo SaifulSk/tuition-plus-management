@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CalendarDays, Wallet, BookOpen,
   ClipboardList, BarChart3, PartyPopper, LogOut, GraduationCap,
-  Menu, ChevronRight, FileText, Key, X, Settings, ChevronDown
+  Menu, ChevronRight, FileText, Key, X, Settings, ChevronDown, UserCheck
 } from 'lucide-react';
 import { signOut, changeUserPassword } from '../../firebase/auth';
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,6 +13,7 @@ import logo from '../../assets/logo.png';
 const teacherLinks = [
   { to: '/teacher', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/teacher/students', label: 'Students', icon: Users },
+  { to: '/teacher/attendance', label: 'Attendance', icon: UserCheck },
   { to: '/teacher/schedule', label: 'Schedule', icon: CalendarDays },
   { to: '/teacher/fees', label: 'Fees', icon: Wallet },
   { to: '/teacher/syllabus', label: 'Syllabus', icon: BookOpen },
@@ -33,6 +34,7 @@ const teacherLinks = [
 
 const studentLinks = [
   { to: '/student', label: 'My Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/student/attendance', label: 'My Attendance', icon: UserCheck },
   { to: '/student/fees', label: 'My Fees', icon: Wallet },
   { to: '/student/syllabus', label: 'My Syllabus', icon: BookOpen },
   { to: '/student/results', label: 'My Results', icon: BarChart3 },
