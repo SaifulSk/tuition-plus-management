@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { collection, query, getDocs, doc, setDoc, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, getDocs, doc, setDoc, orderBy, Timestamp, collectionGroup } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import type { Student, AttendanceRecord, AttendanceStatus } from '../../types';
+import type { Student, AttendanceRecord, AttendanceStatus, ScheduleSlot } from '../../types';
 import {
   UserCheck, Calendar, Users, CheckCircle2, XCircle, Clock,
   AlertCircle, ChevronLeft, ChevronRight, Download, Search,
@@ -11,6 +11,15 @@ import toast from 'react-hot-toast';
 import { format, addDays, subDays, getDaysInMonth, getDay } from 'date-fns';
 
 const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+
+const formatTime12h = (time24?: string) => {
+  if (!time24) return '';
+  const [h, m] = time24.split(':');
+  const hours = parseInt(h, 10);
+  const suffix = hours >= 12 ? 'PM' : 'AM';
+  const h12 = hours % 12 || 12;
+  return `${h12}:${m} ${suffix}`;
+};
 
 type ViewTab = 'daily' | 'register' | 'insights';
 
@@ -24,12 +33,15 @@ interface DailyStudentState {
 export default function Attendance() {
   const [activeTab, setActiveTab] = useState<ViewTab>('daily');
   const [students, setStudents] = useState<Student[]>([]);
+  const [allSlots, setAllSlots] = useState<ScheduleSlot[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
 
   // Daily View State
-  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [filterClass, setFilterClass] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [onlyScheduled, setOnlyScheduled] = useState(true);
   const [dailyStates, setDailyStates] = useState<Record<string, DailyStudentState>>({});
   const [savingDaily, setSavingDaily] = useState(false);
   const [loadingDaily, setLoadingDaily] = useState(false);
@@ -46,32 +58,62 @@ export default function Attendance() {
   const [studentRecords, setStudentRecords] = useState<AttendanceRecord[]>([]);
   const [insightMonth, setInsightMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
 
-  // Load active students
+  // Load active students & slots
   useEffect(() => {
-    async function fetchStudents() {
+    async function fetchInitialData() {
       try {
-        const snap = await getDocs(query(collection(db, 'students'), orderBy('name')));
-        const active = snap.docs
+        const [studentSnap, slotsSnap] = await Promise.all([
+          getDocs(query(collection(db, 'students'), orderBy('name'))),
+          getDocs(collectionGroup(db, 'slots'))
+        ]);
+        
+        const active = studentSnap.docs
           .map(d => ({ id: d.id, ...d.data() }) as Student)
           .filter(s => s.active !== false);
         setStudents(active);
+
+        const slots = slotsSnap.docs.map(d => {
+          const studentId = d.data().studentId || d.ref.parent.parent?.id;
+          return { id: d.id, ...d.data(), studentId } as ScheduleSlot;
+        });
+        setAllSlots(slots);
       } catch (err) {
-        console.error('Failed to load students:', err);
-        toast.error('Failed to load students');
+        console.error('Failed to load students/slots:', err);
+        toast.error('Failed to load student data');
       } finally {
         setLoadingStudents(false);
       }
     }
-    fetchStudents();
+    fetchInitialData();
   }, []);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 1. DAILY ATTENDANCE LOGIC
   // ─────────────────────────────────────────────────────────────────────────────
+  const isFutureDate = selectedDate > todayStr;
+
+  // Day of week for selected date
+  const selectedDayOfWeek = useMemo(() => {
+    if (!selectedDate) return '';
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    return format(new Date(y, m - 1, d), 'EEEE');
+  }, [selectedDate]);
+
+  // Tuition slots on the selected day of week grouped by studentId
+  const todaySlotsByStudent = useMemo(() => {
+    const map: Record<string, ScheduleSlot[]> = {};
+    allSlots.forEach(s => {
+      if (s.day === selectedDayOfWeek && s.type !== 'other_tuition') {
+        if (!map[s.studentId]) map[s.studentId] = [];
+        map[s.studentId].push(s);
+      }
+    });
+    return map;
+  }, [allSlots, selectedDayOfWeek]);
+
   const loadDailyAttendance = useCallback(async (dateStr: string) => {
     setLoadingDaily(true);
     try {
-      // Query attendance for this date
       const snap = await getDocs(query(collection(db, 'attendance')));
       const map: Record<string, DailyStudentState> = {};
 
@@ -106,9 +148,14 @@ export default function Attendance() {
     return students.filter(s => {
       const matchClass = !filterClass || s.class === filterClass;
       const matchSearch = !searchQuery || s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.school.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchClass && matchSearch;
+      
+      const hasSlotToday = Boolean(todaySlotsByStudent[s.id] && todaySlotsByStudent[s.id].length > 0);
+      const isAlreadyMarked = Boolean(dailyStates[s.id] && dailyStates[s.id].status !== 'unmarked');
+      const matchSchedule = !onlyScheduled || hasSlotToday || isAlreadyMarked;
+
+      return matchClass && matchSearch && matchSchedule;
     });
-  }, [students, filterClass, searchQuery]);
+  }, [students, filterClass, searchQuery, onlyScheduled, todaySlotsByStudent, dailyStates]);
 
   const dailyStats = useMemo(() => {
     let present = 0;
@@ -134,13 +181,22 @@ export default function Attendance() {
   }, [filteredDailyStudents, dailyStates]);
 
   const setStudentStatus = (studentId: string, status: AttendanceStatus) => {
+    if (isFutureDate) {
+      toast.error('Cannot mark attendance for future dates');
+      return;
+    }
+
     setDailyStates(prev => {
       const existing = prev[studentId] || { status: 'unmarked', checkInTime: '', checkOutTime: '', remarks: '' };
       const nowTime = format(new Date(), 'HH:mm');
+      const firstSlot = todaySlotsByStudent[studentId]?.[0];
       
       let checkIn = existing.checkInTime;
-      if ((status === 'present' || status === 'late') && !checkIn) {
-        checkIn = nowTime;
+      let checkOut = existing.checkOutTime;
+
+      if (status === 'present' || status === 'late') {
+        if (!checkIn) checkIn = firstSlot?.startTime || nowTime;
+        if (!checkOut && firstSlot?.endTime) checkOut = firstSlot.endTime;
       }
 
       return {
@@ -149,13 +205,14 @@ export default function Attendance() {
           ...existing,
           status,
           checkInTime: status === 'absent' || status === 'leave' ? '' : checkIn,
-          checkOutTime: status === 'absent' || status === 'leave' ? '' : existing.checkOutTime,
+          checkOutTime: status === 'absent' || status === 'leave' ? '' : checkOut,
         }
       };
     });
   };
 
   const setStudentCheckIn = (studentId: string, time: string) => {
+    if (isFutureDate) return;
     setDailyStates(prev => ({
       ...prev,
       [studentId]: {
@@ -166,6 +223,7 @@ export default function Attendance() {
   };
 
   const setStudentCheckOut = (studentId: string, time: string) => {
+    if (isFutureDate) return;
     setDailyStates(prev => ({
       ...prev,
       [studentId]: {
@@ -176,6 +234,7 @@ export default function Attendance() {
   };
 
   const setStudentRemarks = (studentId: string, remarks: string) => {
+    if (isFutureDate) return;
     setDailyStates(prev => ({
       ...prev,
       [studentId]: {
@@ -186,16 +245,31 @@ export default function Attendance() {
   };
 
   const handleBulkMark = (status: AttendanceStatus) => {
+    if (isFutureDate) {
+      toast.error('Cannot mark attendance for future dates');
+      return;
+    }
+
     const nowTime = format(new Date(), 'HH:mm');
     setDailyStates(prev => {
       const updated = { ...prev };
       filteredDailyStudents.forEach(s => {
         const existing = updated[s.id] || { status: 'unmarked', checkInTime: '', checkOutTime: '', remarks: '' };
+        const firstSlot = todaySlotsByStudent[s.id]?.[0];
+        
+        let checkIn = existing.checkInTime;
+        let checkOut = existing.checkOutTime;
+
+        if (status === 'present' || status === 'late') {
+          if (!checkIn) checkIn = firstSlot?.startTime || nowTime;
+          if (!checkOut && firstSlot?.endTime) checkOut = firstSlot.endTime;
+        }
+
         updated[s.id] = {
           ...existing,
           status,
-          checkInTime: (status === 'present' || status === 'late') ? (existing.checkInTime || nowTime) : '',
-          checkOutTime: (status === 'absent' || status === 'leave') ? '' : existing.checkOutTime,
+          checkInTime: (status === 'present' || status === 'late') ? checkIn : '',
+          checkOutTime: (status === 'absent' || status === 'leave') ? '' : checkOut,
         };
       });
       return updated;
@@ -204,6 +278,7 @@ export default function Attendance() {
   };
 
   const handleClearAll = () => {
+    if (isFutureDate) return;
     setDailyStates(prev => {
       const updated = { ...prev };
       filteredDailyStudents.forEach(s => {
@@ -215,6 +290,11 @@ export default function Attendance() {
   };
 
   const handleSaveDaily = async () => {
+    if (isFutureDate) {
+      toast.error('Cannot mark attendance for future dates');
+      return;
+    }
+
     setSavingDaily(true);
     try {
       const batchPromises = filteredDailyStudents.map(async s => {
@@ -508,12 +588,14 @@ export default function Attendance() {
                   className="input"
                   style={{ width: 'auto', fontWeight: 600 }}
                   value={selectedDate}
+                  max={todayStr}
                   onChange={e => setSelectedDate(e.target.value)}
                 />
                 <button
                   type="button"
                   className="icon-btn"
                   onClick={() => setSelectedDate(format(addDays(new Date(selectedDate), 1), 'yyyy-MM-dd'))}
+                  disabled={selectedDate >= todayStr}
                   title="Next Day"
                 >
                   <ChevronRight size={18} />
@@ -522,15 +604,32 @@ export default function Attendance() {
                   type="button"
                   className="btn-ghost"
                   style={{ fontSize: '13px', padding: '6px 12px', height: 'auto' }}
-                  onClick={() => setSelectedDate(format(new Date(), 'yyyy-MM-dd'))}
+                  onClick={() => setSelectedDate(todayStr)}
                 >
                   Today
                 </button>
               </div>
 
-              {/* Filters */}
+              {/* Filters & Schedule Toggle */}
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ minWidth: '150px' }}>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  style={{
+                    fontSize: '13px',
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    border: onlyScheduled ? '1px solid var(--navy, #1E3A5F)' : '1px solid var(--border)',
+                    background: onlyScheduled ? 'rgba(30, 58, 95, 0.08)' : 'var(--surface-2)',
+                    fontWeight: 600,
+                    color: onlyScheduled ? 'var(--navy)' : 'var(--text-muted)',
+                  }}
+                  onClick={() => setOnlyScheduled(!onlyScheduled)}
+                >
+                  {onlyScheduled ? `📅 Scheduled on ${selectedDayOfWeek} (${Object.keys(todaySlotsByStudent).length})` : '👥 All Students'}
+                </button>
+
+                <div style={{ minWidth: '140px' }}>
                   <select
                     className="input"
                     value={filterClass}
@@ -541,7 +640,7 @@ export default function Attendance() {
                   </select>
                 </div>
 
-                <div className="search-box" style={{ width: '220px' }}>
+                <div className="search-box" style={{ width: '200px' }}>
                   <Search size={16} />
                   <input
                     type="text"
@@ -553,6 +652,14 @@ export default function Attendance() {
               </div>
             </div>
           </div>
+
+          {/* Future Date Alert */}
+          {isFutureDate && (
+            <div className="card mb-16" style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', color: '#b91c1c' }}>
+              <AlertCircle size={18} />
+              <span style={{ fontSize: '14px', fontWeight: 600 }}>Future date selected. Attendance cannot be recorded in advance.</span>
+            </div>
+          )}
 
           {/* Daily Summary Bar */}
           <div className="attendance-summary-bar">
@@ -597,6 +704,7 @@ export default function Attendance() {
                 className="btn-ghost"
                 style={{ fontSize: '12px', padding: '6px 12px', color: '#15803d', border: '1px solid #bbf7d0', background: '#f0fdf4' }}
                 onClick={() => handleBulkMark('present')}
+                disabled={isFutureDate}
               >
                 <Check size={14} /> Mark All Present
               </button>
@@ -605,6 +713,7 @@ export default function Attendance() {
                 className="btn-ghost"
                 style={{ fontSize: '12px', padding: '6px 12px', color: '#b91c1c', border: '1px solid #fecaca', background: '#fef2f2' }}
                 onClick={() => handleBulkMark('absent')}
+                disabled={isFutureDate}
               >
                 <X size={14} /> Mark All Absent
               </button>
@@ -613,6 +722,7 @@ export default function Attendance() {
                 className="btn-ghost"
                 style={{ fontSize: '12px', padding: '6px 12px', color: 'var(--text-muted)' }}
                 onClick={handleClearAll}
+                disabled={isFutureDate}
               >
                 Clear Marks
               </button>
@@ -622,7 +732,7 @@ export default function Attendance() {
               type="button"
               className="btn-primary"
               onClick={handleSaveDaily}
-              disabled={savingDaily || loadingDaily}
+              disabled={savingDaily || loadingDaily || isFutureDate}
               style={{ padding: '8px 24px' }}
             >
               {savingDaily ? <span className="btn-spinner" /> : <UserCheck size={16} />}
@@ -638,7 +748,20 @@ export default function Attendance() {
           ) : filteredDailyStudents.length === 0 ? (
             <div className="empty-state">
               <Users size={36} />
-              <p>No students found matching your class or search filters.</p>
+              <p>
+                {onlyScheduled
+                  ? `No students have tuition slots scheduled on ${selectedDayOfWeek}.`
+                  : 'No students found matching your filters.'}
+              </p>
+              {onlyScheduled && (
+                <button
+                  type="button"
+                  className="btn-secondary mt-8"
+                  onClick={() => setOnlyScheduled(false)}
+                >
+                  Show All Students
+                </button>
+              )}
             </div>
           ) : (
             <div>
@@ -646,6 +769,7 @@ export default function Attendance() {
                 const state = dailyStates[student.id] || { status: 'unmarked', checkInTime: '', checkOutTime: '', remarks: '' };
                 const currentStatus = state.status;
                 const isPresentOrLate = currentStatus === 'present' || currentStatus === 'late';
+                const studentSlots = todaySlotsByStudent[student.id];
 
                 return (
                   <div key={student.id} className={`attendance-student-card status-${currentStatus}`}>
@@ -662,6 +786,15 @@ export default function Attendance() {
                           <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                             Class {student.class} • {student.school}
                           </div>
+                          {studentSlots && studentSlots.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                              {studentSlots.map((sl, i) => (
+                                <span key={i} className="chip" style={{ fontSize: '11px', padding: '1px 8px', background: 'rgba(30, 58, 95, 0.08)', color: 'var(--navy)', fontWeight: 600 }}>
+                                  ⏰ {formatTime12h(sl.startTime)} - {formatTime12h(sl.endTime)}{sl.subjects?.length ? ` • ${sl.subjects.join(', ')}` : ''}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -671,6 +804,7 @@ export default function Attendance() {
                           type="button"
                           className={`attendance-status-btn ${currentStatus === 'present' ? 'active-present' : ''}`}
                           onClick={() => setStudentStatus(student.id, 'present')}
+                          disabled={isFutureDate}
                         >
                           Present
                         </button>
@@ -678,6 +812,7 @@ export default function Attendance() {
                           type="button"
                           className={`attendance-status-btn ${currentStatus === 'absent' ? 'active-absent' : ''}`}
                           onClick={() => setStudentStatus(student.id, 'absent')}
+                          disabled={isFutureDate}
                         >
                           Absent
                         </button>
@@ -685,6 +820,7 @@ export default function Attendance() {
                           type="button"
                           className={`attendance-status-btn ${currentStatus === 'late' ? 'active-late' : ''}`}
                           onClick={() => setStudentStatus(student.id, 'late')}
+                          disabled={isFutureDate}
                         >
                           Late
                         </button>
@@ -692,6 +828,7 @@ export default function Attendance() {
                           type="button"
                           className={`attendance-status-btn ${currentStatus === 'leave' ? 'active-leave' : ''}`}
                           onClick={() => setStudentStatus(student.id, 'leave')}
+                          disabled={isFutureDate}
                         >
                           Leave
                         </button>
