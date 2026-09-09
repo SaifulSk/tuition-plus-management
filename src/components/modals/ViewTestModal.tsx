@@ -91,7 +91,7 @@ export default function ViewTestModal({
           </button>
         </div>
 
-        <div className="modal-body" style={{ padding: '20px' }}>
+        <div className="modal-body" style={{ padding: '20px 24px 16px' }}>
           {/* Summary Stats Cards */}
           <div style={{
             display: 'grid',
@@ -270,7 +270,15 @@ export default function ViewTestModal({
         </div>
 
         {/* Footer */}
-        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="modal-footer" style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '16px 24px 20px',
+          borderTop: '1px solid var(--border)',
+          margin: 0,
+          background: 'var(--surface)',
+        }}>
           <div>
             {onEdit && (
               <button
@@ -280,13 +288,33 @@ export default function ViewTestModal({
                   onClose();
                   onEdit(test);
                 }}
-                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  color: 'var(--navy)',
+                  borderColor: 'var(--border)',
+                  fontWeight: 500,
+                  fontSize: '13px',
+                  padding: '8px 14px',
+                }}
               >
                 <Pencil size={15} /> Edit Test Marks
               </button>
             )}
           </div>
-          <button type="button" className="btn-primary" onClick={onClose}>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onClose}
+            style={{
+              minWidth: 90,
+              justifyContent: 'center',
+              fontWeight: 600,
+              fontSize: '13px',
+              padding: '8px 18px',
+            }}
+          >
             Done
           </button>
         </div>

@@ -842,6 +842,11 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   border-top: 1px solid var(--border);
   margin-top: 8px;
 }
+.modal > .modal-footer {
+  padding: 16px 24px 20px;
+  margin-top: 0;
+  border-top: 1px solid var(--border);
+}
 
 /* ═══════════════════════════════════════════════════
    EMPTY STATE
