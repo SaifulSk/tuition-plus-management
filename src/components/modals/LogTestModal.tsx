@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useSubjects } from '../../hooks/useSubjects';
-import MultiSelectObj from '../common/MultiSelectObj';
 import type { Student } from '../../types';
-import { X, ClipboardList } from 'lucide-react';
+import { X, ClipboardList, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
@@ -18,7 +17,7 @@ interface LogTestModalProps {
 
 export default function LogTestModal({ isOpen, onClose, onSuccess, students }: LogTestModalProps) {
   const { masterSubjects } = useSubjects();
-  const [filterClass, setFilterClass] = useState('');
+  const [targetClass, setTargetClass] = useState('');
   const [form, setForm] = useState({
     title: '',
     date: new Date().toISOString().split('T')[0],
@@ -31,7 +30,45 @@ export default function LogTestModal({ isOpen, onClose, onSuccess, students }: L
 
   if (!isOpen) return null;
 
-  const filteredStudents = students.filter(s => s.active !== false && (!filterClass || s.class === filterClass));
+  const classStudents = students.filter(s => s.active !== false && s.class === targetClass);
+
+  const handleClassChange = (newClass: string) => {
+    setTargetClass(newClass);
+    setSelectedStudentIds([]);
+  };
+
+  const handleSelectAll = () => {
+    setSelectedStudentIds(classStudents.map(s => s.id));
+  };
+
+  const handleClearAll = () => {
+    setSelectedStudentIds([]);
+  };
+
+  const handleToggleStudent = (studentId: string) => {
+    setSelectedStudentIds(prev =>
+      prev.includes(studentId)
+        ? prev.filter(id => id !== studentId)
+        : [...prev, studentId]
+    );
+  };
+
+  const resetForm = () => {
+    setForm({
+      title: '',
+      date: new Date().toISOString().split('T')[0],
+      maxMarks: '',
+      marks: {},
+    });
+    setSubject('');
+    setSelectedStudentIds([]);
+    setTargetClass('');
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,19 +76,37 @@ export default function LogTestModal({ isOpen, onClose, onSuccess, students }: L
       toast.error('Please fill in all required fields');
       return;
     }
+    if (!targetClass) {
+      toast.error('Please select a class for the test');
+      return;
+    }
     if (selectedStudentIds.length === 0) {
-      toast.error('Select at least one student');
+      toast.error('Please select at least one student who took the test');
       return;
     }
 
-    const studentMarks: Record<string, number> = {};
-    selectedStudentIds.forEach(id => {
-      if (form.marks[id] !== '' && form.marks[id] !== undefined) {
-        studentMarks[id] = Number(form.marks[id]);
+    // Validate marks for selected students
+    for (const sid of selectedStudentIds) {
+      const val = form.marks[sid];
+      if (val === undefined || val === '' || isNaN(Number(val))) {
+        const student = students.find(s => s.id === sid);
+        toast.error(`Please enter marks for ${student?.name || 'selected student'}`);
+        return;
       }
-    });
+      const numVal = Number(val);
+      if (numVal < 0 || numVal > Number(form.maxMarks)) {
+        const student = students.find(s => s.id === sid);
+        toast.error(`Marks for ${student?.name || 'student'} must be between 0 and ${form.maxMarks}`);
+        return;
+      }
+    }
 
     setSaving(true);
+    const studentMarks: Record<string, number> = {};
+    selectedStudentIds.forEach(id => {
+      studentMarks[id] = Number(form.marks[id]);
+    });
+
     try {
       await addDoc(collection(db, 'tests'), {
         title: form.title.trim(),
@@ -59,18 +114,12 @@ export default function LogTestModal({ isOpen, onClose, onSuccess, students }: L
         date: Timestamp.fromDate(new Date(form.date)),
         maxMarks: Number(form.maxMarks),
         studentMarks,
+        targetClass,
+        createdAt: Timestamp.now(),
       });
 
       toast.success('Test logged!');
-      setForm({
-        title: '',
-        date: new Date().toISOString().split('T')[0],
-        maxMarks: '',
-        marks: {},
-      });
-      setSubject('');
-      setSelectedStudentIds([]);
-      setFilterClass('');
+      resetForm();
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -81,112 +130,230 @@ export default function LogTestModal({ isOpen, onClose, onSuccess, students }: L
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal large" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={handleClose}>
+      <div className="modal large" onClick={e => e.stopPropagation()} style={{ maxWidth: '680px' }}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <ClipboardList size={20} color="var(--navy)" />
-            <h2>Log Test</h2>
+            <h2>Log Tuition Test</h2>
           </div>
-          <button className="modal-close" onClick={onClose}><X size={18}/></button>
+          <button className="modal-close" onClick={handleClose}><X size={18} /></button>
         </div>
 
         <form onSubmit={handleSave} className="modal-body">
           <div className="form-grid-2">
             <div className="form-group">
+              <label>Class *</label>
+              <select
+                value={targetClass}
+                onChange={e => handleClassChange(e.target.value)}
+                required
+              >
+                <option value="" disabled>Select Class</option>
+                {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group">
               <label>Test Title *</label>
-              <input 
-                type="text" 
-                placeholder="e.g. Chapter 3 Test" 
-                value={form.title} 
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))} 
-                required 
+              <input
+                type="text"
+                placeholder="e.g. Chapter 3 Assessment"
+                value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                required
               />
             </div>
+
             <div className="form-group">
               <label>Subject *</label>
-              <select 
-                value={subject} 
-                onChange={e => setSubject(e.target.value)} 
+              <select
+                value={subject}
+                onChange={e => setSubject(e.target.value)}
                 required
               >
                 <option value="" disabled>Select subject</option>
                 {masterSubjects.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
+
             <div className="form-group">
               <label>Date *</label>
-              <input 
-                type="date" 
-                value={form.date} 
-                onChange={e => setForm(f => ({ ...f, date: e.target.value }))} 
-                required 
+              <input
+                type="date"
+                value={form.date}
+                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                required
               />
             </div>
+
             <div className="form-group">
               <label>Max Marks *</label>
-              <input 
-                type="number" 
-                placeholder="e.g. 50" 
-                value={form.maxMarks} 
-                onChange={e => setForm(f => ({ ...f, maxMarks: e.target.value }))} 
-                required 
-              />
-            </div>
-          </div>
-
-          <h3 className="section-title mt-8">Student Marks</h3>
-
-          <div className="form-grid-2 mb-16">
-            <div className="form-group">
-              <label>Filter by Class</label>
-              <select 
-                value={filterClass} 
-                onChange={e => {
-                  setFilterClass(e.target.value);
-                  if (e.target.value) {
-                    const validIds = new Set(students.filter(s => s.active !== false && s.class === e.target.value).map(s => s.id));
-                    setSelectedStudentIds(prev => prev.filter(id => validIds.has(id)));
-                  }
-                }}
-              >
-                <option value="">All Classes</option>
-                {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Select Students *</label>
-              <MultiSelectObj
-                options={filteredStudents.map(s => ({ value: s.id, label: `${s.name} (Class ${s.class})` }))}
-                selected={selectedStudentIds}
-                onChange={setSelectedStudentIds}
-                placeholder="Select students to mark"
+              <input
+                type="number"
+                placeholder="e.g. 50"
+                min={1}
+                value={form.maxMarks}
+                onChange={e => setForm(f => ({ ...f, maxMarks: e.target.value }))}
+                required
               />
             </div>
           </div>
 
-          {selectedStudentIds.length > 0 && (
-            <div className="form-grid-2">
-              {students.filter(s => selectedStudentIds.includes(s.id)).map(s => (
-                <div key={s.id} className="form-group">
-                  <label>{s.name} <span className="text-muted">(Class {s.class})</span></label>
-                  <input
-                    type="number"
-                    placeholder={`Out of ${form.maxMarks || '?'}`}
-                    min={0}
-                    max={Number(form.maxMarks) || undefined}
-                    value={form.marks[s.id] || ''}
-                    onChange={e => setForm(f => ({ ...f, marks: { ...f.marks, [s.id]: e.target.value } }))}
-                  />
+          {/* Student Selection & Marks */}
+          <div style={{ marginTop: '16px' }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '10px',
+              borderBottom: '1px solid var(--border)',
+              paddingBottom: '8px',
+            }}>
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>
+                  Select Students & Enter Marks *
+                </h3>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: 2 }}>
+                  {targetClass
+                    ? `Only selected students will be recorded (${selectedStudentIds.length} of ${classStudents.length} selected)`
+                    : 'Please select a Class above first to see enrolled students'}
                 </div>
-              ))}
+              </div>
+
+              {targetClass && classStudents.length > 0 && (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={handleSelectAll}
+                    style={{ padding: '4px 10px', fontSize: '12px' }}
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={handleClearAll}
+                    style={{ padding: '4px 10px', fontSize: '12px' }}
+                  >
+                    Clear All
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+
+            {!targetClass ? (
+              <div style={{
+                padding: '24px',
+                textAlign: 'center',
+                background: 'var(--bg)',
+                borderRadius: '8px',
+                color: 'var(--text-muted)',
+                fontSize: '13px',
+              }}>
+                Select a Class from the dropdown above to load enrolled students.
+              </div>
+            ) : classStudents.length === 0 ? (
+              <div style={{
+                padding: '24px',
+                textAlign: 'center',
+                background: 'var(--bg)',
+                borderRadius: '8px',
+                color: 'var(--text-muted)',
+                fontSize: '13px',
+              }}>
+                No active students enrolled in Class {targetClass}.
+              </div>
+            ) : (
+              <div style={{
+                maxHeight: '280px',
+                overflowY: 'auto',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                padding: '6px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+              }}>
+                {classStudents.map(s => {
+                  const isSelected = selectedStudentIds.includes(s.id);
+                  return (
+                    <div
+                      key={s.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        background: isSelected ? 'var(--surface)' : 'var(--bg)',
+                        border: isSelected ? '1px solid var(--primary, #1E3A5F)' : '1px solid transparent',
+                        gap: '12px',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        cursor: 'pointer',
+                        margin: 0,
+                        flex: 1,
+                        userSelect: 'none',
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleStudent(s.id)}
+                          style={{ width: 16, height: 16, cursor: 'pointer' }}
+                        />
+                        <div>
+                          <span style={{ fontWeight: 600, fontSize: '14px', color: isSelected ? 'var(--text)' : 'var(--text-muted)' }}>
+                            {s.name}
+                          </span>
+                          {s.phone && (
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: 8 }}>
+                              ({s.phone})
+                            </span>
+                          )}
+                        </div>
+                      </label>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '130px' }}>
+                        <input
+                          type="number"
+                          placeholder={isSelected ? `/${form.maxMarks || '?'}` : 'Not tested'}
+                          min={0}
+                          max={Number(form.maxMarks) || undefined}
+                          step="any"
+                          disabled={!isSelected}
+                          value={isSelected ? (form.marks[s.id] ?? '') : ''}
+                          onChange={e => setForm(f => ({
+                            ...f,
+                            marks: { ...f.marks, [s.id]: e.target.value }
+                          }))}
+                          style={{
+                            padding: '6px 8px',
+                            fontSize: '13px',
+                            width: '100%',
+                            opacity: isSelected ? 1 : 0.4,
+                            background: isSelected ? 'var(--surface)' : 'var(--bg)',
+                            cursor: isSelected ? 'text' : 'not-allowed',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           <div className="modal-footer">
-            <button type="button" className="btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn-ghost" onClick={handleClose}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={saving}>
+              {saving ? <span className="btn-spinner" /> : <Plus size={16} />}
               {saving ? 'Saving...' : 'Save Test'}
             </button>
           </div>

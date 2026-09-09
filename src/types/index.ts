@@ -86,6 +86,9 @@ export interface TuitionTest {
   date: Timestamp;
   maxMarks: number;
   studentMarks: Record<string, number>;  // { [studentId]: marks }
+  targetClass?: string;
+  class?: string;
+  createdAt?: Timestamp;
 }
 
 // ─── School Exams ──────────────────────────────────────────────────────────
