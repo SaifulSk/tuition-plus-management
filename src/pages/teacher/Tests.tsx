@@ -463,16 +463,7 @@ export default function Tests() {
                     No active students enrolled in Class {targetClass}.
                   </div>
                 ) : (
-                  <div style={{
-                    maxHeight: '280px',
-                    overflowY: 'auto',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    padding: '6px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                  }}>
+                  <div className="student-select-list">
                     {classStudents.map(s => {
                       const isSelected = selectedStudentIds.includes(s.id);
                       return (
@@ -486,7 +477,7 @@ export default function Tests() {
                             borderRadius: '6px',
                             background: isSelected ? 'var(--surface)' : 'var(--bg)',
                             border: isSelected ? '1px solid var(--primary, #1E3A5F)' : '1px solid transparent',
-                            gap: '12px',
+                            gap: '10px',
                             transition: 'all 0.15s ease',
                           }}
                         >
@@ -497,27 +488,36 @@ export default function Tests() {
                             cursor: 'pointer',
                             margin: 0,
                             flex: 1,
+                            minWidth: 0,
                             userSelect: 'none',
                           }}>
                             <input
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => handleToggleStudent(s.id)}
-                              style={{ width: 16, height: 16, cursor: 'pointer' }}
+                              style={{ width: 18, height: 18, cursor: 'pointer', flexShrink: 0 }}
                             />
-                            <div>
-                              <span style={{ fontWeight: 600, fontSize: '14px', color: isSelected ? 'var(--text)' : 'var(--text-muted)' }}>
+                            <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                              <span style={{
+                                fontWeight: 600,
+                                fontSize: '14px',
+                                color: isSelected ? 'var(--text)' : 'var(--text-muted)',
+                                display: 'block',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}>
                                 {s.name}
                               </span>
                               {s.phone && (
-                                <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: 8 }}>
+                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                                   ({s.phone})
                                 </span>
                               )}
                             </div>
                           </label>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '130px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '110px', flexShrink: 0 }}>
                             <input
                               type="number"
                               placeholder={isSelected ? `/${form.maxMarks || '?'}` : 'Not tested'}

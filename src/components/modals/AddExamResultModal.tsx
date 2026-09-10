@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, addDoc, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useSubjects } from '../../hooks/useSubjects';
 import type { Student } from '../../types';
@@ -40,11 +40,15 @@ export default function AddExamResultModal({ isOpen, onClose, onSuccess, student
 
   useEffect(() => {
     if (isOpen) {
-      getDocs(collection(db, 'examNames')).then(snap => {
+      getDocs(query(collection(db, 'examNames'), orderBy('name'))).then(snap => {
         const names = snap.docs.map(d => d.data().name as string).filter(Boolean);
-        setAvailableExamNames(names.length > 0 ? names : ['Term 1', 'Term 2', 'Unit Test', 'Mid Term', 'Final Exam', 'Pre-Board', 'Other']);
+        setAvailableExamNames(names.length > 0 ? names : ['Final Exam', 'Mid Term', 'Other', 'Pre-Board', 'Term 1', 'Term 2', 'Unit Test']);
       }).catch(() => {
-        setAvailableExamNames(['Term 1', 'Term 2', 'Unit Test', 'Mid Term', 'Final Exam', 'Pre-Board', 'Other']);
+        getDocs(collection(db, 'examNames')).then(snap => {
+          const names = snap.docs.map(d => d.data().name as string).filter(Boolean);
+          names.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+          setAvailableExamNames(names.length > 0 ? names : ['Final Exam', 'Mid Term', 'Other', 'Pre-Board', 'Term 1', 'Term 2', 'Unit Test']);
+        });
       });
     }
   }, [isOpen]);

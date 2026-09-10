@@ -72,8 +72,15 @@ export default function SchoolExams() {
         s.active !== false || (s.session || currentSess) === currentSess
       ));
     });
-    getDocs(collection(db, 'examNames')).then(snap => {
-      setAvailableExamNames(snap.docs.map(d => d.data().name));
+    getDocs(query(collection(db, 'examNames'), orderBy('name'))).then(snap => {
+      const names = snap.docs.map(d => d.data().name as string).filter(Boolean);
+      setAvailableExamNames(names);
+    }).catch(() => {
+      getDocs(collection(db, 'examNames')).then(snap => {
+        const names = snap.docs.map(d => d.data().name as string).filter(Boolean);
+        names.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+        setAvailableExamNames(names);
+      });
     });
   }, []);
 

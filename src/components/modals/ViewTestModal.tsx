@@ -187,16 +187,24 @@ export default function ViewTestModal({
               <p style={{ marginTop: 8, fontSize: '14px' }}>No student marks recorded for this test.</p>
             </div>
           ) : (
-            <div className="table-wrap" style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
-              <table className="data-table">
+            <div
+              className="table-wrap"
+              style={{
+                border: '1px solid var(--border)',
+                borderRadius: '10px',
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              <table className="data-table" style={{ minWidth: '540px', width: '100%' }}>
                 <thead>
                   <tr>
                     <th style={{ width: '45px', textAlign: 'center' }}>#</th>
-                    <th>Student Name</th>
-                    <th>Class</th>
-                    <th>Marks</th>
-                    <th>Percentage</th>
-                    <th style={{ textAlign: 'center' }}>Badge</th>
+                    <th style={{ minWidth: '130px' }}>Student Name</th>
+                    <th style={{ minWidth: '85px' }}>Class</th>
+                    <th style={{ minWidth: '80px' }}>Marks</th>
+                    <th style={{ minWidth: '100px' }}>Percentage</th>
+                    <th style={{ minWidth: '100px', textAlign: 'center' }}>Badge</th>
                   </tr>
                 </thead>
                 <tbody>
