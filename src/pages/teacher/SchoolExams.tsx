@@ -386,25 +386,6 @@ export default function SchoolExams() {
             </ResponsiveContainer>
           </div>
 
-          {/* Per-subject summary */}
-          <div className="stats-grid-sm mb-16">
-            {distinctSubjects.map((sub, i) => {
-              const subExams = filteredExams.filter(e => e.subjects?.includes(sub));
-              const avg = subExams.length
-                ? Math.round(subExams.reduce((a,e) => a + (e.marksObtained/e.maxMarks)*100, 0) / subExams.length)
-                : 0;
-              return (
-                <div key={sub} className="stat-card" style={{ '--accent': COLORS[i % COLORS.length] } as React.CSSProperties}>
-                  <div className="stat-body">
-                    <div className="stat-value" style={{ color: COLORS[i % COLORS.length] }}>{avg}%</div>
-                    <div className="stat-label">{formatSubjects([sub])}</div>
-                    <div className="stat-sub">{subExams.length} exam(s)</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
           {/* Results table */}
           <div className="card">
             <h3 className="section-title">All Results</h3>
