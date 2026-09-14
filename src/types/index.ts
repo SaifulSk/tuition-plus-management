@@ -92,6 +92,12 @@ export interface TuitionTest {
 }
 
 // ─── School Exams ──────────────────────────────────────────────────────────
+export interface ExamNameMaster {
+  id: string;
+  name: string;
+  sessionDates?: Record<string, string>; // session (e.g. '2025-2026') -> 'YYYY-MM-DD'
+}
+
 export interface SchoolExam {
   id: string;
   studentId: string;

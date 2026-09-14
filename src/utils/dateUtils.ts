@@ -21,3 +21,15 @@ export function getNextSession(currentSession: string): string {
   if (isNaN(start) || isNaN(end)) return currentSession;
   return `${start + 1}-${end + 1}`;
 }
+
+export function getRecentSessions(count = 6): string[] {
+  const current = getCurrentSession();
+  const baseYear = parseInt(current.split('-')[0], 10);
+  const sessions: string[] = [];
+  for (let i = -2; i <= count - 3; i++) {
+    const yr = baseYear + i;
+    sessions.push(`${yr}-${yr + 1}`);
+  }
+  return sessions.reverse();
+}
+

@@ -12,6 +12,7 @@ import {
 
 import { useConfirm } from '../../hooks/useConfirm';
 import { useSubjects } from '../../hooks/useSubjects';
+import { useExamNames } from '../../hooks/useExamNames';
 import { getCurrentSession } from '../../utils/dateUtils';
 
 
@@ -33,9 +34,7 @@ const getMarksColor = (pct: number) => {
 
 const COLORS = [
   '#1E3A5F', '#C1121F', '#10b981', '#f59e0b', '#8b5cf6', 
-  '#06b6d4', '#ec4899', '#f43f5e', '#84cc16', '#14b8a6', 
-  '#6366f1', '#a855f7', '#d946ef', '#ef4444', '#f97316', 
-  '#eab308', '#22c55e', '#0ea5e9', '#3b82f6', '#64748b'
+  '#06b6d4', '#ec4899', '#84cc16', '#6366f1', '#14b8a6'
 ];
 
 
@@ -57,12 +56,12 @@ export default function SchoolExams() {
   const [modalFilterClass, setModalFilterClass] = useState('');
   const [form, setForm] = useState({
     examName: '', maxMarks: '', marksObtained: '',
-    session: '', className: ''
+    session: '', className: '', date: ''
   });
   const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const { masterSubjects, formatSubjects } = useSubjects();
-  const [availableExamNames, setAvailableExamNames] = useState<string[]>([]);
+  const { examNames: availableExamNames, getExamDate } = useExamNames();
   const { confirm, ConfirmDialog } = useConfirm();
 
   useEffect(() => {
@@ -71,16 +70,6 @@ export default function SchoolExams() {
       setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => 
         s.active !== false || (s.session || currentSess) === currentSess
       ));
-    });
-    getDocs(query(collection(db, 'examNames'), orderBy('name'))).then(snap => {
-      const names = snap.docs.map(d => d.data().name as string).filter(Boolean);
-      setAvailableExamNames(names);
-    }).catch(() => {
-      getDocs(collection(db, 'examNames')).then(snap => {
-        const names = snap.docs.map(d => d.data().name as string).filter(Boolean);
-        names.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-        setAvailableExamNames(names);
-      });
     });
   }, []);
 
@@ -135,12 +124,19 @@ export default function SchoolExams() {
   const openEditModal = (ex: SchoolExam) => {
     setEditingExamId(ex.id);
     setIsStudentLocked(true);
+    let dateStr = '';
+    if (ex.date) {
+      dateStr = ex.date instanceof Timestamp 
+        ? format(ex.date.toDate(), 'yyyy-MM-dd') 
+        : format(new Date(ex.date as any), 'yyyy-MM-dd');
+    }
     setForm({
       examName: ex.examName || '',
       maxMarks: ex.maxMarks?.toString() || '',
       marksObtained: ex.marksObtained?.toString() || '',
       session: ex.session || getCurrentSession(),
-      className: ex.className || student?.class || ''
+      className: ex.className || student?.class || '',
+      date: dateStr
     });
     setSubjects(ex.subjects || []);
     setShowModal(true);
@@ -150,7 +146,7 @@ export default function SchoolExams() {
     setShowModal(false);
     setEditingExamId(null);
     setModalFilterClass('');
-    setForm({ examName:'', maxMarks:'', marksObtained:'', session: '', className: '' });
+    setForm({ examName:'', maxMarks:'', marksObtained:'', session: '', className: '', date: '' });
     setSubjects([]);
   };
 
@@ -160,13 +156,16 @@ export default function SchoolExams() {
     setSaving(true);
     try {
       const currentStudent = students.find(s => s.id === selectedStudent);
+      const examDate = form.date
+        ? Timestamp.fromDate(new Date(form.date + 'T00:00:00'))
+        : Timestamp.now();
       const payload = {
         studentId: selectedStudent,
         examName: form.examName,
         subjects,
         maxMarks: Number(form.maxMarks),
         marksObtained: Number(form.marksObtained),
-        date: Timestamp.now(),
+        date: examDate,
         percentage: Math.round((Number(form.marksObtained)/Number(form.maxMarks))*100),
         session: form.session || getCurrentSession(),
         className: form.className || currentStudent?.class || ''
@@ -269,12 +268,14 @@ export default function SchoolExams() {
           if (!isStudentView) setSelectedStudent(''); 
           setIsStudentLocked(isStudentView);
           setEditingExamId(null); 
+          const initSession = (isStudentView ? selectedSession : '') || getCurrentSession();
           setForm({ 
             examName: '', 
             maxMarks: '', 
             marksObtained: '', 
-            session: (isStudentView ? selectedSession : '') || getCurrentSession(), 
-            className: (isStudentView ? student?.class : '') || '' 
+            session: initSession, 
+            className: (isStudentView ? student?.class : '') || '',
+            date: ''
           }); 
           setSubjects([]); 
           setShowModal(true); 
@@ -589,7 +590,14 @@ export default function SchoolExams() {
                         setSelectedStudent(sid);
                         const s = students.find(x => x.id === sid);
                         if (s) {
-                          setForm(f => ({ ...f, session: s.session || getCurrentSession(), className: s.class || '' }));
+                          const sSession = s.session || getCurrentSession();
+                          const defaultDate = getExamDate(form.examName, sSession);
+                          setForm(f => ({ 
+                            ...f, 
+                            session: sSession, 
+                            className: s.class || '',
+                            date: defaultDate || f.date
+                          }));
                           if (!modalFilterClass) setModalFilterClass(s.class);
                         }
                       }}
@@ -606,7 +614,19 @@ export default function SchoolExams() {
               <div className="form-grid-2">
                 <div className="form-group">
                   <label>Exam Name *</label>
-                  <select value={form.examName} onChange={e => setForm(f=>({...f,examName:e.target.value}))} required>
+                  <select 
+                    value={form.examName} 
+                    onChange={e => {
+                      const newExam = e.target.value;
+                      const defaultDate = getExamDate(newExam, form.session);
+                      setForm(f => ({
+                        ...f,
+                        examName: newExam,
+                        date: defaultDate || f.date || new Date().toISOString().split('T')[0]
+                      }));
+                    }} 
+                    required
+                  >
                     <option value="" disabled>Select exam...</option>
                     {availableExamNames.map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
@@ -633,13 +653,42 @@ export default function SchoolExams() {
                   <input type="number" placeholder="e.g. 78" value={form.marksObtained} onChange={e => setForm(f=>({...f,marksObtained:e.target.value}))} required max={form.maxMarks} />
                 </div>
                 <div className="form-group">
-                  <label>Academic Session</label>
-                  <select value={form.session} onChange={e => setForm(f=>({...f,session:e.target.value}))} required>
+                  <label>Academic Session *</label>
+                  <select 
+                    value={form.session} 
+                    onChange={e => {
+                      const newSession = e.target.value;
+                      const defaultDate = getExamDate(form.examName, newSession);
+                      setForm(f => ({
+                        ...f,
+                        session: newSession,
+                        date: defaultDate || f.date
+                      }));
+                    }} 
+                    required
+                  >
                     {[...new Set([
                       ...Array.from({length: 6}, (_, i) => { const yr = new Date().getFullYear() - 2 + i; return `${yr}-${yr+1}`; }),
                       ...(distinctSessions as string[])
                     ])].sort().reverse().map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
+                </div>
+                <div className="form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>Exam Date *</span>
+                    {getExamDate(form.examName, form.session) && (
+                      <span style={{ fontSize: '11px', color: 'var(--primary-dark, #0369a1)', fontWeight: 500 }}>
+                        Auto-filled from Master
+                      </span>
+                    )}
+                  </label>
+                  <input 
+                    type="date" 
+                    className="input" 
+                    value={form.date} 
+                    onChange={e => setForm(f => ({ ...f, date: e.target.value }))} 
+                    required 
+                  />
                 </div>
               </div>
               <div className="modal-footer">

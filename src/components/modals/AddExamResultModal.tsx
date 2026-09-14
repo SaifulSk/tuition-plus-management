@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { collection, addDoc, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
+import { useState } from 'react';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useSubjects } from '../../hooks/useSubjects';
+import { useExamNames } from '../../hooks/useExamNames';
 import type { Student } from '../../types';
 import { X, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -28,30 +29,16 @@ interface AddExamResultModalProps {
 
 export default function AddExamResultModal({ isOpen, onClose, onSuccess, students }: AddExamResultModalProps) {
   const { masterSubjects } = useSubjects();
+  const { examNames: availableExamNames, getExamDate } = useExamNames();
   const [filterClass, setFilterClass] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
-  const [availableExamNames, setAvailableExamNames] = useState<string[]>([]);
   const [examName, setExamName] = useState('');
   const [subject, setSubject] = useState('');
   const [maxMarks, setMaxMarks] = useState('');
   const [marksObtained, setMarksObtained] = useState('');
   const [session, setSession] = useState(getCurrentSession());
+  const [examDate, setExamDate] = useState('');
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      getDocs(query(collection(db, 'examNames'), orderBy('name'))).then(snap => {
-        const names = snap.docs.map(d => d.data().name as string).filter(Boolean);
-        setAvailableExamNames(names.length > 0 ? names : ['Final Exam', 'Mid Term', 'Other', 'Pre-Board', 'Term 1', 'Term 2', 'Unit Test']);
-      }).catch(() => {
-        getDocs(collection(db, 'examNames')).then(snap => {
-          const names = snap.docs.map(d => d.data().name as string).filter(Boolean);
-          names.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-          setAvailableExamNames(names.length > 0 ? names : ['Final Exam', 'Mid Term', 'Other', 'Pre-Board', 'Term 1', 'Term 2', 'Unit Test']);
-        });
-      });
-    }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -76,13 +63,17 @@ export default function AddExamResultModal({ isOpen, onClose, onSuccess, student
 
     setSaving(true);
     try {
+      const parsedDate = examDate 
+        ? Timestamp.fromDate(new Date(examDate + 'T00:00:00')) 
+        : Timestamp.now();
+
       const payload = {
         studentId: selectedStudentId,
         examName,
         subjects: [subject],
         maxMarks: Number(maxMarks),
         marksObtained: Number(marksObtained),
-        date: Timestamp.now(),
+        date: parsedDate,
         percentage: Math.round((Number(marksObtained) / Number(maxMarks)) * 100),
         session: session || getCurrentSession(),
         className: currentStudent.class,
@@ -97,6 +88,7 @@ export default function AddExamResultModal({ isOpen, onClose, onSuccess, student
       setMarksObtained('');
       setSelectedStudentId('');
       setFilterClass('');
+      setExamDate('');
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -147,7 +139,10 @@ export default function AddExamResultModal({ isOpen, onClose, onSuccess, student
                   setSelectedStudentId(sid);
                   const st = students.find(s => s.id === sid);
                   if (st) {
-                    setSession(st.session || getCurrentSession());
+                    const stSession = st.session || getCurrentSession();
+                    setSession(stSession);
+                    const defaultDate = getExamDate(examName, stSession);
+                    if (defaultDate) setExamDate(defaultDate);
                     if (!filterClass) setFilterClass(st.class);
                   }
                 }} 
@@ -164,7 +159,20 @@ export default function AddExamResultModal({ isOpen, onClose, onSuccess, student
           <div className="form-grid-2">
             <div className="form-group">
               <label>Exam Name *</label>
-              <select value={examName} onChange={e => setExamName(e.target.value)} required>
+              <select 
+                value={examName} 
+                onChange={e => {
+                  const val = e.target.value;
+                  setExamName(val);
+                  const defaultDate = getExamDate(val, session);
+                  if (defaultDate) {
+                    setExamDate(defaultDate);
+                  } else if (!examDate) {
+                    setExamDate(new Date().toISOString().split('T')[0]);
+                  }
+                }} 
+                required
+              >
                 <option value="" disabled>Select exam...</option>
                 {availableExamNames.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
@@ -202,10 +210,39 @@ export default function AddExamResultModal({ isOpen, onClose, onSuccess, student
             </div>
 
             <div className="form-group">
-              <label>Academic Session</label>
-              <select value={session} onChange={e => setSession(e.target.value)} required>
+              <label>Academic Session *</label>
+              <select 
+                value={session} 
+                onChange={e => {
+                  const val = e.target.value;
+                  setSession(val);
+                  const defaultDate = getExamDate(examName, val);
+                  if (defaultDate) {
+                    setExamDate(defaultDate);
+                  }
+                }} 
+                required
+              >
                 {sessionOptions.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
+            </div>
+
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Exam Date *</span>
+                {getExamDate(examName, session) && (
+                  <span style={{ fontSize: '11px', color: 'var(--primary-dark, #0369a1)', fontWeight: 500 }}>
+                    Auto-filled from Master
+                  </span>
+                )}
+              </label>
+              <input 
+                type="date" 
+                className="input" 
+                value={examDate} 
+                onChange={e => setExamDate(e.target.value)} 
+                required 
+              />
             </div>
           </div>
 
