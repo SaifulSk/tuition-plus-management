@@ -769,23 +769,25 @@ export default function Attendance() {
                       <div className="attendance-time-inputs">
                         {isPresent && (
                           <div className="attendance-time-row">
-                            <div className="attendance-time-box">
-                              <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>In:</span>
+                            <label className="attendance-time-box" title="Check-in time">
+                              <span>In:</span>
                               <input
                                 type="time"
+                                className="attendance-time-input"
                                 value={state.checkInTime}
                                 onChange={e => setStudentCheckIn(student.id, e.target.value)}
                               />
-                            </div>
+                            </label>
 
-                            <div className="attendance-time-box">
-                              <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Out:</span>
+                            <label className="attendance-time-box" title="Check-out time">
+                              <span>Out:</span>
                               <input
                                 type="time"
+                                className="attendance-time-input"
                                 value={state.checkOutTime}
                                 onChange={e => setStudentCheckOut(student.id, e.target.value)}
                               />
-                            </div>
+                            </label>
                           </div>
                         )}
 

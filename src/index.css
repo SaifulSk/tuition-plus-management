@@ -373,7 +373,7 @@ img { max-width: 100%; }
 /* ─── iOS Safari & WebKit Date/Time/Month Picker Fixes ─── */
 input[type="date"],
 input[type="month"],
-input[type="time"],
+input[type="time"]:not(.attendance-time-input),
 input[type="datetime-local"] {
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -1460,25 +1460,83 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .attendance-time-box {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: space-between;
+  gap: 6px;
   background: var(--surface-2);
-  padding: 0 8px;
-  height: 28px;
+  padding: 0 10px;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
   box-sizing: border-box;
   border-radius: 6px;
   border: 1px solid var(--border);
-  font-size: 11px;
-}
-.attendance-time-box input[type="time"] {
-  border: none;
-  background: transparent;
   font-size: 12px;
-  font-weight: 500;
-  height: 100%;
-  color: var(--text);
-  outline: none;
-  flex: 1;
-  min-width: 0;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  transition: border-color var(--transition);
+}
+
+.attendance-time-box:focus-within {
+  border-color: var(--navy);
+}
+
+.attendance-time-box span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  line-height: 1;
+  user-select: none;
+}
+
+.attendance-time-box input[type="time"],
+.attendance-time-input {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  border: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--text) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 32px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 30px !important;
+  display: block !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  text-align: right !important;
+}
+
+.attendance-time-box input[type="time"]::-webkit-date-and-time-value,
+.attendance-time-input::-webkit-date-and-time-value {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  line-height: 30px !important;
+  display: block !important;
+  text-align: right !important;
+  width: 100% !important;
+}
+
+.attendance-time-box input[type="time"]::-webkit-calendar-picker-indicator,
+.attendance-time-input::-webkit-calendar-picker-indicator {
+  padding: 0 !important;
+  margin: 0 0 0 4px !important;
+  cursor: pointer !important;
+  opacity: 0.5 !important;
+  flex-shrink: 0 !important;
+  width: 14px !important;
+  height: 14px !important;
 }
 
 .attendance-remarks-wrap {
@@ -1487,11 +1545,16 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .attendance-remarks-input {
-  height: 28px !important;
-  font-size: 11px;
-  padding: 0 8px;
-  box-sizing: border-box;
-  width: 100%;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  font-size: 12px !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  line-height: normal !important;
 }
 
 /* Attendance Register Matrix */
@@ -1675,22 +1738,28 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
     flex: 1 1 0;
     min-width: 0;
     width: 100%;
-    height: 28px;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
     box-sizing: border-box;
     justify-content: space-between;
+    padding: 0 8px;
   }
-  .attendance-time-box input[type="time"] {
-    width: 100%;
-    text-align: right;
+  .attendance-time-box input[type="time"],
+  .attendance-time-input {
+    width: 100% !important;
+    text-align: right !important;
   }
   .attendance-remarks-wrap {
     width: 100%;
     min-width: 0;
   }
   .attendance-remarks-input {
-    width: 100%;
-    height: 28px !important;
-    box-sizing: border-box;
+    width: 100% !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    box-sizing: border-box !important;
   }
   .attendance-matrix-table .sticky-col {
     min-width: 110px;

@@ -424,29 +424,33 @@ export default function MarkAttendanceModal({ isOpen, onClose, onSuccess, studen
 
                     {isPresent && (
                       <div className="attendance-time-inputs" style={{ marginTop: '6px', paddingTop: '6px' }}>
-                        <div className="attendance-time-box">
-                          <span>In:</span>
-                          <input
-                            type="time"
-                            value={entry.checkInTime}
-                            disabled={isFutureDate}
-                            onChange={e => setEntries(prev => ({
-                              ...prev,
-                              [student.id]: { ...(prev[student.id] || { status: 'present', checkInTime: '', checkOutTime: '', remarks: '' }), checkInTime: e.target.value }
-                            }))}
-                          />
-                        </div>
-                        <div className="attendance-time-box">
-                          <span>Out:</span>
-                          <input
-                            type="time"
-                            value={entry.checkOutTime}
-                            disabled={isFutureDate}
-                            onChange={e => setEntries(prev => ({
-                              ...prev,
-                              [student.id]: { ...(prev[student.id] || { status: 'present', checkInTime: '', checkOutTime: '', remarks: '' }), checkOutTime: e.target.value }
-                            }))}
-                          />
+                        <div className="attendance-time-row">
+                          <label className="attendance-time-box" title="Check-in time">
+                            <span>In:</span>
+                            <input
+                              type="time"
+                              className="attendance-time-input"
+                              value={entry.checkInTime}
+                              disabled={isFutureDate}
+                              onChange={e => setEntries(prev => ({
+                                ...prev,
+                                [student.id]: { ...(prev[student.id] || { status: 'present', checkInTime: '', checkOutTime: '', remarks: '' }), checkInTime: e.target.value }
+                              }))}
+                            />
+                          </label>
+                          <label className="attendance-time-box" title="Check-out time">
+                            <span>Out:</span>
+                            <input
+                              type="time"
+                              className="attendance-time-input"
+                              value={entry.checkOutTime}
+                              disabled={isFutureDate}
+                              onChange={e => setEntries(prev => ({
+                                ...prev,
+                                [student.id]: { ...(prev[student.id] || { status: 'present', checkInTime: '', checkOutTime: '', remarks: '' }), checkOutTime: e.target.value }
+                              }))}
+                            />
+                          </label>
                         </div>
                       </div>
                     )}
