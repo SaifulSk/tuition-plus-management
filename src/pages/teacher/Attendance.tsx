@@ -5,7 +5,7 @@ import type { Student, AttendanceRecord, AttendanceStatus, ScheduleSlot } from '
 import {
   UserCheck, Calendar, Users, CheckCircle2, XCircle,
   AlertCircle, ChevronLeft, ChevronRight, Download, Search,
-  BarChart3, AlertTriangle, Check, X, ShieldAlert
+  BarChart3, AlertTriangle, X, ShieldAlert
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format, addDays, subDays, getDaysInMonth, getDay } from 'date-fns';
@@ -248,52 +248,6 @@ export default function Attendance() {
         remarks,
       }
     }));
-  };
-
-  const handleBulkMark = (status: AttendanceStatus) => {
-    if (isFutureDate) {
-      toast.error('Cannot mark attendance for future dates');
-      return;
-    }
-
-    const nowTime = format(new Date(), 'HH:mm');
-    setDailyStates(prev => {
-      const updated = { ...prev };
-      filteredDailyStudents.forEach(s => {
-        const existing = updated[s.id] || { status: 'unmarked', checkInTime: '', checkOutTime: '', remarks: '' };
-        const firstSlot = todaySlotsByStudent[s.id]?.[0];
-        
-        let checkIn = existing.checkInTime;
-        let checkOut = existing.checkOutTime;
-
-        if (status === 'present') {
-          if (!checkIn) checkIn = firstSlot?.startTime || nowTime;
-          if (!checkOut && firstSlot?.endTime) checkOut = firstSlot.endTime;
-        }
-
-        updated[s.id] = {
-          ...existing,
-          status,
-          checkInTime: status === 'present' ? checkIn : '',
-          checkOutTime: status === 'present' ? checkOut : '',
-        };
-      });
-      return updated;
-    });
-    const label = status === 'teacher_absent' ? 'TEACHER ABSENT' : status.toUpperCase();
-    toast.success(`Marked all as ${label}`);
-  };
-
-  const handleClearAll = () => {
-    if (isFutureDate) return;
-    setDailyStates(prev => {
-      const updated = { ...prev };
-      filteredDailyStudents.forEach(s => {
-        delete updated[s.id];
-      });
-      return updated;
-    });
-    toast.success('Cleared marks for all students');
   };
 
   const handleSaveDaily = async () => {
@@ -697,47 +651,8 @@ export default function Attendance() {
             </div>
           </div>
 
-          {/* Quick Bulk Actions */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn-ghost"
-                style={{ fontSize: '11px', padding: '5px 10px', color: '#15803d', border: '1px solid #bbf7d0', background: '#f0fdf4' }}
-                onClick={() => handleBulkMark('present')}
-                disabled={isFutureDate}
-              >
-                <Check size={13} /> Mark All Present
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                style={{ fontSize: '11px', padding: '5px 10px', color: '#b91c1c', border: '1px solid #fecaca', background: '#fef2f2' }}
-                onClick={() => handleBulkMark('absent')}
-                disabled={isFutureDate}
-              >
-                <X size={13} /> Mark All Absent
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                style={{ fontSize: '11px', padding: '5px 10px', color: '#6d28d9', border: '1px solid #ddd6fe', background: '#f5f3ff' }}
-                onClick={() => handleBulkMark('teacher_absent')}
-                disabled={isFutureDate}
-              >
-                <ShieldAlert size={13} /> Teacher Absent
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                style={{ fontSize: '11px', padding: '5px 10px', color: 'var(--text-muted)' }}
-                onClick={handleClearAll}
-                disabled={isFutureDate}
-              >
-                Clear All
-              </button>
-            </div>
-
+          {/* Action Bar */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '12px' }}>
             <button
               type="button"
               className="btn-primary"
@@ -853,7 +768,7 @@ export default function Attendance() {
                     {currentStatus !== 'unmarked' && (
                       <div className="attendance-time-inputs">
                         {isPresent && (
-                          <>
+                          <div className="attendance-time-row">
                             <div className="attendance-time-box">
                               <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>In:</span>
                               <input
@@ -871,15 +786,14 @@ export default function Attendance() {
                                 onChange={e => setStudentCheckOut(student.id, e.target.value)}
                               />
                             </div>
-                          </>
+                          </div>
                         )}
 
-                        <div style={{ flex: 1, minWidth: '160px' }}>
+                        <div className="attendance-remarks-wrap">
                           <input
                             type="text"
                             placeholder="Remarks (e.g. excused, informed, homework pending)..."
-                            className="input"
-                            style={{ height: '28px', fontSize: '11px', padding: '2px 8px' }}
+                            className="input attendance-remarks-input"
                             value={state.remarks}
                             onChange={e => setStudentRemarks(student.id, e.target.value)}
                           />

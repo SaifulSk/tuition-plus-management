@@ -1451,12 +1451,20 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   border-top: 1px dashed var(--border);
 }
 
+.attendance-time-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .attendance-time-box {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   background: var(--surface-2);
-  padding: 3px 8px;
+  padding: 0 8px;
+  height: 28px;
+  box-sizing: border-box;
   border-radius: 6px;
   border: 1px solid var(--border);
   font-size: 11px;
@@ -1466,9 +1474,24 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   background: transparent;
   font-size: 12px;
   font-weight: 500;
-  padding: 1px 0;
+  height: 100%;
   color: var(--text);
   outline: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.attendance-remarks-wrap {
+  flex: 1;
+  min-width: 160px;
+}
+
+.attendance-remarks-input {
+  height: 28px !important;
+  font-size: 11px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 /* Attendance Register Matrix */
@@ -1635,12 +1658,39 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
     font-size: 11px;
   }
   .attendance-time-inputs {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
-  }
-  .attendance-time-inputs > div {
     width: 100%;
+  }
+  .attendance-time-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+  }
+  .attendance-time-box {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 100%;
+    height: 28px;
+    box-sizing: border-box;
+    justify-content: space-between;
+  }
+  .attendance-time-box input[type="time"] {
+    width: 100%;
+    text-align: right;
+  }
+  .attendance-remarks-wrap {
+    width: 100%;
+    min-width: 0;
+  }
+  .attendance-remarks-input {
+    width: 100%;
+    height: 28px !important;
+    box-sizing: border-box;
   }
   .attendance-matrix-table .sticky-col {
     min-width: 110px;
