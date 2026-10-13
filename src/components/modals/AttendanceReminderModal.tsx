@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { collection, query, getDocs, where, collectionGroup } from 'firebase/firestore';
 import { db } from '../../firebase/config';
@@ -13,21 +13,86 @@ export default function AttendanceReminderModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ marked: 0, total: 0 });
+  const [dontShowToday, setDontShowToday] = useState(false);
+  const hasCheckedRef = useRef(false);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const todayFormatted = format(new Date(), 'EEEE, dd MMMM yyyy');
   const dayOfWeek = format(new Date(), 'EEEE');
 
+  // Prevent background scroll when modal is open
   useEffect(() => {
-    let isMounted = true;
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
-    async function checkTodayAttendance() {
-      // Don't show if already on attendance page
-      if (location.pathname === '/teacher/attendance') {
-        setIsOpen(false);
+  useEffect(() => {
+    // Check only once on initial mount, NOT on every route change
+    if (hasCheckedRef.current) return;
+    hasCheckedRef.current = true;
+
+    // Clean up stale keys from previous days
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (
+          key &&
+          (key.startsWith('attendance_reminder_') || key.startsWith('attendance_completed_')) &&
+          !key.endsWith(todayStr)
+        ) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch {
+      // Ignore storage errors
+    }
+
+    // 1. If already on attendance page, do not show
+    if (location.pathname === '/teacher/attendance') {
+      setLoading(false);
+      return;
+    }
+
+    // 2. Check if dismissed for current browser session
+    try {
+      if (sessionStorage.getItem(`attendance_reminder_dismissed_${todayStr}`)) {
+        setLoading(false);
         return;
       }
 
+      // 3. Check if user selected "Don't show again today"
+      if (localStorage.getItem(`attendance_reminder_dismissed_${todayStr}`) === 'full_day') {
+        setLoading(false);
+        return;
+      }
+
+      // 4. Check if currently snoozed (e.g. for 3 hours)
+      const snoozeUntil = localStorage.getItem(`attendance_reminder_snooze_${todayStr}`);
+      if (snoozeUntil && Date.now() < Number(snoozeUntil)) {
+        setLoading(false);
+        return;
+      }
+
+      // 5. Check if today's attendance was already fully recorded
+      if (localStorage.getItem(`attendance_completed_${todayStr}`) === 'true') {
+        setLoading(false);
+        return;
+      }
+    } catch {
+      // Fallback if storage access is restricted
+    }
+
+    let isMounted = true;
+
+    async function checkTodayAttendance() {
       try {
         setLoading(true);
 
@@ -61,12 +126,15 @@ export default function AttendanceReminderModal() {
             .filter(Boolean)
         );
 
-        // Target students to be marked today: scheduled students if slots exist, otherwise all active students
-        const targetStudents = scheduledStudentIds.size > 0
+        // If timetable slots are defined in the system, only target students scheduled for today
+        // If no slots exist at all in the system, fall back to all active students
+        const hasAnySlotsDefined = slotsSnap.docs.length > 0;
+        const targetStudents = hasAnySlotsDefined
           ? activeStudents.filter(s => scheduledStudentIds.has(s.id))
           : activeStudents;
 
         const totalExpected = targetStudents.length;
+        // If 0 students are expected today (e.g., off day / no slots), do not show reminder
         if (totalExpected === 0) {
           setIsOpen(false);
           return;
@@ -86,8 +154,17 @@ export default function AttendanceReminderModal() {
 
         // If not all target students are marked, show reminder
         if (markedCount < totalExpected) {
-          setIsOpen(true);
+          // Slight delay so the page loads cleanly first without an aggressive instant jump
+          setTimeout(() => {
+            if (isMounted) setIsOpen(true);
+          }, 600);
         } else {
+          // All marked! Save flag so we don't need to ask again today
+          try {
+            localStorage.setItem(`attendance_completed_${todayStr}`, 'true');
+          } catch {
+            // Ignore
+          }
           setIsOpen(false);
         }
       } catch (err) {
@@ -102,23 +179,41 @@ export default function AttendanceReminderModal() {
     return () => {
       isMounted = false;
     };
-  }, [location.pathname, todayStr, dayOfWeek]);
+  }, [todayStr, dayOfWeek]);
 
   if (!isOpen || loading || location.pathname === '/teacher/attendance') {
     return null;
   }
 
-  const pendingCount = stats.total - stats.marked;
-  const pct = stats.total > 0 ? Math.round((stats.marked / stats.total) * 100) : 0;
+  const dismissReminder = (forFullDay: boolean) => {
+    setIsOpen(false);
+    try {
+      sessionStorage.setItem(`attendance_reminder_dismissed_${todayStr}`, 'true');
+      if (forFullDay) {
+        localStorage.setItem(`attendance_reminder_dismissed_${todayStr}`, 'full_day');
+      } else {
+        // Snooze for 3 hours across tab/browser reopens
+        localStorage.setItem(
+          `attendance_reminder_snooze_${todayStr}`,
+          (Date.now() + 3 * 60 * 60 * 1000).toString()
+        );
+      }
+    } catch {
+      // Ignore
+    }
+  };
 
   const handleTakeAttendance = () => {
-    setIsOpen(false);
+    dismissReminder(false);
     navigate('/teacher/attendance');
   };
 
   const handleDoItLater = () => {
-    setIsOpen(false);
+    dismissReminder(dontShowToday);
   };
+
+  const pendingCount = stats.total - stats.marked;
+  const pct = stats.total > 0 ? Math.round((stats.marked / stats.total) * 100) : 0;
 
   return (
     <div className="modal-overlay" onClick={handleDoItLater}>
@@ -198,6 +293,27 @@ export default function AttendanceReminderModal() {
           <p style={{ fontSize: '0.9rem', color: 'var(--text)', marginTop: '14px', marginBottom: 0, lineHeight: 1.5 }}>
             Attendance has not been fully recorded for today. Please take attendance now to keep daily logs and parent records up to date.
           </p>
+
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '0.84rem',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              marginTop: '14px',
+              userSelect: 'none'
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={dontShowToday}
+              onChange={e => setDontShowToday(e.target.checked)}
+              style={{ cursor: 'pointer', accentColor: 'var(--primary, #c1121f)' }}
+            />
+            <span>Don't remind me again today</span>
+          </label>
         </div>
 
         <div className="modal-footer" style={{ padding: '14px 20px 18px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
