@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { collection, query, getDocs, where, collectionGroup } from 'firebase/firestore';
 import { db } from '../../firebase/config';
@@ -6,15 +6,34 @@ import type { Student, AttendanceRecord, ScheduleSlot } from '../../types';
 import { format } from 'date-fns';
 import { UserCheck, ArrowRight, X } from 'lucide-react';
 
+// Tracks whether the reload check has already executed for this browser page lifecycle
+let hasCheckedForThisPageLifecycle = false;
+
+function isPageReload(): boolean {
+  try {
+    const navEntries = performance.getEntriesByType('navigation');
+    if (navEntries && navEntries.length > 0) {
+      const navEntry = navEntries[0] as PerformanceNavigationTiming;
+      return navEntry.type === 'reload';
+    }
+    // Fallback for older browsers
+    const perfNav = (performance as unknown as { navigation?: { type?: number } }).navigation;
+    if (perfNav) {
+      return perfNav.type === 1; // 1 = TYPE_RELOAD
+    }
+  } catch {
+    // Ignore error
+  }
+  return false;
+}
+
 export default function AttendanceReminderModal() {
   const navigate = useNavigate();
   const location = useLocation();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ marked: 0, total: 0 });
-  const [dontShowToday, setDontShowToday] = useState(false);
-  const hasCheckedRef = useRef(false);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const todayFormatted = format(new Date(), 'EEEE, dd MMMM yyyy');
@@ -33,63 +52,21 @@ export default function AttendanceReminderModal() {
   }, [isOpen]);
 
   useEffect(() => {
-    // Check only once on initial mount, NOT on every route change
-    if (hasCheckedRef.current) return;
-    hasCheckedRef.current = true;
+    // Only check once per browser page lifecycle
+    if (hasCheckedForThisPageLifecycle) return;
 
-    // Clean up stale keys from previous days
-    try {
-      const keysToRemove: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (
-          key &&
-          (key.startsWith('attendance_reminder_') || key.startsWith('attendance_completed_')) &&
-          !key.endsWith(todayStr)
-        ) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach(k => localStorage.removeItem(k));
-    } catch {
-      // Ignore storage errors
-    }
+    // Check conditions:
+    // 1. Must be in the dashboard page (/teacher or /teacher/)
+    const isDashboard = location.pathname.replace(/\/$/, '') === '/teacher';
+    // 2. Page must have been reloaded by the browser
+    const reloaded = isPageReload();
 
-    // 1. If already on attendance page, do not show
-    if (location.pathname === '/teacher/attendance') {
-      setLoading(false);
+    if (!isDashboard || !reloaded) {
+      hasCheckedForThisPageLifecycle = true;
       return;
     }
 
-    // 2. Check if dismissed for current browser session
-    try {
-      if (sessionStorage.getItem(`attendance_reminder_dismissed_${todayStr}`)) {
-        setLoading(false);
-        return;
-      }
-
-      // 3. Check if user selected "Don't show again today"
-      if (localStorage.getItem(`attendance_reminder_dismissed_${todayStr}`) === 'full_day') {
-        setLoading(false);
-        return;
-      }
-
-      // 4. Check if currently snoozed (e.g. for 3 hours)
-      const snoozeUntil = localStorage.getItem(`attendance_reminder_snooze_${todayStr}`);
-      if (snoozeUntil && Date.now() < Number(snoozeUntil)) {
-        setLoading(false);
-        return;
-      }
-
-      // 5. Check if today's attendance was already fully recorded
-      if (localStorage.getItem(`attendance_completed_${todayStr}`) === 'true') {
-        setLoading(false);
-        return;
-      }
-    } catch {
-      // Fallback if storage access is restricted
-    }
-
+    hasCheckedForThisPageLifecycle = true;
     let isMounted = true;
 
     async function checkTodayAttendance() {
@@ -154,21 +131,14 @@ export default function AttendanceReminderModal() {
 
         // If not all target students are marked, show reminder
         if (markedCount < totalExpected) {
-          // Slight delay so the page loads cleanly first without an aggressive instant jump
           setTimeout(() => {
             if (isMounted) setIsOpen(true);
-          }, 600);
+          }, 400);
         } else {
-          // All marked! Save flag so we don't need to ask again today
-          try {
-            localStorage.setItem(`attendance_completed_${todayStr}`, 'true');
-          } catch {
-            // Ignore
-          }
           setIsOpen(false);
         }
       } catch (err) {
-        console.error('Error checking today attendance:', err);
+        console.error('Error checking today attendance on reload:', err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -179,41 +149,23 @@ export default function AttendanceReminderModal() {
     return () => {
       isMounted = false;
     };
-  }, [todayStr, dayOfWeek]);
+  }, [location.pathname, todayStr, dayOfWeek]);
 
-  if (!isOpen || loading || location.pathname === '/teacher/attendance') {
+  if (!isOpen || loading) {
     return null;
   }
 
-  const dismissReminder = (forFullDay: boolean) => {
-    setIsOpen(false);
-    try {
-      sessionStorage.setItem(`attendance_reminder_dismissed_${todayStr}`, 'true');
-      if (forFullDay) {
-        localStorage.setItem(`attendance_reminder_dismissed_${todayStr}`, 'full_day');
-      } else {
-        // Snooze for 3 hours across tab/browser reopens
-        localStorage.setItem(
-          `attendance_reminder_snooze_${todayStr}`,
-          (Date.now() + 3 * 60 * 60 * 1000).toString()
-        );
-      }
-    } catch {
-      // Ignore
-    }
-  };
+  const pendingCount = stats.total - stats.marked;
+  const pct = stats.total > 0 ? Math.round((stats.marked / stats.total) * 100) : 0;
 
   const handleTakeAttendance = () => {
-    dismissReminder(false);
+    setIsOpen(false);
     navigate('/teacher/attendance');
   };
 
   const handleDoItLater = () => {
-    dismissReminder(dontShowToday);
+    setIsOpen(false);
   };
-
-  const pendingCount = stats.total - stats.marked;
-  const pct = stats.total > 0 ? Math.round((stats.marked / stats.total) * 100) : 0;
 
   return (
     <div className="modal-overlay" onClick={handleDoItLater}>
@@ -293,27 +245,6 @@ export default function AttendanceReminderModal() {
           <p style={{ fontSize: '0.9rem', color: 'var(--text)', marginTop: '14px', marginBottom: 0, lineHeight: 1.5 }}>
             Attendance has not been fully recorded for today. Please take attendance now to keep daily logs and parent records up to date.
           </p>
-
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '0.84rem',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              marginTop: '14px',
-              userSelect: 'none'
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={dontShowToday}
-              onChange={e => setDontShowToday(e.target.checked)}
-              style={{ cursor: 'pointer', accentColor: 'var(--primary, #c1121f)' }}
-            />
-            <span>Don't remind me again today</span>
-          </label>
         </div>
 
         <div className="modal-footer" style={{ padding: '14px 20px 18px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
