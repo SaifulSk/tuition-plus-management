@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import AttendanceReminderModal from '../modals/AttendanceReminderModal';
 
 interface Props {
   role: 'teacher' | 'student';
@@ -12,6 +13,8 @@ export default function AppLayout({ role }: Props) {
       <main className="main-content">
         <Outlet />
       </main>
+      {role === 'teacher' && <AttendanceReminderModal />}
     </div>
   );
 }
+
