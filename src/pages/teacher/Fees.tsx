@@ -5,7 +5,7 @@ import {
 import { db } from '../../firebase/config';
 import type { Student, FeePayment, PaymentMode } from '../../types';
 import { getFeeForMonth } from '../../utils/feeUtils';
-import { getCurrentSession } from '../../utils/dateUtils';
+import { useAcademicSessions } from '../../hooks/useAcademicSessions';
 import { Plus, X, Printer, Share2, Receipt, Pencil, Trash2, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -52,6 +52,41 @@ export default function Fees() {
   const [loadingMaster, setLoadingMaster] = useState(false);
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
   const [overviewStudentType, setOverviewStudentType] = useState<'active' | 'archived'>('active');
+  const { sessionYears } = useAcademicSessions(students);
+
+  const isStudentActiveInSession = (s: Student, sessionYear: number) => {
+    const sessionStart = new Date(sessionYear, 3, 1);
+    const sessionEnd = new Date(sessionYear + 1, 2, 31, 23, 59, 59);
+
+    if (s.joiningDate) {
+      const joinDate = s.joiningDate.toDate();
+      if (joinDate > sessionEnd) return false;
+    }
+
+    if (s.leavingMonth) {
+      const [lYear, lMonth] = s.leavingMonth.split('-').map(Number);
+      const leaveDate = new Date(lYear, lMonth, 0, 23, 59, 59);
+      if (leaveDate < sessionStart) return false;
+    } else if (!s.active && s.session) {
+      const [sStartYear] = s.session.split('-').map(Number);
+      if (!isNaN(sStartYear) && sStartYear !== sessionYear) {
+        const studentPayments = allPayments[s.id] || [];
+        const hasPaymentInSession = studentPayments.some(p => {
+          if (Array.isArray(p.monthsPaid)) {
+            return p.monthsPaid.some(m => {
+              const [py, pm] = m.split('-').map(Number);
+              const pDate = new Date(py, pm - 1, 1);
+              return pDate >= sessionStart && pDate <= sessionEnd;
+            });
+          }
+          return false;
+        });
+        if (!hasPaymentInSession) return false;
+      }
+    }
+
+    return true;
+  };
 
   const loadMasterData = async () => {
     setLoadingMaster(true);
@@ -80,10 +115,7 @@ export default function Fees() {
 
   useEffect(() => {
     getDocs(query(collection(db,'students'), orderBy('name'))).then(snap => {
-      const currentSess = getCurrentSession();
-      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student).filter(s => 
-        s.active !== false || (s.session || currentSess) === currentSess
-      ));
+      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Student));
     });
   }, []);
 
@@ -317,21 +349,21 @@ export default function Fees() {
                   className={`tab-btn ${overviewStudentType === 'archived' ? 'active' : ''}`}
                   style={{ padding: '6px 14px', fontSize: '0.85rem' }}
                   onClick={() => setOverviewStudentType('archived')}
-                  title={`Archived students for current session (${getCurrentSession()})`}
+                  title={`Archived students active in session ${masterYear}-${masterYear + 1}`}
                 >
-                  Archived ({students.filter(s => !s.active && (s.session || getCurrentSession()) === getCurrentSession()).length})
+                  Archived ({students.filter(s => !s.active && isStudentActiveInSession(s, masterYear)).length})
                 </button>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               {overviewStudentType === 'archived' && (
                 <span className="badge badge-gray" style={{ fontSize: '0.8rem', padding: '4px 8px' }}>
-                  Current Session: {getCurrentSession()}
+                  Session: {masterYear}-{masterYear + 1}
                 </span>
               )}
               <div className="form-group" style={{ margin: 0, minWidth: '120px' }}>
                 <select value={masterYear} onChange={e => setMasterYear(Number(e.target.value))}>
-                  {[2023, 2024, 2025, 2026, 2027, 2028].map(y => (
+                  {sessionYears.map(y => (
                     <option key={y} value={y}>{y}-{y+1}</option>
                   ))}
                 </select>
@@ -344,10 +376,10 @@ export default function Fees() {
           ) : (
             <div className="accordion-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {(() => {
-                const currentSess = getCurrentSession();
+                const selectedSessionStr = `${masterYear}-${masterYear + 1}`;
                 const displayedStudents = overviewStudentType === 'active'
                   ? students.filter(s => s.active !== false)
-                  : students.filter(s => !s.active && (s.session || currentSess) === currentSess);
+                  : students.filter(s => !s.active && isStudentActiveInSession(s, masterYear));
 
                 if (displayedStudents.length === 0) {
                   return (
@@ -356,7 +388,7 @@ export default function Fees() {
                       <p>
                         {overviewStudentType === 'active'
                           ? 'No active students found.'
-                          : `No archived students found for the current session (${currentSess}).`}
+                          : `No archived students were active in session ${selectedSessionStr}.`}
                       </p>
                     </div>
                   );

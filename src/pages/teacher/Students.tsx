@@ -16,6 +16,7 @@ import MultiSelect from '../../components/common/MultiSelect';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useSubjects } from '../../hooks/useSubjects';
 import { getCurrentSession, getNextSession } from '../../utils/dateUtils';
+import { useAcademicSessions } from '../../hooks/useAcademicSessions';
 
 const CLASS_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 
@@ -36,6 +37,7 @@ export default function Students() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [subjects, setSubjects] = useState<string[]>([]);
   const { masterSubjects, formatSubjects } = useSubjects();
+  const { sessions } = useAcademicSessions(students);
   const [masterSchools, setMasterSchools] = useState<string[]>([]);
   const [masterSections, setMasterSections] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -668,7 +670,7 @@ export default function Students() {
                 <div className="form-group">
                   <label>Session</label>
                   <select value={form.session} onChange={set('session')}>
-                    {['2024-2025', '2025-2026', '2026-2027', '2027-2028', '2028-2029'].map(s => <option key={s} value={s}>{s}</option>)}
+                    {sessions.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
@@ -770,7 +772,7 @@ export default function Students() {
                 <div className="form-group">
                   <label>New Session</label>
                   <select value={promoteForm.newSession} onChange={e => setPromoteForm({...promoteForm, newSession: e.target.value})} required>
-                    {['2024-2025','2025-2026','2026-2027','2026-2028','2028-2029','2029-2030'].map(s => <option key={s} value={s}>{s}</option>)}
+                    {sessions.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
               </div>
@@ -869,45 +871,35 @@ export default function Students() {
                   I understand that all records for <strong>{deletingStudent.name}</strong> will be permanently wiped out from everywhere and cannot be recovered.
                 </span>
               </label>
+            </div>
 
-              <div className="modal-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowDeleteModal(false)}
-                  disabled={isDeleting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn"
-                  style={{
-                    background: confirmAcknowledge && !isDeleting ? '#dc2626' : 'var(--border)',
-                    color: '#ffffff',
-                    border: 'none',
-                    cursor: confirmAcknowledge && !isDeleting ? 'pointer' : 'not-allowed',
-                    opacity: confirmAcknowledge && !isDeleting ? 1 : 0.6,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                  disabled={!confirmAcknowledge || isDeleting}
-                  onClick={handleDeleteStudent}
-                >
-                  {isDeleting ? (
-                    <>
-                      <span className="btn-spinner" style={{ width: 14, height: 14 }} />
-                      <span>Deleting Everywhere...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 size={16} />
-                      <span>Delete Student Permanently</span>
-                    </>
-                  )}
-                </button>
-              </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-danger"
+                disabled={!confirmAcknowledge || isDeleting}
+                onClick={handleDeleteStudent}
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="btn-spinner" style={{ width: 14, height: 14 }} />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    <span>Delete Student</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

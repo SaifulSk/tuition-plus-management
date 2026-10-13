@@ -524,6 +524,20 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 }
 .btn-ghost:hover { border-color: var(--navy); color: var(--navy); }
 
+.btn-danger {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 18px;
+  background: #dc2626;
+  color: #fff; border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 600;
+  transition: all var(--transition);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-danger:hover:not(:disabled) { background: #b91c1c; box-shadow: 0 4px 14px rgba(220,38,38,0.35); }
+.btn-danger:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; opacity: 0.6; }
+
 .btn-full { width: 100%; justify-content: center; }
 
 .btn-spinner {
@@ -794,6 +808,12 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 /* ═══════════════════════════════════════════════════
    MODAL
 ═══════════════════════════════════════════════════ */
+/* Disable background page scrolling whenever any modal is open */
+html:has(.modal-overlay),
+body:has(.modal-overlay) {
+  overflow: hidden !important;
+}
+
 .modal-overlay {
   position: fixed; inset: 0;
   background: rgba(15,25,35,0.7);

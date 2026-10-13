@@ -4,7 +4,8 @@ import { db } from '../../firebase/config';
 import { Plus, X, Trash2, Pencil, BookOpen, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useConfirm } from '../../hooks/useConfirm';
-import { getCurrentSession, getRecentSessions } from '../../utils/dateUtils';
+import { getCurrentSession } from '../../utils/dateUtils';
+import { useAcademicSessions } from '../../hooks/useAcademicSessions';
 import type { ExamNameMaster } from '../../types';
 import { format } from 'date-fns';
 
@@ -21,7 +22,7 @@ export default function ExamNamesMaster() {
   const [customSessionToAdd, setCustomSessionToAdd] = useState('');
   const { confirm, ConfirmDialog } = useConfirm();
 
-  const sessionOptions = getRecentSessions(6);
+  const { sessions: sessionOptions } = useAcademicSessions();
 
   useEffect(() => {
     loadExamNames();

@@ -14,6 +14,7 @@ import { useConfirm } from '../../hooks/useConfirm';
 import { useSubjects } from '../../hooks/useSubjects';
 import { useExamNames } from '../../hooks/useExamNames';
 import { getCurrentSession } from '../../utils/dateUtils';
+import { useAcademicSessions } from '../../hooks/useAcademicSessions';
 
 
 const getMarksBadgeClass = (pct: number) => {
@@ -62,6 +63,7 @@ export default function SchoolExams() {
   const [saving, setSaving] = useState(false);
   const { masterSubjects, formatSubjects } = useSubjects();
   const { examNames: availableExamNames, getExamDate } = useExamNames();
+  const { sessions: dynamicSessions } = useAcademicSessions(students);
   const { confirm, ConfirmDialog } = useConfirm();
 
   useEffect(() => {
@@ -94,7 +96,8 @@ export default function SchoolExams() {
   
   const distinctSessions = [...new Set([
     student?.session || getCurrentSession(),
-    ...exams.map(e => e.session).filter(Boolean)
+    ...exams.map(e => e.session).filter(Boolean),
+    ...dynamicSessions
   ])].sort().reverse();
 
   useEffect(() => {
@@ -667,10 +670,7 @@ export default function SchoolExams() {
                     }} 
                     required
                   >
-                    {[...new Set([
-                      ...Array.from({length: 6}, (_, i) => { const yr = new Date().getFullYear() - 2 + i; return `${yr}-${yr+1}`; }),
-                      ...(distinctSessions as string[])
-                    ])].sort().reverse().map(s => <option key={s} value={s}>{s}</option>)}
+                    {distinctSessions.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="form-group">

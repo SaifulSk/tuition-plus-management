@@ -3,6 +3,7 @@ import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useSubjects } from '../../hooks/useSubjects';
 import { useExamNames } from '../../hooks/useExamNames';
+import { useAcademicSessions } from '../../hooks/useAcademicSessions';
 import type { Student } from '../../types';
 import { X, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -30,6 +31,7 @@ interface AddExamResultModalProps {
 export default function AddExamResultModal({ isOpen, onClose, onSuccess, students }: AddExamResultModalProps) {
   const { masterSubjects } = useSubjects();
   const { examNames: availableExamNames, getExamDate } = useExamNames();
+  const { sessions: sessionOptions } = useAcademicSessions(students);
   const [filterClass, setFilterClass] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [examName, setExamName] = useState('');
@@ -43,13 +45,6 @@ export default function AddExamResultModal({ isOpen, onClose, onSuccess, student
   if (!isOpen) return null;
 
   const filteredStudents = students.filter(s => s.active !== false && (!filterClass || s.class === filterClass));
-
-  const sessionOptions = [...new Set([
-    ...Array.from({ length: 6 }, (_, i) => {
-      const yr = new Date().getFullYear() - 2 + i;
-      return `${yr}-${yr + 1}`;
-    })
-  ])].sort().reverse();
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

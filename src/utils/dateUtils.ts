@@ -33,3 +33,39 @@ export function getRecentSessions(count = 6): string[] {
   return sessions.reverse();
 }
 
+export function getSessionFromDate(date: any): string {
+  if (!date) return getCurrentSession();
+  let d: Date;
+  if (typeof date.toDate === 'function') {
+    d = date.toDate();
+  } else if (date instanceof Date) {
+    d = date;
+  } else if (typeof date === 'string') {
+    d = new Date(date);
+  } else {
+    return getCurrentSession();
+  }
+  if (isNaN(d.getTime())) return getCurrentSession();
+  const year = d.getFullYear();
+  const month = d.getMonth(); // 0-indexed (0 = Jan, 3 = Apr)
+  if (month >= 3) {
+    return `${year}-${year + 1}`;
+  } else {
+    return `${year - 1}-${year}`;
+  }
+}
+
+export function getSessionFromMonthStr(monthStr: string): string {
+  if (!monthStr || typeof monthStr !== 'string' || !monthStr.includes('-')) return getCurrentSession();
+  const [yearStr, mStr] = monthStr.split('-');
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(mStr, 10) - 1; // 0-indexed
+  if (isNaN(year) || isNaN(month)) return getCurrentSession();
+  if (month >= 3) {
+    return `${year}-${year + 1}`;
+  } else {
+    return `${year - 1}-${year}`;
+  }
+}
+
+

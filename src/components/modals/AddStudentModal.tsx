@@ -3,6 +3,8 @@ import { collection, getDocs, addDoc, doc, setDoc, Timestamp, query, orderBy } f
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { db, secondaryAuth } from '../../firebase/config';
 import { useSubjects } from '../../hooks/useSubjects';
+import { useAcademicSessions } from '../../hooks/useAcademicSessions';
+import { getCurrentSession } from '../../utils/dateUtils';
 import MultiSelect from '../common/MultiSelect';
 import { X, UserPlus, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -18,6 +20,7 @@ interface AddStudentModalProps {
 
 export default function AddStudentModal({ isOpen, onClose, onSuccess }: AddStudentModalProps) {
   const { masterSubjects } = useSubjects();
+  const { sessions } = useAcademicSessions();
   const [masterSchools, setMasterSchools] = useState<string[]>([]);
   const [masterSections, setMasterSections] = useState<string[]>(['A', 'B', 'C', 'D', 'E', 'F']);
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -36,7 +39,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess }: AddStude
     notes: '',
     email: '',
     tempPassword: '',
-    session: '2026-2027',
+    session: getCurrentSession(),
   });
 
   useEffect(() => {
@@ -172,7 +175,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess }: AddStude
             <div className="form-group">
               <label>Session</label>
               <select value={form.session} onChange={set('session')}>
-                {['2024-2025', '2025-2026', '2026-2027', '2027-2028', '2028-2029'].map(s => <option key={s} value={s}>{s}</option>)}
+                {sessions.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
 

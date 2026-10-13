@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
@@ -32,6 +33,28 @@ import StudentHomework from './pages/student/Homework';
 import StudentEvents from './pages/student/Events';
 
 export default function App() {
+  // Prevent background scrolling when any modal overlay is open
+  useEffect(() => {
+    const checkModal = () => {
+      const hasModal = !!document.querySelector('.modal-overlay');
+      if (hasModal) {
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.documentElement.style.overflow = '';
+        document.body.style.overflow = '';
+      }
+    };
+    checkModal();
+    const observer = new MutationObserver(checkModal);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <BrowserRouter basename="/tuition-plus-management">
