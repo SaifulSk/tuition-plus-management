@@ -51,6 +51,7 @@ export default function Fees() {
   const [allPayments, setAllPayments] = useState<Record<string, FeePayment[]>>({});
   const [loadingMaster, setLoadingMaster] = useState(false);
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
+  const [overviewStudentType, setOverviewStudentType] = useState<'active' | 'archived'>('active');
 
   const loadMasterData = async () => {
     setLoadingMaster(true);
@@ -299,14 +300,42 @@ export default function Fees() {
 
       {viewMode === 'master' && (
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h2 className="section-title" style={{ margin: 0 }}>Master Fee View</h2>
-            <div className="form-group" style={{ margin: 0, minWidth: '120px' }}>
-              <select value={masterYear} onChange={e => setMasterYear(Number(e.target.value))}>
-                {[2023, 2024, 2025, 2026, 2027, 2028].map(y => (
-                  <option key={y} value={y}>{y}-{y+1}</option>
-                ))}
-              </select>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <h2 className="section-title" style={{ margin: 0 }}>Master Fee View</h2>
+              <div className="tabs" style={{ margin: 0, padding: '3px', background: 'var(--surface-2)', borderRadius: '8px', display: 'flex', gap: '4px' }}>
+                <button
+                  type="button"
+                  className={`tab-btn ${overviewStudentType === 'active' ? 'active' : ''}`}
+                  style={{ padding: '6px 14px', fontSize: '0.85rem' }}
+                  onClick={() => setOverviewStudentType('active')}
+                >
+                  Active Students ({students.filter(s => s.active !== false).length})
+                </button>
+                <button
+                  type="button"
+                  className={`tab-btn ${overviewStudentType === 'archived' ? 'active' : ''}`}
+                  style={{ padding: '6px 14px', fontSize: '0.85rem' }}
+                  onClick={() => setOverviewStudentType('archived')}
+                  title={`Archived students for current session (${getCurrentSession()})`}
+                >
+                  Archived ({students.filter(s => !s.active && (s.session || getCurrentSession()) === getCurrentSession()).length})
+                </button>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {overviewStudentType === 'archived' && (
+                <span className="badge badge-gray" style={{ fontSize: '0.8rem', padding: '4px 8px' }}>
+                  Current Session: {getCurrentSession()}
+                </span>
+              )}
+              <div className="form-group" style={{ margin: 0, minWidth: '120px' }}>
+                <select value={masterYear} onChange={e => setMasterYear(Number(e.target.value))}>
+                  {[2023, 2024, 2025, 2026, 2027, 2028].map(y => (
+                    <option key={y} value={y}>{y}-{y+1}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
           
@@ -315,7 +344,25 @@ export default function Fees() {
           ) : (
             <div className="accordion-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {(() => {
-                const studentsByClass = students.reduce((acc, s) => {
+                const currentSess = getCurrentSession();
+                const displayedStudents = overviewStudentType === 'active'
+                  ? students.filter(s => s.active !== false)
+                  : students.filter(s => !s.active && (s.session || currentSess) === currentSess);
+
+                if (displayedStudents.length === 0) {
+                  return (
+                    <div className="empty-state" style={{ padding: '40px', textAlign: 'center' }}>
+                      <Receipt size={36} className="text-muted" style={{ margin: '0 auto 12px' }} />
+                      <p>
+                        {overviewStudentType === 'active'
+                          ? 'No active students found.'
+                          : `No archived students found for the current session (${currentSess}).`}
+                      </p>
+                    </div>
+                  );
+                }
+
+                const studentsByClass = displayedStudents.reduce((acc, s) => {
                   const c = s.class || 'Other';
                   if (!acc[c]) acc[c] = [];
                   acc[c].push(s);

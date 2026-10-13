@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
   collection, query, getDocs, addDoc, updateDoc,
-  doc, orderBy, deleteDoc
+  doc, orderBy, deleteDoc, where, deleteField, arrayRemove
 } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { db, secondaryAuth } from '../../firebase/config';
 import { setDoc } from 'firebase/firestore';
-import { Search, Eye, EyeOff, X, UserPlus, ChevronDown, ChevronRight, Pencil, Copy, GraduationCap } from 'lucide-react';
+import { Search, Eye, EyeOff, X, UserPlus, ChevronDown, ChevronRight, Pencil, Copy, GraduationCap, Trash2, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import type { Student } from '../../types';
@@ -55,6 +55,12 @@ export default function Students() {
   const [showPromoteModal, setShowPromoteModal] = useState(false);
   const [promotingStudent, setPromotingStudent] = useState<Student | null>(null);
   const [promoteForm, setPromoteForm] = useState({ action: 'promote', newClass: '', newSession: '' });
+
+  // Delete State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
+  const [confirmAcknowledge, setConfirmAcknowledge] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const toggleFee = (id: string) => {
     setShowFees(p => ({ ...p, [id]: !p[id] }));
@@ -330,6 +336,109 @@ export default function Students() {
     }
   };
 
+  const handleDeleteStudent = async () => {
+    if (!deletingStudent) return;
+    setIsDeleting(true);
+    try {
+      const studentId = deletingStudent.id;
+
+      // 1. Delete student subcollections:
+      // a. fees payments
+      const feePaymentsSnap = await getDocs(collection(db, 'fees', studentId, 'payments'));
+      const feeDeletions = feePaymentsSnap.docs.map(d => deleteDoc(d.ref));
+      feeDeletions.push(deleteDoc(doc(db, 'fees', studentId)));
+
+      // b. syllabus topics
+      const syllabusSnap = await getDocs(collection(db, 'syllabus', studentId, 'topics'));
+      const syllabusDeletions = syllabusSnap.docs.map(d => deleteDoc(d.ref));
+      syllabusDeletions.push(deleteDoc(doc(db, 'syllabus', studentId)));
+
+      // c. school exams
+      const examsSnap = await getDocs(collection(db, 'schoolExams', studentId, 'exams'));
+      const examDeletions = examsSnap.docs.map(d => deleteDoc(d.ref));
+      examDeletions.push(deleteDoc(doc(db, 'schoolExams', studentId)));
+
+      // d. schedules / schedule slots
+      const schedSnap1 = await getDocs(collection(db, 'schedules', studentId, 'slots'));
+      const schedDeletions1 = schedSnap1.docs.map(d => deleteDoc(d.ref));
+      schedDeletions1.push(deleteDoc(doc(db, 'schedules', studentId)));
+
+      const schedSnap2 = await getDocs(collection(db, 'schedule', studentId, 'slots'));
+      const schedDeletions2 = schedSnap2.docs.map(d => deleteDoc(d.ref));
+      schedDeletions2.push(deleteDoc(doc(db, 'schedule', studentId)));
+
+      // 2. Attendance records for this student
+      const attSnap = await getDocs(query(collection(db, 'attendance'), where('studentId', '==', studentId)));
+      const attDeletions = attSnap.docs.map(d => deleteDoc(d.ref));
+
+      // 3. User login account doc(s) in 'users'
+      const userDeletions: Promise<any>[] = [];
+      if (deletingStudent.uid) {
+        userDeletions.push(deleteDoc(doc(db, 'users', deletingStudent.uid)));
+      }
+      const userSnap = await getDocs(query(collection(db, 'users'), where('studentId', '==', studentId)));
+      userSnap.docs.forEach(d => {
+        userDeletions.push(deleteDoc(d.ref));
+      });
+
+      // 4. Tuition tests marks: remove studentId key from studentMarks object
+      const testsSnap = await getDocs(collection(db, 'tests'));
+      const testUpdates = testsSnap.docs
+        .filter(d => {
+          const marks = d.data().studentMarks;
+          return marks && typeof marks === 'object' && marks[studentId] !== undefined;
+        })
+        .map(d => updateDoc(d.ref, { [`studentMarks.${studentId}`]: deleteField() }));
+
+      // 5. Homework records
+      const hwSnap = await getDocs(collection(db, 'homework'));
+      const hwUpdates = hwSnap.docs.map(d => {
+        const data = d.data();
+        if (data.targetType === 'student' && data.targetStudentId === studentId) {
+          return deleteDoc(d.ref);
+        }
+        if (Array.isArray(data.completedBy) && data.completedBy.includes(studentId)) {
+          return updateDoc(d.ref, { completedBy: arrayRemove(studentId) });
+        }
+        return Promise.resolve();
+      });
+
+      // 6. Events attendees
+      const eventsSnap = await getDocs(collection(db, 'events'));
+      const eventUpdates = eventsSnap.docs
+        .filter(d => Array.isArray(d.data().attendees) && d.data().attendees.includes(studentId))
+        .map(d => updateDoc(d.ref, { attendees: arrayRemove(studentId) }));
+
+      // Await all cascading cleanup
+      await Promise.all([
+        ...feeDeletions,
+        ...syllabusDeletions,
+        ...examDeletions,
+        ...schedDeletions1,
+        ...schedDeletions2,
+        ...attDeletions,
+        ...userDeletions,
+        ...testUpdates,
+        ...hwUpdates,
+        ...eventUpdates,
+      ]);
+
+      // 7. Finally delete the student document
+      await deleteDoc(doc(db, 'students', studentId));
+
+      toast.success(`Student "${deletingStudent.name}" and all records deleted permanently.`);
+      setShowDeleteModal(false);
+      setDeletingStudent(null);
+      setConfirmAcknowledge(false);
+      await loadStudents();
+    } catch (err: any) {
+      console.error('Error deleting student:', err);
+      toast.error('Failed to delete student: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const groupedByClass = filtered.reduce((acc, s) => {
     if (!acc[s.class]) acc[s.class] = [];
     acc[s.class].push(s);
@@ -423,7 +532,7 @@ export default function Students() {
                             <th>Fee (₹/mo)</th>
                             <th>Joined</th>
                             <th>Status</th>
-                            {!showArchived && <th>Actions</th>}
+                            <th>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -475,17 +584,17 @@ export default function Students() {
                                   {s.active ? 'Active' : 'Archived'}
                                 </span>
                               </td>
-                              {!showArchived && (
-                                <td>
-                                  <div className="action-btns">
-                                    {s.active && (
-                                      <button className="icon-btn" onClick={() => openEditModal(s)} title="Edit">
-                                        <Pencil size={16} />
-                                      </button>
-                                    )}
-                                    <button className="icon-btn" onClick={() => duplicateStudent(s)} title="Duplicate">
-                                      <Copy size={16} />
+                              <td>
+                                <div className="action-btns">
+                                  {s.active && (
+                                    <button className="icon-btn" onClick={() => openEditModal(s)} title="Edit">
+                                      <Pencil size={16} />
                                     </button>
+                                  )}
+                                  <button className="icon-btn" onClick={() => duplicateStudent(s)} title="Duplicate">
+                                    <Copy size={16} />
+                                  </button>
+                                  {s.active && (
                                     <button className="icon-btn text-blue" onClick={() => {
                                       setPromotingStudent(s);
                                       setPromoteForm({
@@ -497,12 +606,24 @@ export default function Students() {
                                     }} title="Promote / Retain">
                                       <GraduationCap size={16} />
                                     </button>
-                                    <Link to={`/teacher/students/${s.id}`} className="icon-btn" title="View">
-                                      <Eye size={16} />
-                                    </Link>
-                                  </div>
-                                </td>
-                              )}
+                                  )}
+                                  <Link to={`/teacher/students/${s.id}`} className="icon-btn" title="View">
+                                    <Eye size={16} />
+                                  </Link>
+                                  <button
+                                    className="icon-btn danger"
+                                    onClick={() => {
+                                      setDeletingStudent(s);
+                                      setConfirmAcknowledge(false);
+                                      setShowDeleteModal(true);
+                                    }}
+                                    title="Delete Student"
+                                    style={{ color: 'var(--red, #ef4444)' }}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -688,6 +809,110 @@ export default function Students() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && deletingStudent && (
+        <div className="modal-overlay" onClick={() => !isDeleting && setShowDeleteModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                  <AlertTriangle size={20} />
+                </div>
+                <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#b91c1c' }}>Delete Student Permanently</h2>
+              </div>
+              {!isDeleting && (
+                <button className="modal-close" onClick={() => setShowDeleteModal(false)}>
+                  <X size={20} />
+                </button>
+              )}
+            </div>
+
+            <div className="modal-body" style={{ paddingTop: '16px' }}>
+              <div style={{ padding: '12px 14px', background: 'var(--surface-2)', borderRadius: '8px', marginBottom: '16px', borderLeft: '4px solid #ef4444' }}>
+                <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--text)' }}>
+                  {deletingStudent.name}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Class {deletingStudent.class} {deletingStudent.section ? `(${deletingStudent.section})` : ''} • {deletingStudent.school} • Session {deletingStudent.session || getCurrentSession()}
+                </div>
+              </div>
+
+              <p style={{ fontWeight: 600, color: '#dc2626', marginBottom: '8px' }}>
+                ⚠️ Warning: This action is permanent and cannot be undone!
+              </p>
+              
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: 1.5 }}>
+                Deleting this student will completely erase all associated records from everywhere across the database, including:
+              </p>
+
+              <ul style={{ fontSize: '0.85rem', color: 'var(--text)', paddingLeft: '20px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <li>Student profile & app login authentication account</li>
+                <li>All fee payments, history & receipts</li>
+                <li>All attendance logs & punch timings</li>
+                <li>Tuition test marks & scorecards</li>
+                <li>School exam results & marks</li>
+                <li>Syllabus completion progress & topics</li>
+                <li>Timetable & weekly schedule slots</li>
+                <li>Homework completions & event attendees</li>
+              </ul>
+
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', background: '#fff1f2', borderRadius: '8px', border: '1px solid #fecdd3', cursor: isDeleting ? 'not-allowed' : 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={confirmAcknowledge}
+                  onChange={e => setConfirmAcknowledge(e.target.checked)}
+                  disabled={isDeleting}
+                  style={{ width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '0.85rem', color: '#9f1239', fontWeight: 500, lineHeight: 1.4 }}>
+                  I understand that all records for <strong>{deletingStudent.name}</strong> will be permanently wiped out from everywhere and cannot be recovered.
+                </span>
+              </label>
+
+              <div className="modal-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{
+                    background: confirmAcknowledge && !isDeleting ? '#dc2626' : 'var(--border)',
+                    color: '#ffffff',
+                    border: 'none',
+                    cursor: confirmAcknowledge && !isDeleting ? 'pointer' : 'not-allowed',
+                    opacity: confirmAcknowledge && !isDeleting ? 1 : 0.6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                  disabled={!confirmAcknowledge || isDeleting}
+                  onClick={handleDeleteStudent}
+                >
+                  {isDeleting ? (
+                    <>
+                      <span className="btn-spinner" style={{ width: 14, height: 14 }} />
+                      <span>Deleting Everywhere...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={16} />
+                      <span>Delete Student Permanently</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {ConfirmDialog}
     </div>
   );
